@@ -8,6 +8,7 @@
 
 /* Begin PBXBuildFile section */
 		0C911C0D20E69B0C009B0BAF /* main.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 0C911C0C20E69B0C009B0BAF /* main.cpp */; };
+		0C911C1520E69B73009B0BAF /* wsbt.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 0C911C1320E69B73009B0BAF /* wsbt.cpp */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXCopyFilesBuildPhase section */
@@ -25,6 +26,8 @@
 /* Begin PBXFileReference section */
 		0C911C0920E69B0B009B0BAF /* burdenTest */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = burdenTest; sourceTree = BUILT_PRODUCTS_DIR; };
 		0C911C0C20E69B0C009B0BAF /* main.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = main.cpp; sourceTree = "<group>"; };
+		0C911C1320E69B73009B0BAF /* wsbt.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = wsbt.cpp; sourceTree = "<group>"; };
+		0C911C1420E69B73009B0BAF /* wsbt.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = wsbt.hpp; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -58,6 +61,8 @@
 			isa = PBXGroup;
 			children = (
 				0C911C0C20E69B0C009B0BAF /* main.cpp */,
+				0C911C1320E69B73009B0BAF /* wsbt.cpp */,
+				0C911C1420E69B73009B0BAF /* wsbt.hpp */,
 			);
 			path = burdenTest;
 			sourceTree = "<group>";
@@ -119,6 +124,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				0C911C0D20E69B0C009B0BAF /* main.cpp in Sources */,
+				0C911C1520E69B73009B0BAF /* wsbt.cpp in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

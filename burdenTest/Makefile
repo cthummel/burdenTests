@@ -10,3 +10,4 @@ main.o: main.cpp wsbt.cpp
 
 clean:
 	rm main.o
+	rm test
