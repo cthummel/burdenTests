@@ -9,23 +9,39 @@
 #include "wsbt.hpp"
 
 
-wsbt::wsbt()
+wsbt::wsbt(std::vector<std::vector<int> > G, std::vector<double> inputMaf, std::vector<double> ptype)
 {
-    setWeights();
-    setScores();
+    /*
+    genotypeMatrix = G;
+    phenotype = ptype;
+    maf = inputMaf;
+    */
+    
+    
+    expectedPhenotype = 0;
+    
+    for(int i = 0; i < ptype.size(); ++i)
+    {
+        expectedPhenotype += ptype[i];
+    }
+    expectedPhenotype = expectedPhenotype / ptype.size();
+    
+    setWeights(inputMaf);
+    setScores(G, ptype);
     testStatistic();
 }
 
-
-void wsbt::setWeights()
+//Set weights for variants based off Beta(maf; 1, 25). Can make it customizable later.
+void wsbt::setWeights(std::vector<double> maf)
 {
     for(int i = 0; i < weights.size(); ++i)
     {
-        //weights[i] = gsl_ran_beta_pdf(maf[i],1,25);
+        weights[i] = gsl_ran_beta_pdf(maf[i],1,25);
     }
 }
 
-void wsbt::setScores()
+
+void wsbt::setScores(std::vector<std::vector<int> > genotypeMatrix, std::vector<double> phenotype)
 {
     for(int j = 0; j < scores.size(); ++j)
     {
@@ -44,6 +60,6 @@ void wsbt::testStatistic()
         tempStat += scores[i] * weights[i];
     }
     testStat = tempStat * tempStat;
-    //pvalue = gsl_cdf_chisq_P(1.0, testStat);
+    pvalue = gsl_cdf_chisq_Q(testStat, 1);
     
 }

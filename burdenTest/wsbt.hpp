@@ -11,35 +11,37 @@
 
 #include <stdio.h>
 #include <vector>
-#include "third/gsl-2.4/gsl/gsl_randist.h"
+#include <gsl/gsl_randist.h>
+#include <gsl/gsl_cdf.h>
 
 
 class wsbt
 {
 public:
-    wsbt();
+    wsbt(std::vector<std::vector<int> > G, std::vector<double> maf, std::vector<double> ptype);
     ~wsbt();
     
     double getPvalue(){return pvalue;}
     std::vector<double> getScores(){return scores;}
+    std::vector<double> getWeights(){return weights;}
     
     
     
 private:
-    void setWeights();
-    void setScores();
+    void setWeights(std::vector<double> maf);
+    void setScores(std::vector<std::vector<int> > G, std::vector<double> ptype);
     void testStatistic();
     
     double pvalue;
     double expectedPhenotype;
     double testStat;
     
-    std::vector<std::vector<int> > genotypeMatrix;
+    //std::vector<std::vector<int> > genotypeMatrix;
     
-    std::vector<double> phenotype;
+    //std::vector<double> phenotype;
     std::vector<double> scores;
     std::vector<double> weights;
-    std::vector<double> maf;
+    //std::vector<double> maf;
 };
 
 #endif /* wsbt_hpp */

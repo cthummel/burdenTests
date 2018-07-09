@@ -8,19 +8,52 @@
 
 #include <iostream>
 #include "wsbt.cpp"
+#include "input.cpp"
+
+using namespace std;
 
 int main(int argc, const char * argv[])
 {
-    for (int i = 1; i < argc; i++)
+    std::string filename;
+    
+    if(argc > 1)
     {
-        std::cout << argv[i];
+        filename = argv[1];
+    }
+    else
+    {
+        cout << "burdenTest <filename>\n";
+        return 0;
+    }
+    if (filename.substr(filename.length() - 4) != ".vcf")
+    {
+        //They input a filename that isnt a vcf
+        cout << "burdenTest <filename>\n";
+        return 0;
     }
     
+    cout << "correct filename: " << filename << "\n";
+    
+    readInput result = readInput(filename);
+    
+    /*
+     if(argc < 1)
+     {
+        std::cout << "Please input a .vcf file";
+        filename << std::cin;
+     }
+     else
+     {
+        filename = argv[1];
+     }
+     
+     
+     */
     
     
     
     
     
-    std::cout << "Hello, World!\n";
+    cout << "Hello, World!\n";
     return 0;
 }
