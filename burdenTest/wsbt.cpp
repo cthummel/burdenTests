@@ -19,6 +19,9 @@ wsbt::wsbt(std::vector<std::vector<int> > G, std::vector<double> inputMaf, std::
     
     
     expectedPhenotype = 0;
+    weights.resize(inputMaf.size());
+    scores.resize(inputMaf.size());
+    
     
     for(int i = 0; i < ptype.size(); ++i)
     {

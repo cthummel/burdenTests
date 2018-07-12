@@ -1,0 +1,61 @@
+##fileformat=VCFv4.1
+##fileDate=1522694716
+##FORMAT=<ID=GT,Number=1,Type=String,Description="Genotype">
+##FORMAT=<ID=AK,Number=1,Type=Integer,Description="Alternte Kmer Count">
+##FORMAT=<ID=DP,Number=1,Type=Integer,Description="Total Kmer depth across the variant">
+##FORMAT=<ID=RO,Number=1,Type=Integer,Description="Mode of reference kmer counts">
+##FORMAT=<ID=AO,Number=1,Type=Integer,Description="Mode of alt kmer counts">
+##FORMAT=<ID=LP,Number=1,Type=Integer,Description="Number of lowcoverage parent bases">
+##FORMAT=<ID=PC,Number=1,Type=Integer,Description="Mode of parents coverage">
+##FORMAT=<ID=SB,Number=1,Type=Float,Description="StrandBias">
+##INFO=<ID=SVTYPE,Number=1,Type=String,Description="Type of SV detected">
+##INFO=<ID=SVLEN,Number=1,Type=Integer,Description="Length of SV detected">
+##INFO=<ID=END,Number=1,Type=Integer,Description="END of SV detected">
+##INFO=<ID=AO,Number=1,Type=Integer,Description="Alternate allele observations, with partial observations recorded fractionally">
+##INFO=<ID=HD,Number=.,Type=String,Description="Hash counts for each k-mer overlapping the vareint, -1 indicates no info">
+##INFO=<ID=RN,Number=1,Type=String,Description="Name of contig that produced the call">
+##INFO=<ID=MQ,Number=1,Type=Integer,Description="Mapping quality of the contig that created the call">
+##INFO=<ID=cigar,Number=1,Type=String,Description="Cigar string for the contig that created the call">
+##INFO=<ID=VT,Number=1,Type=String,Description="Varient Type">
+##INFO=<ID=CVT,Number=1,Type=String,Description="Compressed Varient Type">
+#CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT	./17040136867.bam.generator.V2.overlap.hashcount.fastq.bam
+1	1878071	X-LowCov30	C	T	9	.	RN=NODE_17040136867.bam.generator.V2_1_L150_D14:3:11::MH0;MQ=60;cigar=150M;CVT=X;HD=-1_-1_-1_-1_-1_-1_-1_-1_-1_-1_-1_-1_-1_-1_-1_-1_-1_14_-1_14_14_14_14_14_-1_-1_-1_;AO=14;VT=X	GT:DP:RO:AO:LP:PC:SB	0/1:28:14:14:123:2:0.214286
+1	12020908	X-StrandBias	A	T	17	.	RN=NODE_17040136867.bam.generator.V2_3_L120_D6:0:6::MH0;MQ=60;cigar=35S85M;CVT=X;HD=15_-1_-1_15_12_13_-1_-1_12_10_10_-1_-1_-1_-1_10_-1_-1_-1_-1_-1_-1_-1_-1_-1_-1_-1_;AO=12;VT=X	GT:DP:RO:AO:LP:PC:SB	1/1:11:-1:12:44:9:0
+1	26127425	X-LowCov17	G	A	8	.	RN=NODE_17040136867.bam.generator.V2_7_L161_D11:9:2::MH0;MQ=60;cigar=161M;CVT=X;HD=-1_10_10_-1_-1_11_11_11_11_-1_-1_-1_-1_-1_-1_-1_-1_-1_-1_-1_-1_-1_-1_-1_-1_-1_-1_;AO=11;VT=X	GT:DP:RO:AO:LP:PC:SB	0/1:38:27:11:82:9:0.818182
+1	227452844	X-LowCov20	T	C	17	.	RN=NODE_17040136867.bam.generator.V2_17_L157_D12:3:9::MH0;MQ=60;cigar=157M;CVT=X;HD=-1_-1_-1_-1_-1_-1_-1_-1_-1_-1_13_13_-1_-1_-1_-1_-1_12_12_11_11_-1_-1_12_-1_11_-1_;AO=12;VT=X	GT:DP:RO:AO:LP:PC:SB	0/1:25:13:12:164:2:0.25
+10	112343387	X-StrandBias	T	A	1	.	RN=NODE_17040136867.bam.generator.V2_93_L104_D7:0:7::MH0;MQ=60;cigar=41S63M;CVT=X;HD=-1_-1_-1_-1_-1_-1_-1_-1_-1_-1_-1_-1_-1_-1_-1_-1_-1_-1_-1_-1_-1_-1_-1_-1_-1_-1_-1_;AO=-1;VT=X	GT:DP:RO:AO:LP:PC:SB	1/1:14:-1:15:11:2:0
+10	131986722	X-LowCov19	C	T	6	.	RN=NODE_17040136867.bam.generator.V2_95_L141_D10:3:7::MH0;MQ=60;cigar=141M;CVT=X;HD=-1_-1_10_-1_-1_10_-1_-1_-1_-1_-1_-1_-1_-1_-1_-1_-1_-1_-1_-1_-1_-1_-1_-1_-1_-1_-1_;AO=10;VT=X	GT:DP:RO:AO:LP:PC:SB	0/1:18:10:8:135:2:0.3
+10	134754297	X-StrandBias	A	G	14	.	RN=NODE_17040136867.bam.generator.V2_97_L157_D13:13:0::MH0;MQ=60;cigar=157M;CVT=X;HD=-1_10_10_10_-1_10_10_-1_12_13_13_-1_-1_-1_16_-1_15_-1_-1_-1_-1_-1_-1_-1_-1_-1_-1_;AO=12;VT=X	GT:DP:RO:AO:LP:PC:SB	0/1:34:19:15:91:3:1
+11	70506206	X-StrandBias	G	T	8	.	RN=NODE_17040136867.bam.generator.V2_100_L149_D10:0:10::MH0;MQ=60;cigar=149M;CVT=X;HD=-1_-1_-1_-1_-1_-1_-1_-1_-1_-1_-1_-1_-1_-1_-1_-1_-1_-1_-1_10_-1_-1_10_10_-1_-1_-1_;AO=10;VT=X	GT:DP:RO:AO:LP:PC:SB	0/1:20:10:10:109:0:0
+11	124621241	X-LowCov16	C	A	9	.	RN=NODE_17040136867.bam.generator.V2_104_L136_D10:9:1::MH0;MQ=60;cigar=136M;CVT=X;HD=-1_10_10_-1_10_10_-1_11_11_-1_-1_-1_-1_-1_-1_-1_-1_-1_-1_-1_-1_-1_-1_-1_-1_-1_-1_;AO=10;VT=X	GT:DP:RO:AO:LP:PC:SB	0/1:30:19:11:112:7:0.9
+11	129780673	D-StrandBias	AT	A	6	.	RN=NODE_17040136867.bam.generator.V2_105_L162_D9:0:9::MH0;MQ=60;cigar=78M1D84M;CVT=D;HD=-1_-1_-1_-1_-1_-1_-1_-1_-1_-1_10_-1_-1_-1_-1_-1_-1_10_10_-1_-1_-1_-1_-1_-1_-1_-1_-1_;AO=10;VT=D	GT:DP:RO:AO:LP:PC:SB	0/1:22:13:9:33:13:0
+11	134184141	X-StrandBias	C	T	21	.	RN=NODE_17040136867.bam.generator.V2_107_L160_D13:13:0::MH0;MQ=60;cigar=160M;CVT=X;HD=-1_-1_-1_11_11_-1_-1_11_11_11_11_11_11_11_12_13_-1_-1_-1_-1_-1_-1_-1_-1_-1_-1_-1_;AO=11;VT=X	GT:DP:RO:AO:LP:PC:SB	0/1:24:13:11:79:2:1
+12	56822641	X-LowCov36	G	C	11	.	RN=NODE_17040136867.bam.generator.V2_112_L143_D10:8:2::MH0;MQ=60;cigar=143M;CVT=X;HD=-1_-1_-1_-1_-1_-1_-1_-1_-1_-1_-1_-1_-1_-1_10_10_10_10_-1_10_-1_10_10_-1_-1_-1_-1_;AO=10;VT=X	GT:DP:RO:AO:LP:PC:SB	0/1:19:10:9:154:3:0.8
+12	76509735	XX-LowCov7	GT	AC	14	.	RN=NODE_17040136867.bam.generator.V2_113_L151_D11:4:7::MH0;MQ=60;cigar=151M;CVT=XX;HD=-1_-1_-1_-1_-1_-1_-1_-1_-1_11_-1_11_11_11_-1_10_-1_-1_-1_10_-1_10_-1_-1_-1_-1_-1_-1_-1_;AO=11;VT=XX	GT:DP:RO:AO:LP:PC:SB	0/1:22:11:11:80:7:0.363636
+12	113913876	6I-LowCov1	C	CGCGGCG	21	.	RN=NODE_17040136867.bam.generator.V2_117_L134_D10:7:3::MH0;MQ=60;cigar=59M6I69M;CVT=6I;HD=-1_-1_-1_-1_-1_-1_-1_-1_10_-1_-1_-1_-1_-1_-1_10_-1_-1_-1_-1_-1_-1_-1_-1_10_10_10_10_10_-1_-1_-1_-1_;AO=10;VT=IIIIII	GT:DP:RO:AO:LP:PC:SB	0/1:20:10:10:21:0:0.7
+12	124762365	X-LowCov24	T	C	5	.	RN=NODE_17040136867.bam.generator.V2_118_L148_D11:7:4::MH0;MQ=60;cigar=148M;CVT=X;HD=-1_-1_-1_-1_-1_-1_-1_-1_-1_-1_-1_-1_-1_-1_-1_-1_-1_-1_-1_-1_-1_-1_-1_11_-1_11_11_;AO=11;VT=X	GT:DP:RO:AO:LP:PC:SB	0/1:18:11:7:115:2:0.636364
+14	104767725	9IX-LowCov49	CA	CGCCACCACTG	7	.	RN=NODE_17040136867.bam.generator.V2_130_L163_D12:3:9::MH0;MQ=60;cigar=80M9I74M;CVT=9IX;HD=-1_-1_-1_-1_-1_-1_-1_-1_-1_-1_-1_12_12_12_12_12_12_12_-1_-1_-1_-1_-1_-1_-1_-1_-1_-1_-1_-1_-1_-1_-1_-1_-1_-1_-1_-1_;AO=12;VT=IIIIIIIIIX	GT:DP:RO:AO:LP:PC:SB	0/1:17:7:10:176:2:0.25
+15	101250563	X-LowCov5	G	A	10	.	RN=NODE_17040136867.bam.generator.V2_141_L123_D5:3:2::MH0;MQ=30;cigar=12S111M;CVT=X;HD=-1_-1_-1_-1_-1_10_-1_-1_-1_-1_-1_-1_-1_-1_-1_-1_-1_-1_-1_-1_-1_-1_-1_-1_11_10_-1_;AO=10;VT=X	GT:DP:RO:AO:LP:PC:SB	1/1:8:-1:9:19:0:0.6
+15	101250576	X-LowCov3	A	G	10	.	RN=NODE_17040136867.bam.generator.V2_141_L123_D5:3:2::MH0;MQ=30;cigar=12S111M;CVT=X;HD=-1_-1_-1_-1_-1_-1_-1_-1_-1_-1_-1_11_10_-1_-1_-1_-1_-1_-1_-1_-1_-1_10_-1_-1_-1_-1_;AO=10;VT=X	GT:DP:RO:AO:LP:PC:SB	1/1:9:-1:10:19:0:0.6
+15	101250592	XX-LowCov5	TG	AA	10	.	RN=NODE_17040136867.bam.generator.V2_141_L123_D5:3:2::MH0;MQ=30;cigar=12S111M;CVT=XX;HD=-1_-1_-1_-1_-1_-1_10_-1_-1_-1_-1_-1_-1_-1_-1_-1_-1_-1_-1_-1_-1_-1_-1_-1_-1_11_10_-1_-1_;AO=10;VT=XX	GT:DP:RO:AO:LP:PC:SB	0/1:42:33:9:19:0:0.6
+15	101250623	X-LowCov5	G	A	10	.	RN=NODE_17040136867.bam.generator.V2_141_L123_D5:3:2::MH0;MQ=30;cigar=12S111M;CVT=X;HD=-1_-1_-1_-1_-1_10_-1_-1_-1_-1_-1_-1_-1_-1_-1_-1_-1_-1_-1_-1_-1_-1_-1_-1_11_10_-1_;AO=10;VT=X	GT:DP:RO:AO:LP:PC:SB	0/1:23:14:9:19:0:0.6
+18	12427278	X-DeNovo	T	C	25	.	RN=NODE_17040136867.bam.generator.V2_167_L186_D65:33:32::MH0;MQ=60;cigar=186M;CVT=X;HD=-1_63_-1_-1_-1_62_60_57_-1_-1_-1_-1_54_54_-1_-1_-1_-1_-1_45_44_-1_45_46_-1_47_-1_;AO=54;VT=X	GT:DP:RO:AO:LP:PC:SB	0/1:173:120:53:0:106:0.507692
+19	2823257	XX-StrandBias	CT	AC	8	.	RN=NODE_17040136867.bam.generator.V2_171_L154_D10:0:10::MH0;MQ=60;cigar=154M;CVT=XX;HD=-1_-1_-1_-1_-1_-1_-1_-1_-1_-1_-1_-1_-1_-1_11_-1_-1_-1_10_10_10_-1_-1_-1_-1_-1_-1_-1_-1_;AO=11;VT=XX	GT:DP:RO:AO:LP:PC:SB	0/1:26:15:11:107:6:0
+19	35785378	X-StrandBias	C	T	11	.	RN=NODE_17040136867.bam.generator.V2_175_L132_D11:0:11::MH0;MQ=60;cigar=132M;CVT=X;HD=-1_-1_-1_-1_-1_-1_-1_-1_-1_-1_-1_-1_-1_-1_-1_11_-1_-1_11_-1_-1_-1_-1_-1_11_-1_-1_;AO=11;VT=X	GT:DP:RO:AO:LP:PC:SB	0/1:34:23:11:65:8:0
+19	41117624	X-StrandBias	T	C	6	.	RN=NODE_17040136867.bam.generator.V2_176_L128_D10:10:0::MH0;MQ=60;cigar=128M;CVT=X;HD=-1_-1_-1_-1_-1_-1_-1_-1_-1_-1_-1_-1_-1_-1_-1_-1_-1_-1_-1_-1_10_10_10_-1_10_10_-1_;AO=10;VT=X	GT:DP:RO:AO:LP:PC:SB	0/1:26:18:8:73:4:1
+2	27485508	X-StrandBias	G	A	10	.	RN=NODE_17040136867.bam.generator.V2_21_L131_D10:10:0::MH0;MQ=60;cigar=131M;CVT=X;HD=-1_-1_-1_-1_-1_-1_10_-1_-1_10_-1_-1_10_-1_-1_-1_-1_-1_-1_-1_-1_-1_-1_-1_-1_-1_-1_;AO=10;VT=X	GT:DP:RO:AO:LP:PC:SB	0/1:22:13:9:76:6:1
+2	238536392	X-LowCov21	T	G	7	.	RN=NODE_17040136867.bam.generator.V2_31_L145_D10:3:7::MH0;MQ=60;cigar=145M;CVT=X;HD=-1_-1_-1_-1_-1_-1_-1_-1_-1_-1_-1_-1_-1_-1_-1_-1_-1_-1_-1_-1_10_-1_10_-1_-1_-1_-1_;AO=10;VT=X	GT:DP:RO:AO:LP:PC:SB	0/1:27:16:11:156:4:0.3
+22	35458685	X-LowCov13	A	C	10	.	RN=NODE_17040136867.bam.generator.V2_183_L152_D12:4:8::MH0;MQ=60;cigar=152M;CVT=X;HD=-1_-1_-1_-1_-1_-1_11_11_10_10_10_10_10_10_10_-1_-1_-1_-1_-1_-1_-1_-1_-1_-1_-1_-1_;AO=10;VT=X	GT:DP:RO:AO:LP:PC:SB	1/1:9:-1:10:50:0:0.333333
+4	24438423	X-inherited	G	A	7	.	RN=NODE_17040136867.bam.generator.V2_43_L108_D8:5:3::MH0;MQ=33;cigar=108M;CVT=X;HD=-1_-1_-1_-1_-1_-1_-1_-1_-1_10_11_-1_-1_11_11_-1_-1_-1_-1_-1_-1_-1_;AO=11;VT=X	GT:DP:RO:AO:LP:PC:SB	1/1:6:-1:7:0:0:0.625
+4	41684580	X-StrandBias	C	T	9	.	RN=NODE_17040136867.bam.generator.V2_44_L159_D10:0:10::MH0;MQ=60;cigar=159M;CVT=X;HD=-1_-1_-1_-1_-1_-1_-1_-1_-1_-1_10_10_-1_-1_10_10_10_-1_-1_-1_-1_-1_-1_-1_-1_-1_-1_;AO=10;VT=X	GT:DP:RO:AO:LP:PC:SB	0/1:21:12:9:116:6:0
+6	5542407	X-LowCov6	A	G	18	.	RN=NODE_17040136867.bam.generator.V2_56_L174_D14:8:7::MH0;MQ=60;cigar=174M;CVT=X;HD=-1_-1_-1_10_-1_10_10_-1_10_10_-1_-1_-1_-1_-1_-1_-1_12_13_13_12_12_-1_-1_-1_-1_-1_;AO=10;VT=X	GT:DP:RO:AO:LP:PC:SB	0/1:28:17:11:108:0:0.533333
+6	55147361	I-LowCov2	C	CT	11	.	RN=NODE_17040136867.bam.generator.V2_59_L138_D12:3:9::MH0;MQ=60;cigar=76M1I61M;CVT=I;HD=-1_-1_-1_-1_-1_-1_-1_-1_-1_-1_-1_-1_-1_-1_12_11_-1_-1_-1_-1_-1_-1_13_-1_-1_-1_-1_-1_;AO=12;VT=I	GT:DP:RO:AO:LP:PC:SB	0/1:55:43:12:1:62:0.25
+7	945173	X-LowCov12	G	A	5	.	RN=NODE_17040136867.bam.generator.V2_67_L158_D8:3:5::MH0;MQ=24;cigar=85M3D19M1I9M1D44M;CVT=X;HD=-1_-1_-1_-1_-1_-1_-1_-1_-1_-1_-1_-1_-1_-1_10_10_10_10_10_-1_-1_-1_-1_-1_-1_-1_-1_;AO=10;VT=X	GT:DP:RO:AO:LP:PC:SB	0/0:102:92:10:45:25:0.375
+7	945179	3D-LowCov19	AGGG	A	5	.	RN=NODE_17040136867.bam.generator.V2_67_L158_D8:3:5::MH0;MQ=24;cigar=85M3D19M1I9M1D44M;CVT=3D;HD=-1_-1_-1_-1_-1_-1_-1_10_10_10_10_10_-1_-1_-1_-1_-1_-1_-1_-1_-1_-1_-1_-1_-1_-1_-1_-1_-1_-1_;AO=10;VT=DDD	GT:DP:RO:AO:LP:PC:SB	0/0:97:88:9:45:25:0.375
+7	945187	X-LowCov23	G	A	5	.	RN=NODE_17040136867.bam.generator.V2_67_L158_D8:3:5::MH0;MQ=24;cigar=85M3D19M1I9M1D44M;CVT=X;HD=10_10_10_10_10_-1_-1_-1_-1_-1_-1_-1_-1_-1_-1_-1_-1_-1_-1_-1_-1_-1_-1_-1_-1_-1_-1_;AO=10;VT=X	GT:DP:RO:AO:LP:PC:SB	0/1:70:62:8:45:25:0.375
+7	127747686	X-LowCov3	C	T	10	.	RN=NODE_17040136867.bam.generator.V2_71_L152_D5:2:4::MH0;MQ=60;cigar=32M1D120M;CVT=X;HD=-1_11_-1_12_-1_12_-1_11_10_-1_-1_10_;AO=11;VT=X	GT:DP:RO:AO:LP:PC:SB	1/1:10:-1:11:21:0:0.333333
+7	127747707	DX-LowCov7	CGT	CA	17	.	RN=NODE_17040136867.bam.generator.V2_71_L152_D5:2:4::MH0;MQ=60;cigar=32M1D120M;CVT=DX;HD=11_10_-1_-1_10_-1_-1_-1_-1_-1_-1_-1_-1_-1_-1_10_-1_-1_-1_-1_11_11_-1_-1_10_-1_12_-1_11_-1_;AO=11;VT=DX	GT:DP:RO:AO:LP:PC:SB	1/1:10:-1:11:21:0:0.333333
+7	127747720	X-LowCov8	C	T	21	.	RN=NODE_17040136867.bam.generator.V2_71_L152_D5:2:4::MH0;MQ=60;cigar=32M1D120M;CVT=X;HD=-1_-1_-1_10_-1_-1_-1_-1_11_11_-1_-1_10_-1_12_-1_11_-1_12_-1_12_-1_11_10_-1_-1_10_;AO=11;VT=X	GT:DP:RO:AO:LP:PC:SB	1/1:10:-1:11:21:0:0.333333
+8	23603751	X-LowCov10	C	T	5	.	RN=NODE_17040136867.bam.generator.V2_76_L215_D12:5:9::MH0;MQ=60;cigar=215M;CVT=X;HD=-1_-1_-1_-1_-1_-1_-1_-1_-1_-1_-1_-1_-1_-1_-1_-1_-1_-1_-1_-1_-1_10_-1_11_-1_-1_-1_;AO=10;VT=X	GT:DP:RO:AO:LP:PC:SB	0/1:22:14:8:103:5:0.357143
+9	92064548	X-LowCov28	T	C	3	.	RN=NODE_17040136867.bam.generator.V2_84_L164_D11:3:8::MH0;MQ=60;cigar=164M;CVT=X;HD=-1_-1_-1_-1_-1_-1_-1_-1_-1_-1_-1_-1_-1_-1_-1_-1_-1_-1_-1_-1_-1_-1_-1_-1_-1_-1_-1_;AO=11;VT=X	GT:DP:RO:AO:LP:PC:SB	0/1:23:13:10:118:0:0.272727
+9	100504549	X-LowCov8	C	T	16	.	RN=NODE_17040136867.bam.generator.V2_86_L149_D11:5:6::MH0;MQ=60;cigar=41M4D108M;CVT=X;HD=11_-1_-1_11_11_11_11_11_-1_-1_-1_11_11_-1_11_10_-1_-1_-1_-1_-1_-1_-1_-1_-1_-1_-1_;AO=11;VT=X	GT:DP:RO:AO:LP:PC:SB	0/1:22:11:11:45:2:0.454545

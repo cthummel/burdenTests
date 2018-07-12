@@ -14,27 +14,51 @@ using namespace std;
 
 int main(int argc, const char * argv[])
 {
-    std::string filename;
+    std::string vcffilename, phenofilename, filename;
     
-    if(argc > 1)
+    for(int i = 1; i < argc; i++)
     {
-        filename = argv[1];
-    }
-    else
-    {
-        cout << "burdenTest <filename>\n";
-        return 0;
-    }
-    if (filename.substr(filename.length() - 4) != ".vcf")
-    {
-        //They input a filename that isnt a vcf
-        cout << "burdenTest <filename>\n";
-        return 0;
+        if(strcmp(argv[i], "-vcf") == 0)
+        {
+            if(argc > i)
+            {
+                vcffilename = argv[i+1];
+                if (vcffilename.substr(vcffilename.length() - 4) != ".vcf")
+                {
+                    //They input a filename that isnt a vcf
+                    cout << "burdenTest -vcf <filename.vcf>\n";
+                    return 0;
+                }
+                i++;
+            }
+        }
+        if (strcmp(argv[i], "-pheno") == 0)
+        {
+            if (argc > i)
+            {
+                phenofilename = argv[i+1];
+                if (phenofilename.substr(phenofilename.length() - 6) != ".pheno")
+                {
+                    //They input a filename that isnt a .pheno
+                    cout << "burdenTest -pheno <filename.pheno>\n";
+                    return 0;
+                }
+                i++;
+            }
+        }
     }
     
-    cout << "correct filename: " << filename << "\n";
     
-    readInput result = readInput(filename);
+    
+    
+    cout << "correct filename: " << vcffilename << "\n";
+    
+    readInput result = readInput(vcffilename, phenofilename);
+    
+    //std::vector<double> phenotype(result.getMaf.size());
+    //wsbt test(result.getGenotype(), result.getMaf(), phenotype);
+    
+    
     
     /*
      if(argc < 1)

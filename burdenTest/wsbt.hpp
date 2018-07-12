@@ -19,7 +19,7 @@ class wsbt
 {
 public:
     wsbt(std::vector<std::vector<int> > G, std::vector<double> maf, std::vector<double> ptype);
-    ~wsbt();
+    //~wsbt();
     
     double getPvalue(){return pvalue;}
     std::vector<double> getScores(){return scores;}
