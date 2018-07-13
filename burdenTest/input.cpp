@@ -9,7 +9,7 @@
 #include "input.hpp"
 using namespace std;
 
-readInput::readInput(string vcfFile, string phenoFile)
+readInput::readInput(string vcfFile, string vcfType, string phenoFile)
 {
     variantCount = 0;
     subjectCount = 0;
@@ -24,13 +24,13 @@ readInput::readInput(string vcfFile, string phenoFile)
     regex subjectCountMatch(";NS=(\\d*)");
     regex headerMatch("^#");
     
-    genoCommand = "vcftools --vcf " + vcfFile + " --extract-FORMAT-info GT";
-    mafCommand = "vcftools --vcf " + vcfFile + " --get-INFO AF";
+    genoCommand = "vcftools -" + vcfType + " "  + vcfFile + " --extract-FORMAT-info GT";
+    mafCommand = "vcftools -" + vcfType + " "  + vcfFile + " --get-INFO AF";
     
     //Runs vcftools command to separate genotype data.
     system(genoCommand.c_str());
     
-    //Obtain Variant counts and Subject counts.
+    //Obtain variant counts and subject counts.
     tempfile.open(vcfFile);
     for(int j = 0; getline(tempfile, line); j++)
     {
@@ -44,8 +44,8 @@ readInput::readInput(string vcfFile, string phenoFile)
             variantCount++;
         }
     }
-    cout << "variantCount: " << variantCount << endl;
-    cout << "subjectCount: " << subjectCount << endl;
+    //cout << "variantCount: " << variantCount << endl;
+    //cout << "subjectCount: " << subjectCount << endl;
     tempfile.close();
     
     //Parsing genotype data
@@ -56,16 +56,20 @@ readInput::readInput(string vcfFile, string phenoFile)
     {
         for(int i = 0; regex_search(line, match, gMatch); i++)
         {
+            //Since the first line of the file is just headers, we input into j-1
             genotypeMatrix[i][j-1] = stoi(match[1]) + stoi(match[3]);
             line = match.suffix();
         }
     }
     tempfile.close();
     
-    system(mafCommand.c_str());
+    //system(mafCommand.c_str());
     //tempfile.open("out.INFO");
+    
+    //Parse the maf
     tempfile.open(vcfFile);
     maf = vector<double>(variantCount);
+    
     int mafPos = 0;
     for(int j = 0; getline(tempfile, line); j++)
     {
@@ -79,16 +83,6 @@ readInput::readInput(string vcfFile, string phenoFile)
         }
     }
     tempfile.close();
-    
-    
-    
-    
-    
-    
-
-    
-    
-    
     
     
 };

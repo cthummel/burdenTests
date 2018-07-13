@@ -22,7 +22,7 @@ class readInput
 {
     
 public:
-    readInput(string vcfFile, string phenoFile);
+    readInput(string vcfFile, string vcfType, string phenoFile);
     
     vector<vector<int> > getGenotype(){return genotypeMatrix;}
     vector<double> getMaf(){return maf;}
