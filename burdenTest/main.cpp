@@ -7,6 +7,7 @@
 //
 
 #include <iostream>
+#include "genericBurdenTest.cpp"
 #include "wsbt.cpp"
 #include "input.cpp"
 #include "cast.cpp"
@@ -70,7 +71,7 @@ int main(int argc, const char * argv[])
     
     readInput result = readInput(vcffilename, vcfType, phenofilename);
     vector<double> pheno = vector<double>(result.getMaf().size());
-    wsbt test = wsbt(result.getGenotype(), result.getMaf(), pheno);
+    genericBurdenTest test = genericBurdenTest(result.getGenotype(), result.getMaf(), pheno);
     
     cout << "Variant weights: ";
     for(int i = 0; i < test.getWeights().size(); i++)

@@ -8,7 +8,7 @@ test: main.o
 	$(CC) $(LFLAGS) -g -o test main.o -lgsl -lgslcblas -lm
 
 main.o: main.cpp 
-	$(CC) $(CFLAGS) -c main.cpp wsbt.cpp 
+	$(CC) $(CFLAGS) -c main.cpp wsbt.cpp genericBurdenTest.cpp
 
 gtest: gtest.o
 	$(CC) -g -o gtest gtest.o -lgtest -lpthread -lgsl -lgslcblas
@@ -20,9 +20,6 @@ gtest.o: gtest.cpp
 
 
 clean:
-	#rm main.o
-	#rm wsbt.o
-	#rm gtest.o
 	rm *.o
 	rm out.*
 	rm test

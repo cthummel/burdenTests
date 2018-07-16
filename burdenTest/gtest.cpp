@@ -1,6 +1,6 @@
 #include <gtest/gtest.h>
 #include <vector>
-#include "wsbt.cpp"
+#include "genericBurdenTest.cpp"
 #include "input.cpp"
 
 using namespace std;
@@ -10,9 +10,9 @@ TEST(Mathtest, basicmath)
   ASSERT_EQ(4, 2+2);
 }
 
-wsbt setupWSBT(int subjectCount, int variantCount)
+genericBurdenTest setupGenericBurdenTest(int subjectCount, int variantCount)
 {
-    gsl_rng * r;
+    gsl_rng * r = gsl_rng_alloc(gsl_rng_taus);
     
     //Initializes the matrix of size subjectCount x variantCount with entry 1.
     vector<vector<int> > G(subjectCount, vector<int>(variantCount, 1));
@@ -30,17 +30,17 @@ wsbt setupWSBT(int subjectCount, int variantCount)
 
     for(int i = 0; i < subjectCount; i++)
     {
-        //ptype[i] = gsl_ran_gaussian(r, 10) + 175;
+        ptype[i] = gsl_ran_gaussian(r, 10) + 175;
     }
     
-    return wsbt(G, maf, ptype);
+    return genericBurdenTest(G, maf, ptype);
     
     
 }
 
-TEST(setWeights,WeightedSumsBurdenTest)
+TEST(setWeights,GenericBurdenTest)
 {
-    wsbt test = setupWSBT(10, 10);
+    genericBurdenTest test = setupGenericBurdenTest(10, 10);
     vector<double> tempWeights = test.getWeights();
     ASSERT_EQ(tempWeights[0], gsl_ran_beta_pdf(.1, 1, 25));
     ASSERT_NE(tempWeights[0], gsl_ran_beta_pdf(.11, 1, 25));
@@ -53,9 +53,9 @@ TEST(setWeights,WeightedSumsBurdenTest)
     }
 }
 
-TEST(setScores, WeightedSumsBurdenTest)
+TEST(setScores, GenericBurdenTest)
 {
-    wsbt test = setupWSBT(10, 10);
+    genericBurdenTest test = setupGenericBurdenTest(10, 10);
     vector<double> tempscore = test.getScores();
     vector<double> ptype;
     ptype.resize(10);
@@ -77,7 +77,7 @@ TEST(mafInput, fileInput)
     ASSERT_EQ(0.000199681, maf[2]);
 }
 
-TEST(generalRun, WeightedSumsBurdenTest)
+TEST(generalRun, GenericBurdenTest)
 {
     gsl_rng *r = gsl_rng_alloc(gsl_rng_taus);
     string vcfFile = "test3.vcf";
@@ -89,7 +89,7 @@ TEST(generalRun, WeightedSumsBurdenTest)
     {
         ptype[i] = gsl_ran_gaussian(r, 10) + 175;
     }
-    wsbt test(result.getGenotype(), result.getMaf(), ptype);
+    genericBurdenTest test(result.getGenotype(), result.getMaf(), ptype);
     cout << "Test P-value: " << test.getPvalue() << endl;
     cout << "Test Scores: ";
     for(int i = 0; i < test.getScores().size(); i++)
