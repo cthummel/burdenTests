@@ -17,6 +17,7 @@ using namespace std;
 int main(int argc, const char * argv[])
 {
     std::string vcffilename, vcfType, phenofilename, filename;
+    int testType = 0;
     
     //Check for proper argument formatting and filetypes.
     for(int i = 1; i < argc; i++)
@@ -65,22 +66,41 @@ int main(int argc, const char * argv[])
                 i++;
             }
         }
+        if(strcmp(argv[i], "wsbt") == 0)
+        {
+            testType = 1;
+        }
+        if(strcmp(argv[i], "burden") == 0)
+        {
+            testType = 2;
+        }
     }
     
     //cout << "correct filename: " << vcffilename << "\n";
     
     readInput result = readInput(vcffilename, vcfType, phenofilename);
     vector<double> pheno = vector<double>(result.getMaf().size());
-    genericBurdenTest test = genericBurdenTest(result.getGenotype(), result.getMaf(), pheno);
     
-    cout << "Variant weights: ";
-    for(int i = 0; i < test.getWeights().size(); i++)
+    
+    switch(testType)
     {
-        cout << test.getWeights()[1] << " ";
+        case 0:
+            cout << "Please specify desired test on command line." << endl;
+            break;
+        case 1:
+            //wsbt test = wsbt(,);
+            break;
+        case 2:
+            genericBurdenTest test = genericBurdenTest(result.getGenotype(), result.getMaf(), pheno);
+            cout << "Variant weights: ";
+            for(int i = 0; i < test.getWeights().size(); i++)
+            {
+                cout << test.getWeights()[1] << " ";
+            }
+            cout << endl;
+            break;
+            
     }
-    cout << endl;
-    
-    
     //cout << "Hello, World!\n";
     return 0;
 }
