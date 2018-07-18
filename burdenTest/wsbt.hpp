@@ -30,7 +30,6 @@ public:
     std::vector<double> getWeights(){return weights;}
     
 private:
-
     void setWeights();
     void setScores();
     double testStatistic();
@@ -39,13 +38,8 @@ private:
     double testStat;
     int affectedCount;
     
-    
-    
     vector<double> weights;
     //vector<double> scores;
-    //vector<int> combinedIndividualCount;
-    //vector<int> unaffectedAlleleCount;
-    //vector<int> unaffectedIndvidualCount;
     vector<double> testStatistics;
     
     vector<vector<int> > unaffectedGenotype;

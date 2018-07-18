@@ -83,6 +83,7 @@ wsbt::wsbt(gsl_matrix totalGtype, int aCount)
         setScores();
         testStatistics[k] = testStatistic();
         
+        //Permutes the data between affected and unaffected status.
         gsl_ran_shuffle(r, subjectPerm->data, totalSubjects, sizeof(size_t));
         gsl_permute_matrix(subjectPerm, &totalGenotype);
     }

@@ -16,8 +16,8 @@ using namespace std;
 
 int main(int argc, const char * argv[])
 {
-    std::string vcffilename, vcfType, phenofilename, filename;
-    int testType = 0;
+    std::string vcffilename, vcfType, phenofilename, filename, testType;
+    //int testType = 0;
     
     //Check for proper argument formatting and filetypes.
     for(int i = 1; i < argc; i++)
@@ -68,39 +68,73 @@ int main(int argc, const char * argv[])
         }
         if(strcmp(argv[i], "wsbt") == 0)
         {
-            testType = 1;
+            testType = argv[i];
         }
         if(strcmp(argv[i], "burden") == 0)
         {
-            testType = 2;
+            testType = argv[i];
+        }
+        if(strcmp(argv[i], "cast") == 0)
+        {
+            testType = argv[i];
+        }
+        if(strcmp(argv[i], "skat") == 0)
+        {
+            testType = argv[i];
+        }
+        if(strcmp(argv[i], "skato") == 0)
+        {
+            testType = argv[i];
+        }
+        if(strcmp(argv[i], "-h") == 0)
+        {
+            testType = argv[i];
         }
     }
     
-    //cout << "correct filename: " << vcffilename << "\n";
-    
-    readInput result = readInput(vcffilename, vcfType, phenofilename);
+    //cout << "correct filename: " << vcffilename << "\n"; result;
+    if(vcffilename != "" && vcfType != "")
+    {
+        
+    }
+    readInput result(testType, vcfType, vcffilename, vcffilename, phenofilename);
     vector<double> pheno = vector<double>(result.getMaf().size());
     
-    
-    switch(testType)
+    if(testType == "wsbt")
     {
-        case 0:
-            cout << "Please specify desired test on command line." << endl;
-            break;
-        case 1:
-            //wsbt test = wsbt(,);
-            break;
-        case 2:
-            genericBurdenTest test = genericBurdenTest(result.getGenotype(), result.getMaf(), pheno);
-            cout << "Variant weights: ";
-            for(int i = 0; i < test.getWeights().size(); i++)
-            {
-                cout << test.getWeights()[1] << " ";
-            }
-            cout << endl;
-            break;
-            
+        wsbt test = wsbt(*result.getGslGenotype(), 10);
     }
+    else if (testType == "burden")
+    {
+        genericBurdenTest test = genericBurdenTest(result.getGenotype(), result.getMaf(), pheno);
+        cout << "Variant weights: ";
+        for(int i = 0; i < test.getWeights().size(); i++)
+        {
+            cout << test.getWeights()[1] << " ";
+        }
+        cout << endl;
+    }
+    else if (testType == "cast")
+    {
+        cout << testType << " is not yet implemented." << endl;
+    }
+    else if (testType == "skat")
+    {
+        cout << testType << " is not yet implemented." << endl;
+    }
+    else if (testType == "skato")
+    {
+        cout << testType << " is not yet implemented." << endl;
+    }
+    else if (testType == "-h")
+    {
+        cout << "That feel when even help isnt implemented..." << endl;
+    }
+    else
+    {
+        cout << "Please specify desired test on command line." << endl;
+    }
+    
     //cout << "Hello, World!\n";
     return 0;
 }

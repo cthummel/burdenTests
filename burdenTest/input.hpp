@@ -15,6 +15,7 @@
 #include <fstream>
 #include <vector>
 #include <regex>
+#include <gsl/gsl_matrix.h>
 
 using namespace std;
 
@@ -22,15 +23,33 @@ class readInput
 {
     
 public:
-    readInput(string vcfFile, string vcfType, string phenoFile);
+    readInput(string testType, string vcfType, string vcfFile1, string vcfFile2, string phenoFile);
+    
+    void readVcfInitialInfo(string filename);
+    void readGenotype(string filename);
+    void readGenotype(string filename, gsl_matrix *inputMatrix);
+    void readMaf(string filename);
+    void makePositionFile(string filename);
     
     vector<vector<int> > getGenotype(){return genotypeMatrix;}
+    gsl_matrix* getGslGenotype(){return genotypeGslMatrix;}
     vector<double> getMaf(){return maf;}
 
 private:
     int variantCount;
     int subjectCount;
+    string vcfType;
+    const string backgroundVcf = "";
+    regex gMatch;
+    regex mafMatch;
+    regex subjectCountMatch;
+    regex headerMatch;
+    regex posMatch;
+
+    ifstream inputFile;
     
+    
+    gsl_matrix *genotypeGslMatrix;
     vector<vector<int> > genotypeMatrix;
     vector<double> maf;
 };
