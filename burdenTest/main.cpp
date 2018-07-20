@@ -17,6 +17,9 @@ using namespace std;
 int main(int argc, const char * argv[])
 {
     std::string vcffilename, vcfType, phenofilename, filename, testType;
+    auto startTime = chrono::high_resolution_clock::now();
+    auto currentTime = startTime;
+    auto lasttime = startTime;
     //int testType = 0;
     
     //Check for proper argument formatting and filetypes.
@@ -98,11 +101,22 @@ int main(int argc, const char * argv[])
         
     }
     readInput result(testType, vcfType, vcffilename, vcffilename, phenofilename);
+    currentTime = std::chrono::high_resolution_clock::now();
+    lasttime = currentTime;
+    cout << "After Input. Took " << std::chrono::duration_cast<std::chrono::milliseconds>(currentTime-startTime).count() / 60000.0 << " minutes."<< endl;
     vector<double> pheno = vector<double>(result.getMaf().size());
     
     if(testType == "wsbt")
     {
-        wsbt test = wsbt(*result.getGslGenotype(), 10);
+        currentTime = std::chrono::high_resolution_clock::now();
+        cout << "Before Test." << std::chrono::duration_cast<std::chrono::milliseconds>(currentTime-lasttime).count() << endl;
+        lasttime = currentTime;
+        wsbt test = wsbt(result.getGslGenotype(), result.getCaseCount());
+        currentTime = std::chrono::high_resolution_clock::now();
+        cout << "Wsbt Took "  << std::chrono::duration_cast<std::chrono::milliseconds>(currentTime-lasttime).count()/60000.0 << " minutes."<< endl;
+        lasttime = currentTime;
+        auto endTime = std::chrono::high_resolution_clock::now();
+        cout << "Total Time: " << std::chrono::duration_cast<std::chrono::milliseconds>(endTime-startTime).count()/60000.0 << " minutes." << endl;
     }
     else if (testType == "burden")
     {

@@ -34,15 +34,18 @@ public:
     vector<vector<int> > getGenotype(){return genotypeMatrix;}
     gsl_matrix* getGslGenotype(){return genotypeGslMatrix;}
     vector<double> getMaf(){return maf;}
+    int getCaseCount(){return caseCount;}
 
 private:
     int variantCount;
     int subjectCount;
+    int caseCount;
     string vcfType;
-    const string backgroundVcf = "";
+    //const string backgroundVcf = "gnomad.genomes.r2.0.2.sites.chr1.vcf.bgz";
     regex gMatch;
     regex mafMatch;
     regex subjectCountMatch;
+    regex variantCountMatch;
     regex headerMatch;
     regex posMatch;
 
