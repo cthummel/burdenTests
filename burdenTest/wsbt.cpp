@@ -88,6 +88,27 @@ wsbt::wsbt(gsl_matrix* totalGtype, int aCount)
     {
         setWeights();
         setScores();
+        /*
+        cout << "First 10 of subjectPerm: ";
+        for(int i = 0; i < 5; i++)
+        {
+            cout << subjectPerm->data[i] << " ";
+        }
+        cout << endl;
+        cout << "First 10 of weights: ";
+        for(int i = 0; i < 20; i++)
+        {
+            cout << weights[i] << " ";
+        }
+        cout << endl;
+        cout << "First 10 of scores: ";
+        for(int i = 0; i < 20; i++)
+        {
+            cout << scores->data[i] << " ";
+        }
+        cout << endl;
+         */
+        
         if(k == 0)
         {
             outfile.open("output.txt");
@@ -114,15 +135,29 @@ wsbt::wsbt(gsl_matrix* totalGtype, int aCount)
         cout << "TestStatisticMean for permutation " << k << " is " << testStatMean << endl;
         double testStatSigma = gsl_stats_sd(testStatistics.data(), 1, k+1);
         cout << "TestStatisticSigma for permutation " << k << " is " << testStatSigma << endl;
-        double zscore = (gsl_vector_get(scores, 0) - testStatMean) / testStatSigma;
+        double zscore = (testStatistics[0] - testStatMean) / testStatSigma;
         cout << "Zscore for permutation " << k << " is " << zscore << endl;
         pvalue = gsl_ran_ugaussian_pdf(zscore);
         cout << "Pvalue for permutation " << k << " is " << pvalue << endl;
         
+        
         //cout << "P-value at permutation " << k << " is " << pvalue << endl;
         //Permutes the data between affected and unaffected status.
+        //subjectPerm = gsl_permutation_alloc(totalSubjects);
         gsl_ran_shuffle(r, subjectPerm->data, totalSubjects, sizeof(size_t));
         gsl_permute_matrix(subjectPerm, totalGenotype);
+        
+        /*
+        for(int i = 0; i < 10; i++)
+        {
+            for(int j = 0; j < 10; j++)
+            {
+                cout << gsl_matrix_get(totalGenotype, i, j) << " ";
+            }
+            cout << endl;
+        }
+         */
+        
     }
     outfile.open("statoutput.txt");
     outfile << "test statistics: ";
@@ -133,6 +168,7 @@ wsbt::wsbt(gsl_matrix* totalGtype, int aCount)
     outfile << endl;
     outfile.close();
     
+    cout << endl;
     gsl_rng_free(r);
     gsl_permutation_free(subjectPerm);
     gsl_vector_free(scores);
@@ -162,7 +198,7 @@ void wsbt::setWeights()
         }
         totalVariant += indivudualsU;
         //cout << "Mutant Alleles: " << mutantAllelesU << endl;
-        double unaffectedRatio = (mutantAllelesU + 1.0) / (2.0 * indivudualsU + 2.0);
+        double unaffectedRatio = (mutantAllelesU + 1.0) / ((2.0 * indivudualsU) + 2.0);
         //cout << "unaffectedRatio: " << unaffectedRatio << endl;
         weights[i] = sqrt(totalVariant * unaffectedRatio * (1.0 - unaffectedRatio));
         //cout << "Weight: " << weights[i] << endl;
@@ -173,7 +209,7 @@ void wsbt::setScores()
 {
     for(int j = 0; j < totalGenotype->size2; j++)
     {
-        double tempscore = 0;
+        double tempscore = 0.0;
         for(int i = 0; i < totalGenotype->size1; i++)
         {
             if(gsl_matrix_get(totalGenotype, i, j) == -1)
@@ -182,10 +218,8 @@ void wsbt::setScores()
             }
             else
             {
-                double geneValue = gsl_matrix_get(totalGenotype, i, j);
-                tempscore += geneValue / weights[i];
+                tempscore += gsl_matrix_get(totalGenotype, i, j) / weights[i];
             }
-            
         }
         gsl_vector_set(scores, j, tempscore);
     }
@@ -193,22 +227,71 @@ void wsbt::setScores()
 
 double wsbt::testStatistic()
 {
+    //We have many subjects with the same score (namely 0). We need to assign them the average of their rank and then boost the following back to normal.
     testStat = 0;
-    gsl_permutation * perm = gsl_permutation_alloc(totalGenotype->tda);
+    gsl_permutation * perm = gsl_permutation_calloc(totalGenotype->tda);
+    gsl_vector * rank = gsl_vector_alloc(totalGenotype->size2);
     gsl_sort_vector_index(perm, scores);
+    for(int j = 0; j < totalGenotype->size2; j++)
+    {
+        gsl_vector_set(rank, j, gsl_vector_get(scores, j));
+    }
+    gsl_sort_vector(rank);
+    double currentRank = 1;
+    double currentScore = 0;
+    double totalTiedSubjects = 0;
+    for(int j = 0; j < totalGenotype->size2; j++)
+    {
+        //Colapse ranks.
+        if(currentScore != gsl_vector_get(scores, perm->data[j]))
+        {
+            //Just assign it a rank and move on
+            if(totalTiedSubjects == 0)
+            {
+                gsl_vector_set(rank, j, currentRank);
+            }
+            //Assign all the ties the average rank.
+            else
+            {
+                double averageRank = 0;
+                for(int i = 0; i < totalTiedSubjects; i++)
+                {
+                    averageRank += currentRank + i;
+                }
+                averageRank = averageRank / (totalTiedSubjects + 1);
+                for(int k = totalTiedSubjects; k >= 0; k--)
+                {
+                    //Assigns averageRank to vector at k moving forwards.
+                    gsl_vector_set(rank, j - k, averageRank);
+                }
+            }
+            
+            //Set up the currentScore as the next one to check for grouping.
+            currentScore = gsl_vector_get(scores, perm->data[j]);
+            totalTiedSubjects = 0;
+        }
+        //Keep looking for more scores with the same rank.
+        else
+        {
+            totalTiedSubjects++;
+        }
+    }
+    
+    
     cout << "Affected subjects have individual ranks: ";
     for(int j = 0; j < totalGenotype->tda; j++)
     {
         //Checks if the element at rank(j) was an affected subject and if so adds its rank to the test stat.
-        
         if(gsl_permutation_get(perm, j) < affectedCount)
         {
-            cout << j << " ";
-            testStat += j;
+            cout << gsl_vector_get(rank, j) << " ";
+            testStat += gsl_vector_get(rank, j);
         }
         
     }
     cout << endl;
+    cout << endl;
     gsl_permutation_free(perm);
+    gsl_vector_free(rank);
     return testStat;
 }
