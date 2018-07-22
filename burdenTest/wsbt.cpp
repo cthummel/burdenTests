@@ -198,9 +198,36 @@ void wsbt::setWeights()
         }
         totalVariant += indivudualsU;
         //cout << "Mutant Alleles: " << mutantAllelesU << endl;
-        double unaffectedRatio = (mutantAllelesU + 1.0) / ((2.0 * indivudualsU) + 2.0);
+        //cout << "Unaffected People: " << indivudualsU << endl;
+        double upper = mutantAllelesU + 1.0;
+        double lower = (2.0 * indivudualsU) + 2.0;
+        double unaffectedRatio = upper / lower;
+        /*
+        if (unaffectedRatio < 0 || unaffectedRatio > 1)
+        {
+            cout << "The ratio is not between 0 and 1. It is "  << unaffectedRatio << endl;
+            cout << "In this case the mutantAlleles = " << mutantAllelesU << endl;
+            cout << "And the unaffected people = " << indivudualsU << endl;
+            for(int j = 0; j < totalGenotype->size2; j++)
+            {
+                if (gsl_matrix_get(totalGenotype, i, j) > 2)
+                {
+                    cout << "Genotype = " << gsl_matrix_get(totalGenotype, i, j) << " at (" << i << "," << j << ")" << endl;
+                }
+            }
+        }
+         */
         //cout << "unaffectedRatio: " << unaffectedRatio << endl;
-        weights[i] = sqrt(totalVariant * unaffectedRatio * (1.0 - unaffectedRatio));
+        double nancheck = sqrt(totalVariant * unaffectedRatio * (1.0 - unaffectedRatio));
+        if (isnan(nancheck))
+        {
+            cout << "Weight for variant " << i <<  " is trying to sqrt a negative" << endl;
+        }
+        if (nancheck == 0)
+        {
+            cout << "Weight is somehow 0" << endl;
+        }
+        weights[i] = nancheck;
         //cout << "Weight: " << weights[i] << endl;
     }
 }
@@ -212,13 +239,14 @@ void wsbt::setScores()
         double tempscore = 0.0;
         for(int i = 0; i < totalGenotype->size1; i++)
         {
-            if(gsl_matrix_get(totalGenotype, i, j) == -1)
+            double genoData = gsl_matrix_get(totalGenotype, i, j);
+            if(genoData == -1)
             {
                 //This means the genotype in the file was ./.
             }
             else
             {
-                tempscore += gsl_matrix_get(totalGenotype, i, j) / weights[i];
+                tempscore = tempscore + (genoData / weights[i]);
             }
         }
         gsl_vector_set(scores, j, tempscore);
@@ -238,45 +266,55 @@ double wsbt::testStatistic()
     }
     gsl_sort_vector(rank);
     double currentRank = 1;
-    double currentScore = 0;
+    //double currentScore = 0;
     double totalTiedSubjects = 0;
-    for(int j = 0; j < totalGenotype->size2; j++)
+    
+    
+    for(int j = 0; j < scores->size; j++)
     {
-        //Colapse ranks.
-        if(currentScore != gsl_vector_get(scores, perm->data[j]))
+        //Tie ranker
+        if (j + 1 < scores->size)
         {
-            //Just assign it a rank and move on
-            if(totalTiedSubjects == 0)
+            if (gsl_vector_get(scores, perm->data[j]) == gsl_vector_get(scores, perm->data[j+1]))
             {
-                gsl_vector_set(rank, j, currentRank);
-            }
-            //Assign all the ties the average rank.
-            else
-            {
+                for(int i = j; gsl_vector_get(scores, perm->data[i]) == gsl_vector_get(scores, perm->data[i+1]); i++)
+                {
+                    totalTiedSubjects++;
+                    //This checks if the next tie is also the last entry in the vector.
+                    if (i + 1 == scores->size - 1)
+                    {
+                        break;
+                    }
+                }
+                //Calculate Average
                 double averageRank = 0;
+                for(int k = 0; k < totalTiedSubjects; k++)
+                {
+                    averageRank += currentRank + k;
+                }
+                averageRank = averageRank / (totalTiedSubjects);
                 for(int i = 0; i < totalTiedSubjects; i++)
                 {
-                    averageRank += currentRank + i;
+                    gsl_vector_set(rank, i + j, averageRank);
                 }
-                averageRank = averageRank / (totalTiedSubjects + 1);
-                for(int k = totalTiedSubjects; k >= 0; k--)
-                {
-                    //Assigns averageRank to vector at k moving forwards.
-                    gsl_vector_set(rank, j - k, averageRank);
-                }
+                
+                //-1 to place us at the last tie.
+                j += totalTiedSubjects - 1;
+                currentRank += totalTiedSubjects;
+                totalTiedSubjects = 1;
             }
-            
-            //Set up the currentScore as the next one to check for grouping.
-            currentScore = gsl_vector_get(scores, perm->data[j]);
-            totalTiedSubjects = 0;
+            else
+            {
+                gsl_vector_set(rank, j, currentRank);
+                currentRank++;
+            }
         }
-        //Keep looking for more scores with the same rank.
+        //If the last element is unique.
         else
         {
-            totalTiedSubjects++;
+            gsl_vector_set(rank, j, currentRank);
         }
     }
-    
     
     cout << "Affected subjects have individual ranks: ";
     for(int j = 0; j < totalGenotype->tda; j++)

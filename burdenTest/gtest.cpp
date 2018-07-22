@@ -1,13 +1,83 @@
 #include <gtest/gtest.h>
 #include <vector>
+#include <gsl/gsl_permutation.h>
+#include <gsl/gsl_sort.h>
+#include <gsl/gsl_sort_vector.h>
 #include "genericBurdenTest.cpp"
 #include "input.cpp"
 
 using namespace std;
 
-TEST(Mathtest, basicmath)
+
+vector<double> testRank(gsl_vector* inputScores)
 {
-  ASSERT_EQ(4, 2+2);
+    gsl_permutation* perm = gsl_permutation_calloc(inputScores->size);
+    gsl_sort_vector_index(perm, inputScores);
+    
+    vector<double> ranks(inputScores->size);
+    double currentRank = 1;
+    double totalTiedSubjects = 1;
+    
+    cout << "Input Scores:";
+    for(int j = 0; j < inputScores->size; j++)
+    {
+        cout << " " << gsl_vector_get(inputScores, j);
+    }
+    cout << endl;
+    cout << "perm:";
+    for(int j = 0; j < inputScores->size; j++)
+    {
+        cout << " " << gsl_permutation_get(perm, j);
+    }
+    cout << endl;
+    
+    
+    for(int j = 0; j < inputScores->size; j++)
+    {
+        //Tie ranker
+        if (j + 1 < inputScores->size)
+        {
+            if (gsl_vector_get(inputScores, perm->data[j]) == gsl_vector_get(inputScores, perm->data[j+1]))
+            {
+                for(int i = j; gsl_vector_get(inputScores, perm->data[i]) == gsl_vector_get(inputScores, perm->data[i+1]); i++)
+                {
+                    totalTiedSubjects++;
+                    //This checks if the next tie is also the last entry in the vector.
+                    if (i + 1 == inputScores->size - 1)
+                    {
+                        break;
+                    }
+                }
+                //Calculate Average
+                double averageRank = 0;
+                for(int k = 0; k < totalTiedSubjects; k++)
+                {
+                    averageRank += currentRank + k;
+                }
+                averageRank = averageRank / (totalTiedSubjects);
+                for(int i = 0; i < totalTiedSubjects; i++)
+                {
+                    ranks[i + j] = averageRank;
+                }
+                
+                //-1 to place us at the last tie.
+                j += totalTiedSubjects - 1;
+                currentRank += totalTiedSubjects;
+                totalTiedSubjects = 1;
+            }
+            else
+            {
+                ranks[j] = currentRank;
+                currentRank++;
+            }
+        }
+        //If the last element is unique.
+        else
+        {
+            ranks[j] = currentRank;
+        }
+    }
+    return ranks;
 }
 
 genericBurdenTest setupGenericBurdenTest(int subjectCount, int variantCount)
@@ -38,6 +108,79 @@ genericBurdenTest setupGenericBurdenTest(int subjectCount, int variantCount)
     
 }
 
+TEST(Mathtest, allDifferentRank)
+{
+    ASSERT_EQ(4, 2+2);
+    gsl_vector* scores = gsl_vector_alloc(10);
+    for(int i = 0; i < 10; i++)
+    {
+        gsl_vector_set(scores, i, i+1);
+    }
+    
+    vector<double> result = testRank(scores);
+    
+    for(int i = 0; i < 10; i++)
+    {
+        EXPECT_EQ(i+1, result[i]);
+    }
+    
+    
+    
+}
+
+TEST(Mathtest, allSameRank)
+{
+    gsl_vector* scores = gsl_vector_alloc(10);
+    for(int i = 0; i < 10; i++)
+    {
+        gsl_vector_set(scores, i, 1);
+    }
+    
+    vector<double> result = testRank(scores);
+    
+    for(int i = 0; i < 10; i++)
+    {
+        EXPECT_EQ((11.0/2.0), result[i]);
+    }
+    
+    
+}
+
+TEST(Mathtest, mixedRank)
+{
+    gsl_vector* scores = gsl_vector_alloc(10);
+    for(int i = 0; i < 10; i++)
+    {
+        if (i < 5)
+        {
+            gsl_vector_set(scores, i, 1);
+        }
+        else
+        {
+            gsl_vector_set(scores, i, 2);
+        }
+       
+    }
+    
+    vector<double> result = testRank(scores);
+    
+    for(int i = 0; i < 10; i++)
+    {
+        if (i < 5)
+        {
+            EXPECT_EQ((3), result[i]);
+        }
+        else
+        {
+            EXPECT_EQ((8), result[i]);
+        }
+        
+    }
+    
+    
+}
+
+/*
 TEST(setWeights,GenericBurdenTest)
 {
     genericBurdenTest test = setupGenericBurdenTest(10, 10);
@@ -70,7 +213,7 @@ TEST(mafInput, fileInput)
 {
     string vcfFile = "test3.vcf";
     string phenoFile = "test.pheno";
-    readInput result = readInput(vcfFile, "-vcf", phenoFile);
+    readInput result("burden", "-vcf", vcfFile, vcfFile, phenoFile);
     vector<double> maf = result.getMaf();
     ASSERT_EQ(0.000199681, maf[0]);
     ASSERT_EQ(0.000798722, maf[1]);
@@ -82,7 +225,7 @@ TEST(generalRun, GenericBurdenTest)
     gsl_rng *r = gsl_rng_alloc(gsl_rng_taus);
     string vcfFile = "test3.vcf";
     string phenoFile = "test.pheno";
-    readInput result(vcfFile, "-vcf", phenoFile);
+    readInput result("burden", "-vcf", vcfFile, vcfFile, phenoFile);
     vector<double> ptype(2505);
 
     for(int i = 0; i < 2505; i++)
@@ -106,7 +249,7 @@ TEST(generalRun, GenericBurdenTest)
     gsl_rng_free(r);
     
 }
-
+*/
 
 
 int main(int argc, char **argv)

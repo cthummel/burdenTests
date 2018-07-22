@@ -23,7 +23,7 @@ readInput::readInput(string testType, string inputVcfType, string vcfFile1, stri
     //smatch match;
     
     //gMatch = regex("([0-9])(\\/|\\|)([0-9])");
-    gMatch = regex("(.\\/.)|(\\d)(\\/|\\|)(\\d)");
+    gMatch = regex("(\\.\\/\\.)|(\\d)(\\/|\\|)(\\d)");
     mafMatch = regex(";AF=(0\\.\\d*)");
     subjectCountMatch = regex("number of samples:\\s(\\d*)");
     variantCountMatch = regex("number of records:\\s(\\d*)");
@@ -59,45 +59,6 @@ readInput::readInput(string testType, string inputVcfType, string vcfFile1, stri
         genotypeGslMatrix = gsl_matrix_calloc(variantCount, subjectCount);
         readGenotype(vcfFile1, genotypeGslMatrix);
         
-        
-        /*
-        //Read in user data.
-        readVcfInitialInfo(vcfFile1);
-        gsl_matrix *affectedGenotype = gsl_matrix_calloc(variantCount, subjectCount);
-        
-        //Subset background data to match user data and initialize background matrix.
-        makePositionFile(vcfFile1);
-        readVcfInitialInfo("out.recode.vcf");
-        gsl_matrix *unaffectedGenotype = gsl_matrix_calloc(variantCount, subjectCount);
-        
-        //Its probably going to be useful to only look through one chromosome at a time.
-        //Im pretty sure this will cut down on the time to subset the background data.
-        //For now I am assuming that all the background data is in a single file though.
-        
-        //Initialize combined matrix and read in data.
-        genotypeGslMatrix = gsl_matrix_calloc(variantCount, affectedGenotype->tda + unaffectedGenotype->tda);
-        readGenotype(vcfFile1, affectedGenotype);
-        readGenotype("out.recode.vcf", unaffectedGenotype);
-        
-        //Combining the two matricies with affected in front and unaffected after.
-        for(int i = 0; i < affectedGenotype->size1; i++)
-        {
-            for(int j = 0; j < affectedGenotype->size2; j++)
-            {
-                gsl_matrix_set(genotypeGslMatrix, i, j, gsl_matrix_get(affectedGenotype, i, j));
-            }
-        }
-        
-        unsigned long int affectedSubjectCount = affectedGenotype->size2;
-        
-        for(int i = 0; i < unaffectedGenotype->size1; i++)
-        {
-            for(int j = 0; j < unaffectedGenotype->size2; j++)
-            {
-                gsl_matrix_set(genotypeGslMatrix, i, affectedSubjectCount + j, gsl_matrix_get(unaffectedGenotype, i, j));
-            }
-        }
-         */
     }
     else if(testType == "burden")
     {
@@ -223,6 +184,8 @@ void readInput::readGenotype(string filename)
         system(genoCommand.c_str());
         inputFile.open("out.GT.FORMAT");
 
+        double progress = 0.0;
+        int barWidth = 70;
         for(int j = 0; getline(inputFile, line); j++)
         {
             for(int i = 0; regex_search(line, match, gMatch); i++)
@@ -232,10 +195,24 @@ void readInput::readGenotype(string filename)
                 genotypeMatrix[i][j-1] = stoi(match[1]) + stoi(match[3]);
                 line = match.suffix();
             }
+            
+            
+            std::cout << "[";
+            int pos = barWidth * progress;
+            for (int i = 0; i < barWidth; ++i) {
+                if (i < pos) std::cout << "=";
+                else if (i == pos) std::cout << ">";
+                else std::cout << " ";
+            }
+            std::cout << "] " << int(progress * 100.0) << " %\r";
+            std::cout.flush();
+            
+            progress += j/variantCount;
         }
         inputFile.close();
     }
 }
+
 
 void readInput::readGenotype(string filename, gsl_matrix *inputMatrix)
 {
@@ -247,6 +224,9 @@ void readInput::readGenotype(string filename, gsl_matrix *inputMatrix)
         string genoCommand = "vcftools -" + vcfType + " "  + filename + " --extract-FORMAT-info GT";
         system(genoCommand.c_str());
         inputFile.open("out.GT.FORMAT");
+        
+        double progress = 0.0;
+        int barWidth = 50;
         
         for(int j = 0; getline(inputFile, line); j++)
         {
@@ -264,7 +244,20 @@ void readInput::readGenotype(string filename, gsl_matrix *inputMatrix)
                 
                 line = match.suffix();
             }
-            //cout << "Line of GenoData done: " << j << endl;
+            
+            //Will remove this loading bar stuff later.
+            //It was copy and pasted from the internet and is just there for testing sanity.
+            std::cout << "Loading Data: [";
+            int pos = barWidth * progress;
+            for (int i = 0; i < barWidth; ++i) {
+                if (i < pos) std::cout << "=";
+                else if (i == pos) std::cout << ">";
+                else std::cout << " ";
+            }
+            std::cout << "] " << int(progress * 100.0) << " %\r";
+            std::cout.flush();
+            double top = j * 1.0;
+            progress = top / variantCount;
         }
         inputFile.close();
     }
