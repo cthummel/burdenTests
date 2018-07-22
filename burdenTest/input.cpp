@@ -30,28 +30,6 @@ readInput::readInput(string testType, string inputVcfType, string vcfFile1, stri
     headerMatch = regex("^#");
     posMatch = regex("^\\d{1,2}\\s\\d*");
     
-    
-    
-    
-    
-    /*
-    //Obtain variant counts and subject counts.
-    readVcfInitialInfo(vcfFile1);
-    
-    cout << "variant count: " << variantCount <<endl;
-    cout << "subject count: " << subjectCount <<endl;
-    
-    //Initilizing genotype data structures.
-    genotypeMatrix = vector<vector<int> >(subjectCount, vector<int>(variantCount, 1));
-    genotypeGslMatrix = gsl_matrix_calloc(variantCount, subjectCount);
-    cout << "gsl_matrix rows: " << genotypeGslMatrix->size1 << endl;
-    cout << "gsl_matrix columns: " << genotypeGslMatrix->size2 << endl;
-    cout << "gsl_matrix max columns: " << genotypeGslMatrix->tda << endl;
-    
-    //Initilizing maf data structure.
-    maf = vector<double>(variantCount);
-    */
-    
     //Switching on test type to get proper input.
     if(testType == "wsbt")
     {

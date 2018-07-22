@@ -37,7 +37,6 @@ private:
     double testStatistic();
     
     double pvalue;
-    double testStat;
     int affectedCount;
     
     vector<double> weights;

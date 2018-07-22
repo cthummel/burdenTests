@@ -18,6 +18,7 @@ vector<double> testRank(gsl_vector* inputScores)
     double currentRank = 1;
     double totalTiedSubjects = 1;
     
+    /*
     cout << "Input Scores:";
     for(int j = 0; j < inputScores->size; j++)
     {
@@ -30,7 +31,7 @@ vector<double> testRank(gsl_vector* inputScores)
         cout << " " << gsl_permutation_get(perm, j);
     }
     cout << endl;
-    
+    */
     
     for(int j = 0; j < inputScores->size; j++)
     {
@@ -176,8 +177,40 @@ TEST(Mathtest, mixedRank)
         }
         
     }
+}
+
+TEST(Mathtest, mixedRank2)
+{
+    gsl_vector* scores = gsl_vector_alloc(11);
+    for(int i = 0; i < 10; i++)
+    {
+        if (i < 5)
+        {
+            gsl_vector_set(scores, i, i);
+        }
+        else
+        {
+            gsl_vector_set(scores, i, 8);
+        }
+        
+    }
+    gsl_vector_set(scores, 10, 9);
     
+    vector<double> result = testRank(scores);
     
+    for(int i = 0; i < 10; i++)
+    {
+        if (i < 5)
+        {
+            EXPECT_EQ((i+1), result[i]);
+        }
+        else
+        {
+            EXPECT_EQ((8), result[i]);
+        }
+        
+    }
+    ASSERT_EQ(11, result[10]);
 }
 
 /*
