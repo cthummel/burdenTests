@@ -39,10 +39,11 @@ public:
 private:
     int variantCount;
     int subjectCount;
-    int caseCount;
+    unsigned long int caseCount;
     string vcfType;
     //const string backgroundVcf = "gnomad.genomes.r2.0.2.sites.chr1.vcf.bgz";
     regex gMatch;
+    regex altAlleleCountMatch;
     regex mafMatch;
     regex subjectCountMatch;
     regex variantCountMatch;
