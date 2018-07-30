@@ -23,11 +23,10 @@ readInput::readInput(string testType, string inputVcfType, string vcfFile1, stri
     string subsetCommand = "vcftools -" + vcfType + " " + vcfFile1 + " --positions " + vcfFile2 + " --recode";
     //smatch match;
     
-    //gMatch = regex("([0-9])(\\/|\\|)([0-9])");
     gMatch = regex("(\\.\\/\\.)|(\\d)(\\/|\\|)(\\d)");
     altAlleleCountMatch = regex("[ATGCN],[ATGCN]");
     //altAlleleCountMatch = regex("(?<=[ATGCN]),(?=[ACTGN])");
-    mafMatch = regex(";AF=(0\\.\\d*)");
+    mafMatch = regex(";AF=(0\\.*\\d*)");
     subjectCountMatch = regex("number of samples:\\s(\\d*)");
     variantCountMatch = regex("number of records:\\s(\\d*)");
     headerMatch = regex("^#");
@@ -37,24 +36,20 @@ readInput::readInput(string testType, string inputVcfType, string vcfFile1, stri
     if(testType == "wsbt")
     {
         readVcfInitialInfo(vcfFile1);
-        genotypeGslMatrix = gsl_matrix_calloc(variantCount, subjectCount);
+        genotypeGslMatrix = gsl_matrix_alloc(variantCount, subjectCount);
         readGenotype(vcfFile1, genotypeGslMatrix);
-        
     }
     else if(testType == "burden")
     {
         //Get basic info from VCF
         readVcfInitialInfo(vcfFile1);
         
-        cout << "variant count: " << variantCount <<endl;
-        cout << "subject count: " << subjectCount <<endl;
-        
         //Initilizing genotype data structures.
         genotypeMatrix = vector<vector<int> >(subjectCount, vector<int>(variantCount, 1));
         genotypeGslMatrix = gsl_matrix_calloc(variantCount, subjectCount);
         
         //Initilizing maf data structure.
-        maf = vector<double>(variantCount);
+        maf = gsl_vector_alloc(variantCount);
         
         //Runs vcftools command to separate genotype data.
         //system(genoCommand.c_str());
@@ -84,6 +79,7 @@ void readInput::readVcfInitialInfo(string filename)
     smatch match;
     regex caseMatch("(\\t(\\d[^\\s]+))+");
     
+
     string statsFileName = filename.substr(0, filename.length() - vcfType.length());
     string summaryCommand = "bcftools stats " + filename + " > " + statsFileName + ".stats";
     system(summaryCommand.c_str());
@@ -112,6 +108,9 @@ void readInput::readVcfInitialInfo(string filename)
         }
         inputFile.close();
         
+        cout << "SubjectCount is: " << subjectCount << endl;
+        cout << "VariantCount is: " << variantCount << endl;
+        
         inputFile.open(filename);
         for(int j = 0; getline(inputFile, line); j++)
         {
@@ -134,6 +133,9 @@ void readInput::readVcfInitialInfo(string filename)
             }
         }
         inputFile.close();
+        //Initilize the maf vector in case its used.
+        maf = gsl_vector_alloc(variantCount);
+        cout << "CaseCount is: " << caseCount << endl;
     }
 }
 
@@ -169,8 +171,8 @@ void readInput::readGenotype(string filename)
             for(int i = 0; regex_search(line, match, gMatch); i++)
             {
                 //Since the first line of the file is just headers, we input into j-1
-                gsl_matrix_set(genotypeGslMatrix, j, i, stoi(match[1]) + stoi(match[3]));
-                genotypeMatrix[i][j] = stoi(match[1]) + stoi(match[3]);
+                gsl_matrix_set(genotypeGslMatrix, j, i, stoi(match[2]) + stoi(match[4]));
+                genotypeMatrix[i][j] = stoi(match[2]) + stoi(match[4]);
                 line = match.suffix();
             }
             
@@ -199,13 +201,24 @@ void readInput::readGenotype(string filename, gsl_matrix *inputMatrix)
     {
         string line;
         smatch match;
+        regex_token_iterator<string::iterator> lineEnd;
         
-        string genoCommand = "vcftools -" + vcfType + " "  + filename + " --extract-FORMAT-info GT";
-        system(genoCommand.c_str());
-        inputFile.open("out.GT.FORMAT");
+        if(vcfType == "-gzvcf")
+        {
+            string genoCommand = "vcftools -" + vcfType + " "  + filename + " --extract-FORMAT-info GT";
+            system(genoCommand.c_str());
+            inputFile.open("out.GT.FORMAT");
+        }
+        else
+        {
+            inputFile.open(filename);
+        }
+        
         
         double progress = 0.0;
         int barWidth = 50;
+        int mafPos = 0;
+        int matrixInputLine = 0;
         
         for(int j = 0; getline(inputFile, line); j++)
         {
@@ -215,48 +228,52 @@ void readInput::readGenotype(string filename, gsl_matrix *inputMatrix)
             {
                 altAlleleCount = match.size() + 1;
             }
-            
-            for(int i = 0; regex_search(line, match, gMatch); i++)
+            if(!regex_search(line, match, headerMatch))
             {
-                if(altAlleleCount == 1)
-                {
-                    //Since the first line of the file is just headers, we input into j-1
-                    if(match[1] != "")
-                    {
-                        gsl_matrix_set(inputMatrix, j-1, i, -1);
-                    }
-                    else
-                    {
-                        gsl_matrix_set(inputMatrix, j-1, i, stoi(match[2]) + stoi(match[4]));
-                    }
-                    
-                    line = match.suffix();
-                }
-                else
-                {
-                    gsl_matrix_set(inputMatrix, j-1, i, stoi(match[2]) + stoi(match[4]));
-                }
                 
+                if(regex_search(line, match, mafMatch))
+                {
+                    gsl_vector_set(maf, mafPos, stod(match[1]));
+                    mafPos++;
+                }
+                //Submatches:
+                //1: ./.
+                //2: left
+                //4: right     of #|#.
+                int submatches[] = {1,2,4};
+                regex_token_iterator<string::iterator> genoParser(line.begin(), line.end(), gMatch, submatches);
+                for(int i = 0; genoParser != lineEnd; i++)
+                {
+                    //We need to move the iterator (genoParser) forward 3 times to find a new match.
+                    if(*genoParser == "./.")
+                    {
+                        gsl_matrix_set(inputMatrix, matrixInputLine, i, -1);
+                        advance(genoParser, 3);
+                    }
+                    else if(*genoParser++ == "")
+                    {
+                        int left = 0;
+                        int right = 0;
+                        
+                        left = stoi(*genoParser++);
+                        if(left > 0)
+                        {
+                            left = 1;
+                        }
+                        right = stoi(*genoParser++);
+                        if(right > 0)
+                        {
+                            right = 1;
+                        }
+                        gsl_matrix_set(inputMatrix, matrixInputLine, i, left + right);
+                    }
+                }
+                matrixInputLine++;
             }
-            /*
-             if (j == 2835)
-             {
-             ofstream outfile;
-             string file = "badvariant" + to_string(j) + ".txt";
-             outfile.open(file);
-             outfile << "Actual line: " << templine << endl;
-             outfile << "matrix: ";
-             for(int i = 0; i < subjectCount; i++)
-             {
-             outfile << gsl_matrix_get(genotypeGslMatrix, j-1, i) << " ";
-             }
-             outfile.close();
-             }
-             */
-            
             
             //Will remove this loading bar stuff later.
             //It was copy and pasted from the internet and is just there for testing sanity.
+            
             std::cout << "Loading Data: [";
             int pos = barWidth * progress;
             for (int i = 0; i < barWidth; ++i)
@@ -265,10 +282,10 @@ void readInput::readGenotype(string filename, gsl_matrix *inputMatrix)
                 else if (i == pos) std::cout << ">";
                 else std::cout << " ";
             }
-            std::cout << "] " << int(progress * 100.0) << " %\r";
+            std::cout << "] " << int(progress * 100.0) << " % (" << matrixInputLine << "/" << variantCount << ")\r";
             std::cout.flush();
-            double top = j * 1.0;
-            progress = top / variantCount;
+            progress = (matrixInputLine * 1.0) / variantCount;
+             
         }
         inputFile.close();
     }
@@ -280,9 +297,7 @@ void readInput::readMaf(string filename)
     {
         string line;
         smatch match;
-        //regex mafMatch(";AF=(0\\.\\d*)");
-        //regex headerMatch("^#");
-        
+        maf = gsl_vector_alloc(variantCount);
         
         inputFile.open(filename);
         int mafPos = 0;
@@ -292,7 +307,7 @@ void readInput::readMaf(string filename)
             {
                 if(regex_search(line, match, mafMatch))
                 {
-                    maf[mafPos] = stod(match[1]);
+                    gsl_vector_set(maf, mafPos, stod(match[1]));
                     mafPos++;
                 }
             }

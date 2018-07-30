@@ -12,6 +12,8 @@
 #include <stdio.h>
 #include <vector>
 #include <cmath>
+#include <fstream>
+#include <iostream>
 #include <gsl/gsl_rng.h>
 #include <gsl/gsl_randist.h>
 #include <gsl/gsl_statistics.h>
@@ -25,11 +27,10 @@ using namespace std;
 class wsbt
 {
 public:
-    wsbt(vector<vector<int> > unaffectedGenotype, vector<vector<int> > affectedGenotype);
-    wsbt(gsl_matrix* totalGenotype, int affectedCount);
+    wsbt(gsl_matrix* totalGenotype, int affectedCount, gsl_vector* maf);
     
     double getPvalue(){return pvalue;}
-    std::vector<double> getWeights(){return weights;}
+    gsl_vector* getWeights(){return weights;}
     
 private:
     void setWeights();
@@ -39,14 +40,10 @@ private:
     double pvalue;
     int affectedCount;
     
-    vector<double> weights;
-    //vector<double> scores;
-    vector<double> testStatistics;
-    
-    vector<vector<int> > unaffectedGenotype;
-    vector<vector<int> > affectedGenotype;
     gsl_matrix* totalGenotype;
     gsl_vector* scores;
+    gsl_vector* testStatistics;
+    gsl_vector* weights;
 };
 
 #endif /* wsbt_hpp */

@@ -33,7 +33,7 @@ public:
     
     vector<vector<int> > getGenotype(){return genotypeMatrix;}
     gsl_matrix* getGslGenotype(){return genotypeGslMatrix;}
-    vector<double> getMaf(){return maf;}
+    gsl_vector* getMaf(){return maf;}
     int getCaseCount(){return caseCount;}
 
 private:
@@ -55,7 +55,7 @@ private:
     
     gsl_matrix *genotypeGslMatrix;
     vector<vector<int> > genotypeMatrix;
-    vector<double> maf;
+    gsl_vector *maf;
 };
 
 #endif /* input_hpp */

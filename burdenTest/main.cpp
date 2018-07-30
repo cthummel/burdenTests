@@ -11,6 +11,7 @@
 #include "wsbt.cpp"
 #include "input.cpp"
 #include "cast.cpp"
+#include "skat.cpp"
 
 using namespace std;
 
@@ -103,15 +104,16 @@ int main(int argc, const char * argv[])
     readInput result(testType, vcfType, vcffilename, vcffilename, phenofilename);
     currentTime = std::chrono::high_resolution_clock::now();
     lasttime = currentTime;
+    cout << endl;
     cout << "After Input. Took " << std::chrono::duration_cast<std::chrono::milliseconds>(currentTime-startTime).count() / 60000.0 << " minutes."<< endl;
-    vector<double> pheno = vector<double>(result.getMaf().size());
+    vector<double> pheno = vector<double>(result.getMaf()->size);
     
     if(testType == "wsbt")
     {
         currentTime = std::chrono::high_resolution_clock::now();
-        cout << "Before Test." << std::chrono::duration_cast<std::chrono::milliseconds>(currentTime-lasttime).count() << endl;
+        cout << "Before WSBT Test." << std::chrono::duration_cast<std::chrono::milliseconds>(currentTime-lasttime).count() << endl;
         lasttime = currentTime;
-        wsbt test = wsbt(result.getGslGenotype(), result.getCaseCount());
+        wsbt test = wsbt(result.getGslGenotype(), result.getCaseCount(), result.getMaf());
         currentTime = std::chrono::high_resolution_clock::now();
         cout << "Wsbt Took "  << std::chrono::duration_cast<std::chrono::milliseconds>(currentTime-lasttime).count()/60000.0 << " minutes."<< endl;
         lasttime = currentTime;
@@ -122,9 +124,9 @@ int main(int argc, const char * argv[])
     {
         genericBurdenTest test = genericBurdenTest(result.getGenotype(), result.getMaf(), pheno);
         cout << "Variant weights: ";
-        for(int i = 0; i < test.getWeights().size(); i++)
+        for(int i = 0; i < test.getWeights()->size; i++)
         {
-            cout << test.getWeights()[1] << " ";
+            cout << gsl_vector_get(test.getWeights(), i) << " ";
         }
         cout << endl;
     }
@@ -134,6 +136,17 @@ int main(int argc, const char * argv[])
     }
     else if (testType == "skat")
     {
+        currentTime = std::chrono::high_resolution_clock::now();
+        cout << "Before SKAT Test." << std::chrono::duration_cast<std::chrono::milliseconds>(currentTime-lasttime).count() << endl;
+        lasttime = currentTime;
+        
+        //Covariates not yet implemented. We will have to decide how thats done.
+        skat test = skat(result.getGslGenotype(), result.getMaf(), gsl_vector_alloc(10));
+        currentTime = std::chrono::high_resolution_clock::now();
+        cout << "SKAT Took "  << std::chrono::duration_cast<std::chrono::milliseconds>(currentTime-lasttime).count()/60000.0 << " minutes."<< endl;
+        lasttime = currentTime;
+        auto endTime = std::chrono::high_resolution_clock::now();
+        cout << "Total Time: " << std::chrono::duration_cast<std::chrono::milliseconds>(endTime-startTime).count()/60000.0 << " minutes." << endl;
         cout << testType << " is not yet implemented." << endl;
     }
     else if (testType == "skato")

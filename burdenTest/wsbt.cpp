@@ -5,14 +5,11 @@
 //  Created by Corin Thummel on 6/29/18.
 //  Copyright © 2018 Corin Thummel. All rights reserved.
 //
-#include <iostream>
-#include <fstream>
 #include "wsbt.hpp"
-
 
 using namespace std;
 
-wsbt::wsbt(gsl_matrix* totalGtype, int aCount)
+wsbt::wsbt(gsl_matrix* totalGtype, int aCount, gsl_vector *inputMaf)
 {
     const int permutationCount = 1000;
     unsigned long int totalSubjects = totalGtype->size2;
@@ -21,9 +18,10 @@ wsbt::wsbt(gsl_matrix* totalGtype, int aCount)
     affectedCount = aCount;
     pvalue = 0;
     totalGenotype = totalGtype;
-    testStatistics.resize(permutationCount);
-    weights.resize(totalGtype->size1);
-    scores = gsl_vector_alloc(totalGtype->size2);
+    
+    testStatistics = gsl_vector_alloc(permutationCount);
+    weights = gsl_vector_alloc(totalGenotype->size1);
+    scores = gsl_vector_alloc(totalGenotype->size2);
     
     gsl_rng *r = gsl_rng_alloc(gsl_rng_default);
     gsl_permutation *subjectPerm = gsl_permutation_calloc(totalSubjects);
@@ -43,10 +41,9 @@ wsbt::wsbt(gsl_matrix* totalGtype, int aCount)
         if(k == 0)
         {
             outfile.open("output.txt");
-            outfile << "Weights: ";
             for(int i = 0; i < totalGtype->size1; i++)
             {
-                outfile << weights[i] << " ";
+                outfile << "Weight " << i << ": " << gsl_vector_get(weights, i) << " " << gsl_ran_beta_pdf(inputMaf[i],1,25) << endl;
             }
             outfile << endl;
             outfile << "Scores: ";
@@ -57,19 +54,21 @@ wsbt::wsbt(gsl_matrix* totalGtype, int aCount)
             outfile << endl;
             outfile.close();
         }
-        testStatistics[k] = testStatistic();
+        gsl_vector_set(testStatistics, k, testStatistic());
+        //testStatistics[k] = testStatistic();
         currentTime = chrono::high_resolution_clock::now();
-        cout << "Permutation "<< k <<" took " << std::chrono::duration_cast<std::chrono::milliseconds>(currentTime-lastTime).count() / 1000.0 << " Seconds."<< endl;
+        cout << "Permutation "<< k <<" took " << std::chrono::duration_cast<std::chrono::milliseconds>(currentTime-lastTime).count() / 1000.0 << " seconds."<< endl;
         lastTime = currentTime;
-        cout << "TestStatistic for permutation " << k << " is " << testStatistics[k] << endl;
-        double testStatMean = gsl_stats_mean(testStatistics.data(), 1, k+1);
+        cout << "TestStatistic for permutation " << k << " is " << gsl_vector_get(testStatistics, k) << endl;
+        double testStatMean = gsl_stats_mean(testStatistics->data, 1, k+1);
         cout << "TestStatisticMean for permutation " << k << " is " << testStatMean << endl;
-        double testStatSigma = gsl_stats_sd(testStatistics.data(), 1, k+1);
+        double testStatSigma = gsl_stats_sd(testStatistics->data, 1, k+1);
         cout << "TestStatisticSigma for permutation " << k << " is " << testStatSigma << endl;
-        double zscore = (testStatistics[0] - testStatMean) / testStatSigma;
+        double zscore = (gsl_vector_get(testStatistics, 0) - testStatMean) / testStatSigma;
         cout << "Zscore for permutation " << k << " is " << zscore << endl;
         pvalue = gsl_ran_ugaussian_pdf(zscore);
         cout << "Pvalue for permutation " << k << " is " << pvalue << endl;
+        cout << endl;
         
         //Permutes the columns of the genotype matrix for the next permutation.
         gsl_ran_shuffle(r, subjectPerm->data, totalSubjects, sizeof(size_t));
@@ -79,7 +78,7 @@ wsbt::wsbt(gsl_matrix* totalGtype, int aCount)
     outfile << "test statistics: ";
     for(int k = 0; k < permutationCount; k++)
     {
-        outfile << testStatistics[k] << " ";
+        outfile << gsl_vector_get(testStatistics, k) << " ";
     }
     outfile << endl;
     outfile.close();
@@ -118,22 +117,6 @@ void wsbt::setWeights()
         double upper = mutantAllelesU + 1.0;
         double lower = (2.0 * indivudualsU) + 2.0;
         double unaffectedRatio = upper / lower;
-        /*
-        if (unaffectedRatio < 0 || unaffectedRatio > 1)
-        {
-            cout << "The ratio is not between 0 and 1. It is "  << unaffectedRatio << endl;
-            cout << "In this case the mutantAlleles = " << mutantAllelesU << endl;
-            cout << "And the unaffected people = " << indivudualsU << endl;
-            for(int j = 0; j < totalGenotype->size2; j++)
-            {
-                if (gsl_matrix_get(totalGenotype, i, j) > 2)
-                {
-                    cout << "Genotype = " << gsl_matrix_get(totalGenotype, i, j) << " at (" << i << "," << j << ")" << endl;
-                }
-            }
-        }
-         */
-        //cout << "unaffectedRatio: " << unaffectedRatio << endl;
         double nancheck = sqrt(totalVariant * unaffectedRatio * (1.0 - unaffectedRatio));
         if (isnan(nancheck))
         {
@@ -143,8 +126,7 @@ void wsbt::setWeights()
         {
             cout << "Weight is somehow 0" << endl;
         }
-        weights[i] = nancheck;
-        //cout << "Weight: " << weights[i] << endl;
+        gsl_vector_set(weights, i, nancheck);
     }
 }
 
@@ -162,7 +144,7 @@ void wsbt::setScores()
             }
             else
             {
-                tempscore = tempscore + (genoData / weights[i]);
+                tempscore = tempscore + (genoData / gsl_vector_get(weights, i));
             }
         }
         gsl_vector_set(scores, j, tempscore);
@@ -173,20 +155,12 @@ double wsbt::testStatistic()
 {
     //We have many subjects with the same score (namely 0). We need to assign them the average of their rank and then boost the following back to normal.
     double testStat = 0;
+    double currentRank = 1;
+    double totalTiedSubjects = 0;
     gsl_permutation * perm = gsl_permutation_calloc(totalGenotype->tda);
     gsl_vector * rank = gsl_vector_alloc(totalGenotype->size2);
     gsl_sort_vector_index(perm, scores);
-    /*
-    for(int j = 0; j < totalGenotype->size2; j++)
-    {
-        gsl_vector_set(rank, j, gsl_vector_get(scores, j));
-    }
-    gsl_sort_vector(rank);
-     */
-    double currentRank = 1;
-    double totalTiedSubjects = 0;
-    
-    
+
     for(int j = 0; j < scores->size; j++)
     {
         //Ranks ties in score.
@@ -236,6 +210,12 @@ double wsbt::testStatistic()
             gsl_vector_set(rank, j, currentRank);
         }
     }
+    cout << "Affected subjects have individual scores: ";
+    for(int j = 0; j < affectedCount; j++)
+    {
+        cout << scores->data[j] << " ";
+    }
+    cout << endl;
     
     cout << "Affected subjects have individual ranks: ";
     for(int j = 0; j < totalGenotype->tda; j++)
@@ -248,7 +228,6 @@ double wsbt::testStatistic()
         }
         
     }
-    cout << endl;
     cout << endl;
     gsl_permutation_free(perm);
     gsl_vector_free(rank);

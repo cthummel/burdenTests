@@ -10,12 +10,12 @@
 #include "genericBurdenTest.hpp"
 
 
-genericBurdenTest::genericBurdenTest(std::vector<std::vector<int> > G, std::vector<double> inputMaf, std::vector<double> ptype)
+genericBurdenTest::genericBurdenTest(std::vector<std::vector<int> > G, gsl_vector* inputMaf, std::vector<double> ptype)
 {
     pvalue = 0;
     expectedPhenotype = 0;
-    weights = std::vector<double>(inputMaf.size());
-    scores = std::vector<double>(inputMaf.size());
+    weights = gsl_vector_alloc(inputMaf->size);
+    scores = gsl_vector_alloc(inputMaf->size);
     
     for(int i = 0; i < ptype.size(); ++i)
     {
@@ -29,12 +29,13 @@ genericBurdenTest::genericBurdenTest(std::vector<std::vector<int> > G, std::vect
 }
 
 //Set weights for variants based off Beta(maf; 1, 25). Can make it customizable later.
-void genericBurdenTest::setWeights(std::vector<double> maf)
+void genericBurdenTest::setWeights(gsl_vector* maf)
 {
-    for(int i = 0; i < weights.size(); ++i)
+    for(int i = 0; i < weights->size; ++i)
     {
         //std::cout << "AF= " << maf[i] << std::endl;
-        weights[i] = gsl_ran_beta_pdf(maf[i],1,25);
+        gsl_vector_set(weights, i, gsl_ran_beta_pdf(gsl_vector_get(maf, i), 1, 25));
+        //weights[i] = gsl_ran_beta_pdf(maf[i],1,25);
     }
 }
 
@@ -45,7 +46,8 @@ void genericBurdenTest::setScores(std::vector<std::vector<int> > genotypeMatrix,
     {
         for(int j = 0; j < genotypeMatrix[i].size(); ++j)
         {
-            scores[j] += genotypeMatrix[i][j] * (phenotype[i] - expectedPhenotype);
+            //scores[j] += genotypeMatrix[i][j] * (phenotype[i] - expectedPhenotype);
+            gsl_vector_set(scores, j, gsl_vector_get(scores, j) + (genotypeMatrix[i][j] * (phenotype[i] - expectedPhenotype)));
         }
     }
 }
@@ -53,9 +55,10 @@ void genericBurdenTest::setScores(std::vector<std::vector<int> > genotypeMatrix,
 void genericBurdenTest::testStatistic()
 {
     double tempStat = 0;
-    for(int i = 0; i < scores.size(); i++)
+    for(int i = 0; i < scores->size; i++)
     {
-        tempStat += scores[i] * weights[i];
+        //tempStat += scores[i] * weights[i];
+        tempStat += gsl_vector_get(scores, i) * gsl_vector_get(weights, i);
     }
     testStat = tempStat * tempStat;
     pvalue = gsl_cdf_chisq_Q(testStat, 1);
