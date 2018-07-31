@@ -87,15 +87,16 @@ genericBurdenTest setupGenericBurdenTest(int subjectCount, int variantCount)
     
     //Initializes the matrix of size subjectCount x variantCount with entry 1.
     vector<vector<int> > G(subjectCount, vector<int>(variantCount, 1));
-    vector<double> maf(variantCount);
+    gsl_vector *maf = gsl_vector_alloc(variantCount);
     vector<double> ptype(subjectCount);
     
-    maf[0] = .1;
+    gsl_vector_set(maf, 0, .1);
     ptype[0] = 0;
     for(int j = 1; j < variantCount; j++)
     {
         //maf[j] = maf[j-1] * .5;
-        maf[j] = maf[j-1] * .9;
+        gsl_vector_set(maf, j, gsl_vector_get(maf, j-1) * .9);
+        //maf[j] = maf[j-1] * .9;
         ptype[j] = j;
     }
 
@@ -103,10 +104,7 @@ genericBurdenTest setupGenericBurdenTest(int subjectCount, int variantCount)
     {
         ptype[i] = gsl_ran_gaussian(r, 10) + 175;
     }
-    
     return genericBurdenTest(G, maf, ptype);
-    
-    
 }
 
 TEST(Mathtest, allDifferentRank)

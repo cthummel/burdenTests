@@ -282,7 +282,7 @@ void readInput::readGenotype(string filename, gsl_matrix *inputMatrix)
                 else if (i == pos) std::cout << ">";
                 else std::cout << " ";
             }
-            std::cout << "] " << int(progress * 100.0) << " % (" << matrixInputLine << "/" << variantCount << ")\r";
+            std::cout << "] " << int(progress * 100.0) << " % (" << matrixInputLine << "/" << variantCount << ") \r";
             std::cout.flush();
             progress = (matrixInputLine * 1.0) / variantCount;
              

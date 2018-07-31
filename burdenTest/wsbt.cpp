@@ -43,7 +43,7 @@ wsbt::wsbt(gsl_matrix* totalGtype, int aCount, gsl_vector *inputMaf)
             outfile.open("output.txt");
             for(int i = 0; i < totalGtype->size1; i++)
             {
-                outfile << "Weight " << i << ": " << gsl_vector_get(weights, i) << " " << gsl_ran_beta_pdf(inputMaf[i],1,25) << endl;
+                outfile << "Weight " << i << ": " << gsl_vector_get(weights, i) << " " << gsl_ran_beta_pdf(gsl_vector_get(inputMaf, i),1,25) << endl;
             }
             outfile << endl;
             outfile << "Scores: ";

@@ -147,7 +147,7 @@ int main(int argc, const char * argv[])
         lasttime = currentTime;
         auto endTime = std::chrono::high_resolution_clock::now();
         cout << "Total Time: " << std::chrono::duration_cast<std::chrono::milliseconds>(endTime-startTime).count()/60000.0 << " minutes." << endl;
-        cout << testType << " is not yet implemented." << endl;
+        //cout << testType << " is not yet implemented." << endl;
     }
     else if (testType == "skato")
     {
