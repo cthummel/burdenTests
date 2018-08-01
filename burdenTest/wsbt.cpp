@@ -6,12 +6,13 @@
 //  Copyright © 2018 Corin Thummel. All rights reserved.
 //
 #include "wsbt.hpp"
+#include "output.cpp"
 
 using namespace std;
 
 wsbt::wsbt(gsl_matrix* totalGtype, int aCount, gsl_vector *inputMaf)
 {
-    const int permutationCount = 1000;
+    const int permutationCount = 100;
     unsigned long int totalSubjects = totalGtype->size2;
     
     ofstream outfile;
@@ -20,8 +21,9 @@ wsbt::wsbt(gsl_matrix* totalGtype, int aCount, gsl_vector *inputMaf)
     totalGenotype = totalGtype;
     
     testStatistics = gsl_vector_alloc(permutationCount);
-    weights = gsl_vector_alloc(totalGenotype->size1);
     scores = gsl_vector_alloc(totalGenotype->size2);
+    weights = gsl_vector_alloc(totalGenotype->size1);
+    initialWeights = gsl_vector_alloc(totalGenotype->size1);
     
     gsl_rng *r = gsl_rng_alloc(gsl_rng_default);
     gsl_permutation *subjectPerm = gsl_permutation_calloc(totalSubjects);
@@ -40,6 +42,7 @@ wsbt::wsbt(gsl_matrix* totalGtype, int aCount, gsl_vector *inputMaf)
         //Just to save the initial weights and scores for the data set.
         if(k == 0)
         {
+            //writeOutput out("test5.vcf", weights);
             outfile.open("output.txt");
             for(int i = 0; i < totalGtype->size1; i++)
             {
@@ -53,9 +56,9 @@ wsbt::wsbt(gsl_matrix* totalGtype, int aCount, gsl_vector *inputMaf)
             }
             outfile << endl;
             outfile.close();
+            gsl_vector_memcpy(initialWeights, weights);
         }
         gsl_vector_set(testStatistics, k, testStatistic());
-        //testStatistics[k] = testStatistic();
         currentTime = chrono::high_resolution_clock::now();
         cout << "Permutation "<< k <<" took " << std::chrono::duration_cast<std::chrono::milliseconds>(currentTime-lastTime).count() / 1000.0 << " seconds."<< endl;
         lastTime = currentTime;
@@ -66,7 +69,8 @@ wsbt::wsbt(gsl_matrix* totalGtype, int aCount, gsl_vector *inputMaf)
         cout << "TestStatisticSigma for permutation " << k << " is " << testStatSigma << endl;
         double zscore = (gsl_vector_get(testStatistics, 0) - testStatMean) / testStatSigma;
         cout << "Zscore for permutation " << k << " is " << zscore << endl;
-        pvalue = gsl_ran_ugaussian_pdf(zscore);
+        //One-sided P-value calculation.
+        pvalue = gsl_cdf_ugaussian_P(zscore);
         cout << "Pvalue for permutation " << k << " is " << pvalue << endl;
         cout << endl;
         

@@ -11,17 +11,16 @@
 #include "wsbt.cpp"
 #include "input.cpp"
 #include "cast.cpp"
-#include "skat.cpp"
+//#include "skat.cpp"
 
 using namespace std;
 
 int main(int argc, const char * argv[])
 {
-    std::string vcffilename, vcfType, phenofilename, filename, testType;
+    string vcffilename, vcfType, phenofilename, filename, testType;
     auto startTime = chrono::high_resolution_clock::now();
     auto currentTime = startTime;
     auto lasttime = startTime;
-    //int testType = 0;
     
     //Check for proper argument formatting and filetypes.
     for(int i = 1; i < argc; i++)
@@ -34,7 +33,7 @@ int main(int argc, const char * argv[])
                 vcffilename = argv[i+1];
                 if (vcffilename.substr(vcffilename.length() - 4) != ".vcf")
                 {
-                    //They input a filename that isnt a vcf
+                    //They input a filename that isnt a .vcf
                     cout << "burdenTest -vcf <filename.vcf>\n";
                     return 0;
                 }
@@ -49,7 +48,7 @@ int main(int argc, const char * argv[])
                 vcffilename = argv[i+1];
                 if (vcffilename.substr(vcffilename.length() - 7) != ".vcf.gz")
                 {
-                    //They input a filename that isnt a vcf
+                    //They input a filename that isnt a .vcf.gz
                     cout << "burdenTest -gzvcf <filename.vcf.gz>\n";
                     return 0;
                 }
@@ -101,27 +100,38 @@ int main(int argc, const char * argv[])
     {
         
     }
+    
+    //Run input on the given test and save results in Input
     readInput result(testType, vcfType, vcffilename, vcffilename, phenofilename);
+    
+    
     currentTime = std::chrono::high_resolution_clock::now();
     lasttime = currentTime;
     cout << endl;
     cout << "After Input. Took " << std::chrono::duration_cast<std::chrono::milliseconds>(currentTime-startTime).count() / 60000.0 << " minutes."<< endl;
-    vector<double> pheno = vector<double>(result.getMaf()->size);
+    
     
     if(testType == "wsbt")
     {
         currentTime = std::chrono::high_resolution_clock::now();
         cout << "Before WSBT Test." << std::chrono::duration_cast<std::chrono::milliseconds>(currentTime-lasttime).count() << endl;
         lasttime = currentTime;
+        
         wsbt test = wsbt(result.getGslGenotype(), result.getCaseCount(), result.getMaf());
+        
         currentTime = std::chrono::high_resolution_clock::now();
         cout << "Wsbt Took "  << std::chrono::duration_cast<std::chrono::milliseconds>(currentTime-lasttime).count()/60000.0 << " minutes."<< endl;
         lasttime = currentTime;
+        
+        //File will be a vcf by this point whether it was zipped before or not.
+        writeOutput output(vcffilename, testType, test.getWeights());
+        
         auto endTime = std::chrono::high_resolution_clock::now();
         cout << "Total Time: " << std::chrono::duration_cast<std::chrono::milliseconds>(endTime-startTime).count()/60000.0 << " minutes." << endl;
     }
     else if (testType == "burden")
     {
+        vector<double> pheno = vector<double>(result.getMaf()->size);
         genericBurdenTest test = genericBurdenTest(result.getGenotype(), result.getMaf(), pheno);
         cout << "Variant weights: ";
         for(int i = 0; i < test.getWeights()->size; i++)
@@ -141,13 +151,13 @@ int main(int argc, const char * argv[])
         lasttime = currentTime;
         
         //Covariates not yet implemented. We will have to decide how thats done.
-        skat test = skat(result.getGslGenotype(), result.getMaf(), gsl_vector_alloc(10));
+        //skat test = skat(result.getGslGenotype(), result.getMaf(), gsl_vector_alloc(10));
         currentTime = std::chrono::high_resolution_clock::now();
         cout << "SKAT Took "  << std::chrono::duration_cast<std::chrono::milliseconds>(currentTime-lasttime).count()/60000.0 << " minutes."<< endl;
         lasttime = currentTime;
         auto endTime = std::chrono::high_resolution_clock::now();
         cout << "Total Time: " << std::chrono::duration_cast<std::chrono::milliseconds>(endTime-startTime).count()/60000.0 << " minutes." << endl;
-        //cout << testType << " is not yet implemented." << endl;
+        cout << testType << " is not yet implemented." << endl;
     }
     else if (testType == "skato")
     {

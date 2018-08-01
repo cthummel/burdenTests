@@ -16,6 +16,7 @@
 #include <iostream>
 #include <gsl/gsl_rng.h>
 #include <gsl/gsl_randist.h>
+#include <gsl/gsl_cdf.h>
 #include <gsl/gsl_statistics.h>
 #include <gsl/gsl_sort.h>
 #include <gsl/gsl_sort_vector.h>
@@ -30,7 +31,7 @@ public:
     wsbt(gsl_matrix* totalGenotype, int affectedCount, gsl_vector* maf);
     
     double getPvalue(){return pvalue;}
-    gsl_vector* getWeights(){return weights;}
+    gsl_vector* getWeights(){return initialWeights;}
     
 private:
     void setWeights();
@@ -44,6 +45,7 @@ private:
     gsl_vector* scores;
     gsl_vector* testStatistics;
     gsl_vector* weights;
+    gsl_vector* initialWeights;
 };
 
 #endif /* wsbt_hpp */

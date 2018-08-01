@@ -7,6 +7,7 @@
 //
 
 #include "skat.hpp"
+#include "davies.cpp"
 
 using namespace std;
 

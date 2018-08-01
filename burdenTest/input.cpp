@@ -30,7 +30,7 @@ readInput::readInput(string testType, string inputVcfType, string vcfFile1, stri
     subjectCountMatch = regex("number of samples:\\s(\\d*)");
     variantCountMatch = regex("number of records:\\s(\\d*)");
     headerMatch = regex("^#");
-    posMatch = regex("^\\d{1,2}\\s\\d*");
+    posMatch = regex("^(\\d{1,2})\\s(\\d*)");
     
     //Switching on test type to get proper input.
     if(testType == "wsbt")
@@ -76,11 +76,20 @@ readInput::readInput(string testType, string inputVcfType, string vcfFile1, stri
 void readInput::readVcfInitialInfo(string filename)
 {
     string line;
+    string statsFileName = "";
     smatch match;
     regex caseMatch("(\\t(\\d[^\\s]+))+");
     
-
-    string statsFileName = filename.substr(0, filename.length() - vcfType.length());
+    //Remove the filetype from filename.
+    if(filename.substr(filename.length() - 7) == ".vcf.gz")
+    {
+        statsFileName = filename.substr(0, filename.length() - vcfType.length() - 1);
+    }
+    else if(filename.substr(filename.length() - 4) == ".vcf")
+    {
+        statsFileName = filename.substr(0, filename.length() - vcfType.length());
+    }
+    
     string summaryCommand = "bcftools stats " + filename + " > " + statsFileName + ".stats";
     system(summaryCommand.c_str());
     
@@ -107,35 +116,9 @@ void readInput::readVcfInitialInfo(string filename)
             }
         }
         inputFile.close();
-        
-        cout << "SubjectCount is: " << subjectCount << endl;
-        cout << "VariantCount is: " << variantCount << endl;
-        
-        inputFile.open(filename);
-        for(int j = 0; getline(inputFile, line); j++)
-        {
-            if(caseCount == 0)
-            {
-                string templine;
-                if(regex_search(line, match, caseMatch))
-                {
-                    templine = match[0];
-                    for (int i = 0; regex_search(templine, match, regex("\\t(\\d[^\\s]+)")); i++)
-                    {
-                        caseCount++;
-                        templine = match.suffix();
-                    }
-                }
-            }
-            else
-            {
-                break;
-            }
-        }
-        inputFile.close();
+
         //Initilize the maf vector in case its used.
         maf = gsl_vector_alloc(variantCount);
-        cout << "CaseCount is: " << caseCount << endl;
     }
 }
 
@@ -201,33 +184,40 @@ void readInput::readGenotype(string filename, gsl_matrix *inputMatrix)
     {
         string line;
         smatch match;
+        regex caseMatch("(\\t(\\d[^\\s]+))+");
         regex_token_iterator<string::iterator> lineEnd;
-        
-        if(vcfType == "-gzvcf")
-        {
-            string genoCommand = "vcftools -" + vcfType + " "  + filename + " --extract-FORMAT-info GT";
-            system(genoCommand.c_str());
-            inputFile.open("out.GT.FORMAT");
-        }
-        else
-        {
-            inputFile.open(filename);
-        }
-        
         
         double progress = 0.0;
         int barWidth = 50;
         int mafPos = 0;
         int matrixInputLine = 0;
         
+        if(vcfType == "-gzvcf")
+        {
+            //string genoCommand = "vcftools -" + vcfType + " "  + filename + " --extract-FORMAT-info GT";
+            string genoCommand = "bgzip -d " + filename;
+            system(genoCommand.c_str());
+            //inputFile.open("out.GT.FORMAT");
+            inputFile.open(filename.substr(0, filename.length() - 3));
+        }
+        else
+        {
+            inputFile.open(filename);
+        }
+        
         for(int j = 0; getline(inputFile, line); j++)
         {
             //string templine = line;
-            unsigned long int altAlleleCount = 1;
+            
+            //This is useful if we want to catch the number of ALTs listed for a variant in the vcf.
+            //unsigned long int altAlleleCount = 1;
+            /*
             if (regex_search(line, match, altAlleleCountMatch))
             {
                 altAlleleCount = match.size() + 1;
             }
+             */
+            
             if(!regex_search(line, match, headerMatch))
             {
                 
@@ -236,6 +226,7 @@ void readInput::readGenotype(string filename, gsl_matrix *inputMatrix)
                     gsl_vector_set(maf, mafPos, stod(match[1]));
                     mafPos++;
                 }
+                
                 //Submatches:
                 //1: ./.
                 //2: left
@@ -269,6 +260,25 @@ void readInput::readGenotype(string filename, gsl_matrix *inputMatrix)
                     }
                 }
                 matrixInputLine++;
+            }
+            else
+            {
+                //Since the headers dont have tabs, they will not match caseMatch prematurely.
+                if(caseCount == 0)
+                {
+                    string templine;
+                    if(regex_search(line, match, caseMatch))
+                    {
+                        templine = match[0];
+                        regex tempMatch = regex("[^\\s]+");
+                        regex_token_iterator<string::iterator> caseParser(templine.begin(), templine.end(), tempMatch);
+                        while(caseParser != lineEnd)
+                        {
+                            caseCount++;
+                            *caseParser++;
+                        }
+                    }
+                }
             }
             
             //Will remove this loading bar stuff later.

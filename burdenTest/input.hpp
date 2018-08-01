@@ -34,7 +34,7 @@ public:
     vector<vector<int> > getGenotype(){return genotypeMatrix;}
     gsl_matrix* getGslGenotype(){return genotypeGslMatrix;}
     gsl_vector* getMaf(){return maf;}
-    int getCaseCount(){return caseCount;}
+    unsigned long int getCaseCount(){return caseCount;}
 
 private:
     int variantCount;

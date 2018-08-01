@@ -10,9 +10,28 @@
 #define output_hpp
 
 #include <stdio.h>
-#include <ostream>
+#include <stdlib.h>
+#include <string>
+#include <fstream>
+#include <regex>
+#include <gsl/gsl_vector.h>
 
+using namespace std;
 
+class writeOutput
+{
+    
+public:
+    writeOutput(string filename, string test_type, gsl_vector* weights);
+    
+    
+private:
+    ofstream outfile;
+    ifstream infile;
+    
+    
+    
+};
 
 
 

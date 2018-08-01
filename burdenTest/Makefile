@@ -20,4 +20,4 @@ gtest.o: gtest.cpp
 
 
 clean:
-	rm *.o out.* *.stats *.txt test gtest
+	rm *.o out.* *.stats *.txt anno.* test gtest
