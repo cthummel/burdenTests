@@ -15,6 +15,7 @@
 #include <gsl/gsl_randist.h>
 #include <gsl/gsl_blas.h>
 
+using namespace std;
 
 class skat
 {
@@ -25,15 +26,19 @@ public:
     
     
 private:
+    void logisticRegression();
+    void linearRegression();
+    
     double testStatistic;
     
     void setWeights(gsl_vector *maf);
-    void makeKernel(std::string kernel_type);
+    void makeKernel(string kernel_type);
     void setTestStatistic();
     
     gsl_matrix *genoMatrix;
     gsl_matrix *weightMatrix;
     gsl_matrix *kernel;
+    gsl_vector* X;
     
 };
 

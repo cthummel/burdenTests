@@ -26,20 +26,19 @@ public:
     readInput(string testType, string vcfType, string vcfFile1, string vcfFile2, string phenoFile);
     
     void readVcfInitialInfo(string filename);
-    void readGenotype(string filename);
     void readGenotype(string filename, gsl_matrix *inputMatrix);
     void readMaf(string filename);
     void makePositionFile(string filename);
     
-    vector<vector<int> > getGenotype(){return genotypeMatrix;}
     gsl_matrix* getGslGenotype(){return genotypeGslMatrix;}
     gsl_vector* getMaf(){return maf;}
-    unsigned long int getCaseCount(){return caseCount;}
+    gsl_vector* getPheno(){return pheno;}
+    int getCaseCount(){return caseCount;}
 
 private:
     int variantCount;
     int subjectCount;
-    unsigned long int caseCount;
+    int caseCount;
     string vcfType;
     //const string backgroundVcf = "gnomad.genomes.r2.0.2.sites.chr1.vcf.bgz";
     regex gMatch;
@@ -53,9 +52,9 @@ private:
     ifstream inputFile;
     
     
-    gsl_matrix *genotypeGslMatrix;
-    vector<vector<int> > genotypeMatrix;
-    gsl_vector *maf;
+    gsl_matrix* genotypeGslMatrix;
+    gsl_vector* maf;
+    gsl_vector* pheno;
 };
 
 #endif /* input_hpp */

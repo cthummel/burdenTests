@@ -10,18 +10,18 @@
 #include "genericBurdenTest.hpp"
 
 
-genericBurdenTest::genericBurdenTest(std::vector<std::vector<int> > G, gsl_vector* inputMaf, std::vector<double> ptype)
+genericBurdenTest::genericBurdenTest(gsl_matrix* G, gsl_vector* inputMaf, gsl_vector* ptype)
 {
     pvalue = 0;
     expectedPhenotype = 0;
     weights = gsl_vector_alloc(inputMaf->size);
     scores = gsl_vector_alloc(inputMaf->size);
     
-    for(int i = 0; i < ptype.size(); ++i)
+    for(int i = 0; i < ptype->size; i++)
     {
-        expectedPhenotype += ptype[i];
+        expectedPhenotype += gsl_vector_get(ptype, i);
     }
-    expectedPhenotype = expectedPhenotype / ptype.size();
+    expectedPhenotype = expectedPhenotype / ptype->size;
     
     setWeights(inputMaf);
     setScores(G, ptype);
@@ -33,21 +33,20 @@ void genericBurdenTest::setWeights(gsl_vector* maf)
 {
     for(int i = 0; i < weights->size; ++i)
     {
-        //std::cout << "AF= " << maf[i] << std::endl;
         gsl_vector_set(weights, i, gsl_ran_beta_pdf(gsl_vector_get(maf, i), 1, 25));
         //weights[i] = gsl_ran_beta_pdf(maf[i],1,25);
     }
 }
 
 
-void genericBurdenTest::setScores(std::vector<std::vector<int> > genotypeMatrix, std::vector<double> phenotype)
+void genericBurdenTest::setScores(gsl_matrix* genotypeMatrix, gsl_vector* phenotype)
 {
-    for(int i = 0; i < genotypeMatrix.size(); ++i)
+    for(int i = 0; i < genotypeMatrix->size1; i++)
     {
-        for(int j = 0; j < genotypeMatrix[i].size(); ++j)
+        for(int j = 0; j < genotypeMatrix->size2; j++)
         {
-            //scores[j] += genotypeMatrix[i][j] * (phenotype[i] - expectedPhenotype);
-            gsl_vector_set(scores, j, gsl_vector_get(scores, j) + (genotypeMatrix[i][j] * (phenotype[i] - expectedPhenotype)));
+            double tempscore = gsl_vector_get(scores, j) + (gsl_matrix_get(genotypeMatrix, i, j) * (gsl_vector_get(phenotype, i) - expectedPhenotype));
+            gsl_vector_set(scores, j, tempscore);
         }
     }
 }
@@ -57,7 +56,6 @@ void genericBurdenTest::testStatistic()
     double tempStat = 0;
     for(int i = 0; i < scores->size; i++)
     {
-        //tempStat += scores[i] * weights[i];
         tempStat += gsl_vector_get(scores, i) * gsl_vector_get(weights, i);
     }
     testStat = tempStat * tempStat;

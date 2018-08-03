@@ -49,7 +49,7 @@ writeOutput::writeOutput(string filename, string test_type, gsl_vector* weights)
     else if (test_type == "wsbt")
     {
         testInfoTag = "WSBT_WEIGHT";
-        description = "\"Weight from Weighted Sums Burden Test\"";
+        description = "\"Weight from Weighted Sums Burden Test. Low weight means high impact and high weight means low impact.\"";
         outfile.open("anno.hdr");
         outfile << "##INFO=<ID=" + testInfoTag + ",Number=1,Type=Float,Description=" + description + ">" << endl;
         outfile.close();

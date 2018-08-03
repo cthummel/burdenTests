@@ -1,4 +1,4 @@
-CC= g++ -Wall
+CC= g++ -Wall -std=c++11
 CFLAGS= -I/usr/gsl/include/
 LIBS= -L/third/gsl/lib/
 

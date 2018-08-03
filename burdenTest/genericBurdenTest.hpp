@@ -11,6 +11,7 @@
 
 #include <stdio.h>
 #include <vector>
+#include <gsl/gsl_matrix.h>
 #include <gsl/gsl_randist.h>
 #include <gsl/gsl_cdf.h>
 
@@ -18,7 +19,7 @@
 class genericBurdenTest
 {
 public:
-    genericBurdenTest(std::vector<std::vector<int> > G, gsl_vector* maf, std::vector<double> ptype);
+    genericBurdenTest(gsl_matrix* G, gsl_vector* maf, gsl_vector* ptype);
     
     double getPvalue(){return pvalue;}
     gsl_vector* getScores(){return scores;}
@@ -26,7 +27,7 @@ public:
     
 private:
     void setWeights(gsl_vector* maf);
-    void setScores(std::vector<std::vector<int> > G, std::vector<double> ptype);
+    void setScores(gsl_matrix* G, gsl_vector* ptype);
     void testStatistic();
     
     double pvalue;

@@ -6,7 +6,6 @@
 //  Copyright © 2018 Corin Thummel. All rights reserved.
 //
 #include "wsbt.hpp"
-#include "output.cpp"
 
 using namespace std;
 
@@ -78,6 +77,7 @@ wsbt::wsbt(gsl_matrix* totalGtype, int aCount, gsl_vector *inputMaf)
         gsl_ran_shuffle(r, subjectPerm->data, totalSubjects, sizeof(size_t));
         gsl_permute_matrix(subjectPerm, totalGenotype);
     }
+    /*
     outfile.open("statoutput.txt");
     outfile << "test statistics: ";
     for(int k = 0; k < permutationCount; k++)
@@ -86,6 +86,7 @@ wsbt::wsbt(gsl_matrix* totalGtype, int aCount, gsl_vector *inputMaf)
     }
     outfile << endl;
     outfile.close();
+     */
     
     cout << endl;
     gsl_rng_free(r);
@@ -116,8 +117,6 @@ void wsbt::setWeights()
             }
         }
         totalVariant += indivudualsU;
-        //cout << "Mutant Alleles: " << mutantAllelesU << endl;
-        //cout << "Unaffected People: " << indivudualsU << endl;
         double upper = mutantAllelesU + 1.0;
         double lower = (2.0 * indivudualsU) + 2.0;
         double unaffectedRatio = upper / lower;
@@ -142,6 +141,7 @@ void wsbt::setScores()
         for(int i = 0; i < totalGenotype->size1; i++)
         {
             double genoData = gsl_matrix_get(totalGenotype, i, j);
+            
             if(genoData == -1)
             {
                 //This means the genotype in the file was ./.

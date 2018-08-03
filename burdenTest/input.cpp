@@ -45,7 +45,6 @@ readInput::readInput(string testType, string inputVcfType, string vcfFile1, stri
         readVcfInitialInfo(vcfFile1);
         
         //Initilizing genotype data structures.
-        genotypeMatrix = vector<vector<int> >(subjectCount, vector<int>(variantCount, 1));
         genotypeGslMatrix = gsl_matrix_calloc(variantCount, subjectCount);
         
         //Initilizing maf data structure.
@@ -53,7 +52,7 @@ readInput::readInput(string testType, string inputVcfType, string vcfFile1, stri
         
         //Runs vcftools command to separate genotype data.
         //system(genoCommand.c_str());
-        readGenotype(vcfFile1);
+        readGenotype(vcfFile1, genotypeGslMatrix);
         
         //Parse the maf
         readMaf(vcfFile1);
@@ -121,62 +120,6 @@ void readInput::readVcfInitialInfo(string filename)
         maf = gsl_vector_alloc(variantCount);
     }
 }
-
-
-void readInput::readGenotype(string filename)
-{
-    if(!inputFile.is_open())
-    {
-        string line;
-        smatch match;
-        regex posMatch("POS\\t");
-        regex refMatch("\\tHG\\d+");
-
-        string genoCommand = "vcftools -" + vcfType + " "  + filename + " --extract-FORMAT-info GT";
-        system(genoCommand.c_str());
-        inputFile.open("out.GT.FORMAT");
-        
-        getline(inputFile, line);
-        string templine = line;
-        if (regex_search(line, match, posMatch))
-        {
-            line = match.suffix();
-        }
-        if (regex_search(line, match, posMatch))
-        {
-            templine = line.substr(0, match.suffix().length());
-        }
-        
-        double progress = 0.0;
-        int barWidth = 70;
-        for(int j = 0; getline(inputFile, line); j++)
-        {
-            for(int i = 0; regex_search(line, match, gMatch); i++)
-            {
-                //Since the first line of the file is just headers, we input into j-1
-                gsl_matrix_set(genotypeGslMatrix, j, i, stoi(match[2]) + stoi(match[4]));
-                genotypeMatrix[i][j] = stoi(match[2]) + stoi(match[4]);
-                line = match.suffix();
-            }
-            
-            
-            
-            std::cout << "[";
-            int pos = barWidth * progress;
-            for (int i = 0; i < barWidth; ++i) {
-                if (i < pos) std::cout << "=";
-                else if (i == pos) std::cout << ">";
-                else std::cout << " ";
-            }
-            std::cout << "] " << int(progress * 100.0) << " %\r";
-            std::cout.flush();
-            
-            progress += j/variantCount;
-        }
-        inputFile.close();
-    }
-}
-
 
 void readInput::readGenotype(string filename, gsl_matrix *inputMatrix)
 {

@@ -10,6 +10,7 @@
 #include "genericBurdenTest.cpp"
 #include "wsbt.cpp"
 #include "input.cpp"
+#include "output.cpp"
 #include "cast.cpp"
 //#include "skat.cpp"
 
@@ -120,7 +121,7 @@ int main(int argc, const char * argv[])
         wsbt test = wsbt(result.getGslGenotype(), result.getCaseCount(), result.getMaf());
         
         currentTime = std::chrono::high_resolution_clock::now();
-        cout << "Wsbt Took "  << std::chrono::duration_cast<std::chrono::milliseconds>(currentTime-lasttime).count()/60000.0 << " minutes."<< endl;
+        cout << "WSBT Took "  << std::chrono::duration_cast<std::chrono::milliseconds>(currentTime-lasttime).count()/60000.0 << " minutes."<< endl;
         lasttime = currentTime;
         
         //File will be a vcf by this point whether it was zipped before or not.
@@ -131,8 +132,8 @@ int main(int argc, const char * argv[])
     }
     else if (testType == "burden")
     {
-        vector<double> pheno = vector<double>(result.getMaf()->size);
-        genericBurdenTest test = genericBurdenTest(result.getGenotype(), result.getMaf(), pheno);
+        gsl_vector* pheno = gsl_vector_alloc(result.getMaf()->size);
+        genericBurdenTest test = genericBurdenTest(result.getGslGenotype(), result.getMaf(), pheno);
         cout << "Variant weights: ";
         for(int i = 0; i < test.getWeights()->size; i++)
         {

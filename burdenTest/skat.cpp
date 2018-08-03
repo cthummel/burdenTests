@@ -15,6 +15,7 @@ skat::skat(gsl_matrix* geno, gsl_vector* maf, gsl_vector* covariates)
 {
     //Initialize variables.
     genoMatrix = geno;
+    X = covariates;
     weightMatrix = gsl_matrix_calloc(maf->size, maf->size);
     kernel = gsl_matrix_alloc(geno->size2, geno->size2);
     
@@ -23,6 +24,7 @@ skat::skat(gsl_matrix* geno, gsl_vector* maf, gsl_vector* covariates)
     //Run Test.
     setWeights(maf);
     makeKernel(kernel_type);
+    setTestStatistic();
     
     
     //Cleanup after test.
@@ -69,6 +71,7 @@ void skat::setTestStatistic()
     gsl_vector *tempstat = gsl_vector_alloc(genoMatrix->size2);
     gsl_blas_dgemv(CblasNoTrans, 1.0, weightMatrix, pheno, 0.0, tempstat);
     gsl_blas_ddot(pheno, tempstat, &testStatistic);
+    
 }
 
 
