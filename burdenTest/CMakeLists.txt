@@ -1,0 +1,7 @@
+
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
+
+INCLUDE_DIRECTORIES(externals, src)
+
+ADD_SUBDIRECTORY(externals)
+ADD_SUBDIRECTORY(src)

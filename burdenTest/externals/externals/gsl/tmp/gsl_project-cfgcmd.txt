@@ -1,0 +1,1 @@
+cmd='./configure --prefix=/uufs/chpc.utah.edu/common/home/u0261133/burdenTests/burdenTest/externals/'

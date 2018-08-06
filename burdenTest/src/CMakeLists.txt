@@ -1,0 +1,38 @@
+INCLUDE_DIRECTORIES(
+	${GSL_INCLUDE}
+	#Other third party functions here
+)
+
+SET(MAIN_SRC main.cpp)
+
+INCLUDE_DIRECTORIES(
+	${PROJECT_SOURCE_DIR}
+	${GSL_INCLUDE}
+)
+
+add_executable(test ${MAIN_SRC})
+
+target_link_libraries(${CORE_LIB})
+
+add_library(burden_test_core STATIC
+			     wsbt.cpp
+			     input.cpp
+			     output.cpp
+			     skat.cpp
+			    # skato.cpp
+			     genericBurdenTest.cpp
+)
+
+SET(CORE_LIB burden_test_core CACHE STRING "THE CORE LIBRARY")
+
+TARGET_LINK_LIBRARIES(
+	${CORE_LIB}
+	${GSL_LIB}
+)
+
+add_dependencies(${CORE_LIB} ${BURDEN_TEST_EXTERNAL_PROJECT})
+
+TARGET_LINK_LIBRARIES(
+	${test}
+	${CORE_LIB}
+)

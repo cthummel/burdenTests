@@ -1,0 +1,4 @@
+INCLUDE_DIRECTORIES(externals, src)
+
+ADD_SUBDIRECTORY(externals)
+ADD_SUBDIRECTORY(src)

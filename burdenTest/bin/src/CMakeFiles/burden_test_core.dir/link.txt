@@ -1,0 +1,2 @@
+/usr/bin/ar cr libburden_test_core.a  CMakeFiles/burden_test_core.dir/wsbt.o CMakeFiles/burden_test_core.dir/input.o CMakeFiles/burden_test_core.dir/output.o CMakeFiles/burden_test_core.dir/skat.o CMakeFiles/burden_test_core.dir/genericBurdenTest.o
+/usr/bin/ranlib libburden_test_core.a

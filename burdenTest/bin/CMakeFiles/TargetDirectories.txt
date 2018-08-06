@@ -1,0 +1,4 @@
+/uufs/chpc.utah.edu/common/home/u0261133/burdenTests/burdenTest/bin/src/CMakeFiles/burden_test_core.dir
+/uufs/chpc.utah.edu/common/home/u0261133/burdenTests/burdenTest/bin/externals/CMakeFiles/burden_test_project.dir
+/uufs/chpc.utah.edu/common/home/u0261133/burdenTests/burdenTest/bin/externals/CMakeFiles/gsl_project.dir
+/uufs/chpc.utah.edu/common/home/u0261133/burdenTests/burdenTest/bin/src/CMakeFiles/test.dir
