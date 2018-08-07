@@ -1,6 +1,7 @@
 WorkspaceSettings.xcsettings
 burdenUnitTest.m
 *Cache.txt
+bin/
 xcuserdata/
 burdenTest/Makefile~
 burdenTest/third/

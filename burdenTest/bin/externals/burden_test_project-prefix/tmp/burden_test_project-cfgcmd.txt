@@ -1,1 +1,0 @@
-cmd='/usr/bin/cmake;-C/uufs/chpc.utah.edu/common/home/u0261133/burdenTests/burdenTest/bin/externals/burden_test_project-prefix/tmp/burden_test_project-cache.cmake;-GUnix Makefiles;/uufs/chpc.utah.edu/common/home/u0261133/burdenTests/burdenTest/externals/external'

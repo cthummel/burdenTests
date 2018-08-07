@@ -1,1 +1,0 @@
-/usr/lib64/ccache/c++    -std=c++11    CMakeFiles/test.dir/main.o  -o test -rdynamic 

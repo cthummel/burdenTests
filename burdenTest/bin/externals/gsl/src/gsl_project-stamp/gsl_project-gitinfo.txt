@@ -1,3 +1,0 @@
-repository='https://github.com/ampl/gsl.git'
-module=''
-tag=''
