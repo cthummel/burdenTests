@@ -5,7 +5,7 @@ SET(GSL_DIR ${CMAKE_BINARY_DIR}/externals/gsl CACHE INTERNAL "gsl project direct
 ExternalProject_Add(${GSL_PROJECT}
 	GIT_REPOSITORY https://github.com/ampl/gsl.git
 	GIT_TAG master
-	CONFIGURE_COMMAND "./configure"
+	CONFIGURE_COMMAND ./configure --prefix=${CMAKE_SOURCE_DIR}/externals
 	BUILD_COMMAND "make"
 	INSTALL_COMMAND ""
 	UPDATE_COMMAND ""
@@ -26,5 +26,5 @@ MESSAGE("BINARY_DIR: ${BINARY_DIR}")
 MESSAGE("SRC_DIR: ${SOURCE_DIR}")
 
 
-SET(GSL_LIB ${BINARY_DIR}/libgsl.a ${BINARY_DIR}/libgslcblas.a CACHE INTERNAL "GSL Library")
+SET(GSL_LIB ${CMAKE_SOURCE_DIR}/libgsl.a ${CMAKE_SOURCE_DIR}/libgslcblas.a CACHE INTERNAL "GSL Library")
 SET(GSL_INCLUDE ${SOURCE_DIR} CACHE INTERNAL "GSL Include")

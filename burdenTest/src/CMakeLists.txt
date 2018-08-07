@@ -12,7 +12,7 @@ INCLUDE_DIRECTORIES(
 
 add_executable(test ${MAIN_SRC})
 
-target_link_libraries(${CORE_LIB})
+#target_link_libraries(${CORE_LIB})
 
 add_library(burden_test_core STATIC
 			     wsbt.cpp
@@ -25,14 +25,11 @@ add_library(burden_test_core STATIC
 
 SET(CORE_LIB burden_test_core CACHE STRING "THE CORE LIBRARY")
 
-TARGET_LINK_LIBRARIES(
-	${CORE_LIB}
-	${GSL_LIB}
-)
+#TARGET_LINK_LIBRARIES(${CORE_LIB} ${GSL_LIB})
 
 add_dependencies(${CORE_LIB} ${BURDEN_TEST_EXTERNAL_PROJECT})
 
 TARGET_LINK_LIBRARIES(
-	${test}
+	test
 	${CORE_LIB}
 )

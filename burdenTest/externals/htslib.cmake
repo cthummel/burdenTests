@@ -5,9 +5,9 @@ SET(HTSLIB_DIR ${CMAKE_BINARY_DIR}/externals/htslib CACHE INTERNAL "htslib proje
 ExternalProject_Add(${HTSLIB_PROJECT}
         GIT_REPOSITORY https://github.com/samtools/htslib.git
         GIT_TAG master
-        CONFIGURE_COMMAND autoreconf && ./configure
+        CONFIGURE_COMMAND autoreconf && ./configure --prefix=${CMAKE_SOURCE_DIR}/externals
         BUILD_COMMAND make
-        INSTALL_COMMAND make install
+        INSTALL_COMMAND 
         UPDATE_COMMAND ""
         BUILD_IN_SOURCE 1
         PREFIX ${HTSLIB_DIR}
@@ -26,5 +26,5 @@ MESSAGE("BINARY_DIR: ${BINARY_DIR}")
 MESSAGE("SRC_DIR: ${SOURCE_DIR}")
 
 
-#SET(HTSLIB_LIB ${BINARY_DIR}/libgsl.a CACHE INTERNAL "HTSLIB Library")
-#SET(HTSLIB_INCLUDE ${SOURCE_DIR} CACHE INTERNAL "HTSLIB Include")
+SET(HTSLIB_LIB ${BINARY_DIR}/libgsl.a CACHE INTERNAL "HTSLIB Library")
+SET(HTSLIB_INCLUDE ${SOURCE_DIR} CACHE INTERNAL "HTSLIB Include")
