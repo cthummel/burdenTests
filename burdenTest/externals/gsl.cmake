@@ -6,8 +6,8 @@ ExternalProject_Add(${GSL_PROJECT}
 	GIT_REPOSITORY https://github.com/ampl/gsl.git
 	GIT_TAG master
 	CONFIGURE_COMMAND ./configure --prefix=${CMAKE_SOURCE_DIR}/externals
-	BUILD_COMMAND "make"
-	INSTALL_COMMAND ""
+	BUILD_COMMAND make
+	INSTALL_COMMAND make install
 	UPDATE_COMMAND ""
 	BUILD_IN_SOURCE 1
 	PREFIX ${GSL_DIR}
