@@ -22,9 +22,8 @@ ExternalProject_Get_Property(${GSL_PROJECT} SOURCE_DIR)
 ExternalProject_Get_Property(${GSL_PROJECT} BINARY_DIR)
 
 MESSAGE("BINARY_DIR: ${BINARY_DIR}")
-
 MESSAGE("SRC_DIR: ${SOURCE_DIR}")
+MESSAGE("CMAKE_SRC_DIR: ${CMAKE_SOURCE_DIR}")
 
-
-SET(GSL_LIB ${CMAKE_SOURCE_DIR}/libgsl.a ${CMAKE_SOURCE_DIR}/libgslcblas.a CACHE INTERNAL "GSL Library")
-SET(GSL_INCLUDE ${SOURCE_DIR} CACHE INTERNAL "GSL Include")
+SET(GSL_LIB ${CMAKE_SOURCE_DIR}/externals/lib/libgsl.a ${CMAKE_SOURCE_DIR}/externals/lib/libgslcblas.a CACHE INTERNAL "GSL Library")
+SET(GSL_INCLUDE ${CMAKE_SOURCE_DIR}/externals/include CACHE INTERNAL "GSL Include")
