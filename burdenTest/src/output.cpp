@@ -83,7 +83,7 @@ writeOutput::writeOutput(string filename, string test_type, gsl_vector* weights)
     system(tabix.c_str());
     //zip = "bgzip test5.vcf";
     //system(zip.c_str());
-    string annotateCommand = "bcftools annotate -a anno.tab.gz -h anno.hdr -c CHROM,FROM,TO," + testInfoTag + " " + filename + " > testOutput.vcf";
+    string annotateCommand = bcftools_location + " annotate -a anno.tab.gz -h anno.hdr -c CHROM,FROM,TO," + testInfoTag + " " + filename + " > testOutput.vcf";
     system(annotateCommand.c_str());
     zip = "bgzip testOutput.vcf";
     system(zip.c_str());

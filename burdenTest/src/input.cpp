@@ -89,7 +89,7 @@ void readInput::readVcfInitialInfo(string filename)
         statsFileName = filename.substr(0, filename.length() - vcfType.length());
     }
     
-    string summaryCommand = "bcftools stats " + filename + " > " + statsFileName + ".stats";
+    string summaryCommand = bcftools_location + " stats " + filename + " > " + statsFileName + ".stats";
     system(summaryCommand.c_str());
     
     

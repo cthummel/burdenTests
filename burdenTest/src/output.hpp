@@ -28,6 +28,7 @@ public:
 private:
     ofstream outfile;
     ifstream infile;
+    string bcftools_location = "externals/bcftools/src/bcftools_project/bcftools";
     
     
     

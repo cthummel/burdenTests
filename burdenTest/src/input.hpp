@@ -40,7 +40,7 @@ private:
     int subjectCount;
     int caseCount;
     string vcfType;
-    //const string backgroundVcf = "gnomad.genomes.r2.0.2.sites.chr1.vcf.bgz";
+    string bcftools_location = "externals/bcftools/src/bcftools_project/bcftools";
     regex gMatch;
     regex altAlleleCountMatch;
     regex mafMatch;
