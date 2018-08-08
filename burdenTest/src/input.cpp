@@ -193,14 +193,18 @@ void readInput::readGenotype(string filename, gsl_matrix *inputMatrix)
                     {
                         int left = 0;
                         int right = 0;
-			cout << "in the parser looking at " << *genoParser << endl;
-                        left = stoi(*genoParser++);
-                        if(left > 0)
+                        string temp;
+			
+                        //left = stoi(*genoParser++);
+                        temp = *genoParser++;
+                        if(temp.compare("0") != 0)
                         {
                             left = 1;
                         }
-                        right = stoi(*genoParser++);
-                        if(right > 0)
+                        //right = stoi(*genoParser++);
+                        //if(right > 0)
+                        temp = *genoParser++;
+                        if(temp.compare("0") != 0)
                         {
                             right = 1;
                         }
