@@ -41,6 +41,7 @@ private:
     int caseCount;
     string vcfType;
     string bcftools_location = "externals/bcftools/src/bcftools_project/bcftools";
+    string bgzip_loc = "externals/htslib/src/htslib_project/bgzip";
     regex gMatch;
     regex altAlleleCountMatch;
     regex mafMatch;

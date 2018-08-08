@@ -10,6 +10,8 @@
 #include <fstream>
 using namespace std;
 
+
+
 readInput::readInput(string testType, string inputVcfType, string vcfFile1, string vcfFile2, string phenoFile)
 {
     variantCount = 0;
@@ -102,7 +104,8 @@ void readInput::readVcfInitialInfo(string filename)
             {
                 if(regex_search(line, match, subjectCountMatch))
                 {
-                    subjectCount = stoi(match[1]);
+		  //cout << "Match we are trying to stoi: " << match[1] << endl;
+		  subjectCount = stoi(match[1], nullptr, 0);
                 }
             }
             if(regex_search(line, match, variantCountMatch))
@@ -116,6 +119,8 @@ void readInput::readVcfInitialInfo(string filename)
         }
         inputFile.close();
 
+	cout << "Subject count: " << subjectCount << endl;
+	cout << "Variant count: " << variantCount << endl;
         //Initilize the maf vector in case its used.
         maf = gsl_vector_alloc(variantCount);
     }
@@ -138,7 +143,7 @@ void readInput::readGenotype(string filename, gsl_matrix *inputMatrix)
         if(vcfType == "-gzvcf")
         {
             //string genoCommand = "vcftools -" + vcfType + " "  + filename + " --extract-FORMAT-info GT";
-            string genoCommand = "bgzip -d " + filename;
+            string genoCommand = bgzip_loc + " -d " + filename;
             system(genoCommand.c_str());
             //inputFile.open("out.GT.FORMAT");
             inputFile.open(filename.substr(0, filename.length() - 3));
@@ -188,7 +193,7 @@ void readInput::readGenotype(string filename, gsl_matrix *inputMatrix)
                     {
                         int left = 0;
                         int right = 0;
-                        
+			cout << "in the parser looking at " << *genoParser << endl;
                         left = stoi(*genoParser++);
                         if(left > 0)
                         {
