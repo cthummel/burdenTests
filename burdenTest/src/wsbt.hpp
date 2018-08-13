@@ -20,7 +20,6 @@
 #include <gsl/gsl_statistics.h>
 #include <gsl/gsl_sort.h>
 #include <gsl/gsl_sort_vector.h>
-//#include <gsl/gsl_permute_matrix.h>
 #include <gsl/gsl_permute_matrix.h>
 #include <gsl/gsl_permutation.h>
 

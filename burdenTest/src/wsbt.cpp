@@ -150,7 +150,7 @@ void wsbt::setScores()
             {
                 //This means the genotype in the file was ./.
             }
-            else
+            else if (genoData > 0)
             {
                 tempscore = tempscore + (genoData / gsl_vector_get(weights, i));
             }

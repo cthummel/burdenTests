@@ -70,22 +70,22 @@ writeOutput::writeOutput(string filename, string test_type, gsl_vector* weights)
     
     if(filename.substr(filename.length() - 4) == ".vcf")
     {
-        zip = "bgzip " + filename;
+        zip = bgzip_loc + " " + filename;
         system(zip.c_str());
         filename = filename + ".gz";
     }
     
     
     
-    zip = "bgzip anno.tab";
+    zip = bgzip_loc + " anno.tab";
     system(zip.c_str());
-    string tabix = "tabix -s1 -b2 -e3 anno.tab.gz";
+    string tabix = tabix_loc + " -s1 -b2 -e3 anno.tab.gz";
     system(tabix.c_str());
     //zip = "bgzip test5.vcf";
     //system(zip.c_str());
-    string annotateCommand = bcftools_location + " annotate -a anno.tab.gz -h anno.hdr -c CHROM,FROM,TO," + testInfoTag + " " + filename + " > testOutput.vcf";
+    string annotateCommand = bcftools_loc + " annotate -a anno.tab.gz -h anno.hdr -c CHROM,FROM,TO," + testInfoTag + " " + filename + " > testOutput.vcf";
     system(annotateCommand.c_str());
-    zip = "bgzip testOutput.vcf";
+    zip = bgzip_loc + " testOutput.vcf";
     system(zip.c_str());
 }
 

@@ -29,6 +29,7 @@ public:
     void readGenotype(string filename, gsl_matrix *inputMatrix);
     void readMaf(string filename);
     void makePositionFile(string filename);
+    void readBackgroundData(string filename);
     
     gsl_matrix* getGslGenotype(){return genotypeGslMatrix;}
     gsl_vector* getMaf(){return maf;}
@@ -40,7 +41,7 @@ private:
     int subjectCount;
     int caseCount;
     string vcfType;
-    string bcftools_location = "externals/bcftools/src/bcftools_project/bcftools";
+    string bcftools_loc = "externals/bcftools/src/bcftools_project/bcftools";
     string bgzip_loc = "externals/htslib/src/htslib_project/bgzip";
     regex gMatch;
     regex altAlleleCountMatch;

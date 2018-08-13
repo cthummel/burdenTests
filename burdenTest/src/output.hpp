@@ -28,7 +28,9 @@ public:
 private:
     ofstream outfile;
     ifstream infile;
-    string bcftools_location = "externals/bcftools/src/bcftools_project/bcftools";
+    string bcftools_loc = "externals/bcftools/src/bcftools_project/bcftools";
+    string bgzip_loc = "externals/htslib/src/htslib_project/bgzip";
+    string tabix_loc = "externals/htslib/src/htslib_project/tabix";
     
     
     
