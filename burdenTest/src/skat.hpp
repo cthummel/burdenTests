@@ -21,7 +21,7 @@ class skat
 {
     
 public:
-    skat(gsl_matrix* geno, gsl_vector* maf, gsl_vector* covariates);
+    skat(gsl_matrix* geno, gsl_vector* maf, gsl_matrix* covariates, gsl_vector* pheno);
     
     
     
@@ -29,16 +29,22 @@ private:
     void logisticRegression();
     void linearRegression();
     
+    int X_Count;
+    int subjectCount;
+    int variantCount;
     double testStatistic;
+    double regression;
     
     void setWeights(gsl_vector *maf);
     void makeKernel(string kernel_type);
     void setTestStatistic();
+
     
     gsl_matrix *genoMatrix;
     gsl_matrix *weightMatrix;
     gsl_matrix *kernel;
-    gsl_vector* X;
+    gsl_matrix *X;
+    gsl_vector *pheno;
     
 };
 

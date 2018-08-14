@@ -169,11 +169,13 @@ int main(int argc, const char * argv[])
     }
     else if (testType == "-h")
     {
-        cout << "That feel when even help isnt implemented..." << endl;
+        cout << "Run tests with ./test [testname] [filetype filename] " << endl;
+
+        cout << "That feel when even help isnt really implemented..." << endl;
     }
     else
     {
-        cout << "Please specify desired test on command line." << endl;
+        cout << "Please specify desired test on command line. For help use -h" << endl;
     }
     
     //cout << "Hello, World!\n";

@@ -27,9 +27,10 @@ public:
     
     void readVcfInitialInfo(string filename);
     void readGenotype(string filename, gsl_matrix *inputMatrix);
+    void readPhenotype(string phenoFile);
     void readMaf(string filename);
     void makePositionFile(string filename);
-    void readBackgroundData(string filename);
+    void mergeData(string filename);
     
     gsl_matrix* getGslGenotype(){return genotypeGslMatrix;}
     gsl_vector* getMaf(){return maf;}
@@ -41,8 +42,9 @@ private:
     int subjectCount;
     int caseCount;
     string vcfType;
-    string bcftools_loc = "externals/bcftools/src/bcftools_project/bcftools";
-    string bgzip_loc = "externals/htslib/src/htslib_project/bgzip";
+    string bcftools_loc = "../externals/bin/bcftools";
+    string bgzip_loc = "../externals/bin/bgzip";
+    string externals_loc = "../externals/bin/";
     regex gMatch;
     regex altAlleleCountMatch;
     regex mafMatch;

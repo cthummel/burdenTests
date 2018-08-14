@@ -19,13 +19,10 @@ readInput::readInput(string testType, string inputVcfType, string vcfFile1, stri
     caseCount = 0;
     vcfType = inputVcfType;
     
-    string genoCommand = "vcftools -" + vcfType + " "  + vcfFile1 + " --extract-FORMAT-info GT";
-    string mafCommand = "vcftools -" + vcfType + " "  + vcfFile1 + " --get-INFO AF";
     string subsetCommand = "vcftools -" + vcfType + " " + vcfFile1 + " --positions " + vcfFile2 + " --recode";
     
     gMatch = regex("(\\.\\/\\.)|(\\d)(\\/|\\|)(\\d)");
     altAlleleCountMatch = regex("[ATGCN],[ATGCN]");
-    //altAlleleCountMatch = regex("(?<=[ATGCN]),(?=[ACTGN])");
     mafMatch = regex(";AF=(0\\.*\\d*)");
     subjectCountMatch = regex("number of samples:\\s(\\d*)");
     variantCountMatch = regex("number of records:\\s(\\d*)");
@@ -63,7 +60,12 @@ readInput::readInput(string testType, string inputVcfType, string vcfFile1, stri
     }
     else if (testType == "skat")
     {
-        
+        readVcfInitialInfo(vcfFile1);
+        genotypeGslMatrix = gsl_matrix_alloc(variantCount, subjectCount);
+        pheno = gsl_vector_calloc(subjectCount);
+        maf = gsl_vector_alloc(variantCount);
+        readPhenotype(phenoFile);
+        readGenotype(vcfFile1, genotypeGslMatrix);
     }
     else if (testType == "skato")
     {
@@ -250,6 +252,30 @@ void readInput::readGenotype(string filename, gsl_matrix *inputMatrix)
     }
 }
 
+//If user has phenotype data we save it in a vector otherwise we assume binary phenotype.
+void readInput::readPhenotype(string phenoFile)
+{
+    if(phenoFile.compare("") == 0)
+    {
+        for(int i = 0; i < caseCount; i++)
+        {
+            gsl_vector_set(pheno, i, 1);
+        }
+    }
+    else
+    {
+        //Parse phenotype and add to vector;
+        string line;
+        inputFile.open(phenoFile);
+        for(int i = 0; getline(inputFile, line); i++)
+        {
+
+        }
+        inputFile.close();
+    }
+}
+
+
 void readInput::readMaf(string filename)
 {
     if(!inputFile.is_open())
@@ -304,92 +330,19 @@ void readInput::makePositionFile(string filename)
     
 }
 
-void readInput::readBackgroundData(string filename)
+//Merge the user vcf file with the right background set. The resulting vcf will be used in readGenotype().
+void readInput::mergeData(string user_filename)
 {
-    string line;
-    string userline;
-    string lineposition;
-    smatch match;
-    int mafPos = 0;
-    int matrixInputLine = 0;
-    regex_token_iterator<string::iterator> lineEnd;
-    ifstream userFile;
-    userFile.open(filename);
+    gsl_vector* chr = gsl_vector_alloc(30);
+    int currentChr = 0;
+    regex chrMatch("^\\d+");
 
-    if(!inputFile.is_open())
-    {
-        inputFile.open("test5.vcf");
-
-        for(int i = 0; getline(userFile, userline); i++)
-        {
-            if(line[0] != '#')
-            {
-                //Match up the chomosome and position between user data and background data.
-                if(regex_search(userline, match, posMatch))
-                {
-                    string userposition = match[0];
-                    while(lineposition != userposition)
-                    {
-                        getline(inputFile, line);
-                        if(regex_search(line, match, posMatch))
-                        {
-                            lineposition = match[0];
-                        }
-                    }
-
-                    //Now both the background data line and the user data line are at the same variant.
-                }
-                
-                /*
-                if(regex_search(line, match, mafMatch))
-                {
-                    gsl_vector_set(maf, mafPos, stod(match[1]));
-                    mafPos++;
-                }
-                */
-                
-                //Submatches:
-                //1: ./.
-                //2: left
-                //4: right     of #|#.
-                int submatches[] = {1,2,4};
-                regex_token_iterator<string::iterator> genoParser(line.begin(), line.end(), gMatch, submatches);
-                for(int j = caseCount; genoParser != lineEnd; j++)
-                {
-                    //We need to move the iterator (genoParser) forward 3 times to find a new match.
-                    if(*genoParser == "./.")
-                    {
-                        gsl_matrix_set(genotypeGslMatrix, matrixInputLine, j, -1);
-                        advance(genoParser, 3);
-                    }
-                    else if(*genoParser++ == "")
-                    {
-                        int left = 0;
-                        int right = 0;
-                        string temp;
-			
-                        //left = stoi(*genoParser++);
-                        temp = *genoParser++;
-                        if(temp.compare("0") != 0)
-                        {
-                            left = 1;
-                        }
-                        //right = stoi(*genoParser++);
-                        //if(right > 0)
-                        temp = *genoParser++;
-                        if(temp.compare("0") != 0)
-                        {
-                            right = 1;
-                        }
-                        gsl_matrix_set(genotypeGslMatrix, matrixInputLine, j, left + right);
-                    }
-                }
-                matrixInputLine++;
-            }
-        }
-    }
+    inputFile.open(user_filename);
 
     inputFile.close();
+
+    string merge_command = externals_loc + "bcftools merge -o user.test.vcf -O v " + user_filename ;
+
 }
 
 
