@@ -12,6 +12,8 @@
 #include <stdio.h>
 #include <iostream>
 #include <gsl/gsl_matrix.h>
+#include <gsl/gsl_permutation.h>
+#include <gsl/gsl_linalg.h>
 #include <gsl/gsl_randist.h>
 #include <gsl/gsl_blas.h>
 
@@ -34,10 +36,12 @@ private:
     int variantCount;
     double testStatistic;
     double regression;
+    bool isBinary;
     
     void setWeights(gsl_vector *maf);
     void makeKernel(string kernel_type);
     void setTestStatistic();
+    gsl_matrix* matrixInverse(gsl_matrix* m);
 
     
     gsl_matrix *genoMatrix;
@@ -45,7 +49,8 @@ private:
     gsl_matrix *kernel;
     gsl_matrix *X;
     gsl_vector *pheno;
-    
+    gsl_vector *coeff;
+    gsl_vector *res;
 };
 
 
