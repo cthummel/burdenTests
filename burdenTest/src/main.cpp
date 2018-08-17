@@ -21,11 +21,20 @@ using namespace std;
 
 int main(int argc, const char * argv[])
 {
-    string vcffilename, vcfType, phenofilename, filename, testType;
+    string vcffilename, vcfType, phenofilename, filename, testType, region;
     auto startTime = chrono::high_resolution_clock::now();
     auto currentTime = startTime;
     auto lasttime = startTime;
     
+    /*
+    string line;
+    cout << "Preloading background complete.";
+    while(getline(cin, line))
+    {
+
+    }
+    */
+
     //Check for proper argument formatting and filetypes.
     for(int i = 1; i < argc; i++)
     {
@@ -73,6 +82,18 @@ int main(int argc, const char * argv[])
                 i++;
             }
         }
+        if (strcmp(argv[i], "-r") == 0 || strcmp(argv[i], "-region") == 0)
+        {
+            if( strcmp(argv[i+1], "all") == 0 || strcmp(argv[i+1], "gene") == 0 || strcmp(argv[i+1], "exact") == 0)
+            {
+                region = argv[i+1];
+                i++;
+            }
+            else
+            {
+                cout << "arguments error: incorrect region specified after indicator." << endl;
+            }
+        }
         if(strcmp(argv[i], "wsbt") == 0)
         {
             testType = argv[i];
@@ -106,7 +127,7 @@ int main(int argc, const char * argv[])
     }
     
     //Run input on the given test and save results in Input
-    readInput result(testType, vcfType, vcffilename, vcffilename, phenofilename);
+    readInput result(testType, vcfType, vcffilename, region, phenofilename);
     
     
     currentTime = std::chrono::high_resolution_clock::now();

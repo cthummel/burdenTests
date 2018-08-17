@@ -23,19 +23,21 @@ class readInput
 {
     
 public:
-    readInput(string testType, string vcfType, string vcfFile1, string vcfFile2, string phenoFile);
+    readInput(string testType, string vcfType, string vcfFile1, string region, string phenoFile);
     
     void readVcfInitialInfo(string filename);
-    void readGenotype(string filename, gsl_matrix *inputMatrix);
+    void readGenotype(string filename, gsl_matrix *inputMatrix, int subjectOffset);
     void readPhenotype(string phenoFile);
     void readMaf(string filename);
     void makePositionFile(string filename);
     void mergeData(string filename);
     
+    int getCaseCount(){return caseCount;}
     gsl_matrix* getGslGenotype(){return genotypeGslMatrix;}
+    gsl_matrix* getCovariates(){return covariates;}
     gsl_vector* getMaf(){return maf;}
     gsl_vector* getPheno(){return pheno;}
-    int getCaseCount(){return caseCount;}
+    
 
 private:
     int variantCount;
@@ -57,6 +59,7 @@ private:
     
     
     gsl_matrix* genotypeGslMatrix;
+    gsl_matrix* covariates;
     gsl_vector* maf;
     gsl_vector* pheno;
 };

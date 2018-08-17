@@ -77,15 +77,15 @@ writeOutput::writeOutput(string filename, string test_type, gsl_vector* weights)
     
     
     
-    zip = bgzip_loc + " anno.tab";
+    zip = bgzip_loc + " -f anno.tab";
     system(zip.c_str());
-    string tabix = tabix_loc + " -s1 -b2 -e3 anno.tab.gz";
+    string tabix = tabix_loc + " -f -s1 -b2 -e3 anno.tab.gz";
     system(tabix.c_str());
     //zip = "bgzip test5.vcf";
     //system(zip.c_str());
     string annotateCommand = bcftools_loc + " annotate -a anno.tab.gz -h anno.hdr -c CHROM,FROM,TO," + testInfoTag + " " + filename + " > testOutput.vcf";
     system(annotateCommand.c_str());
-    zip = bgzip_loc + " testOutput.vcf";
+    zip = bgzip_loc + " -f testOutput.vcf";
     system(zip.c_str());
 }
 

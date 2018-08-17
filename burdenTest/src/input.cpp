@@ -12,14 +12,12 @@ using namespace std;
 
 
 
-readInput::readInput(string testType, string inputVcfType, string vcfFile1, string vcfFile2, string phenoFile)
+readInput::readInput(string testType, string inputVcfType, string userVcf, string region, string phenoFile)
 {
     variantCount = 0;
     subjectCount = 0;
     caseCount = 0;
     vcfType = inputVcfType;
-    
-    string subsetCommand = "vcftools -" + vcfType + " " + vcfFile1 + " --positions " + vcfFile2 + " --recode";
     
     gMatch = regex("(\\.\\/\\.)|(\\d)(\\/|\\|)(\\d)");
     altAlleleCountMatch = regex("[ATGCN],[ATGCN]");
@@ -32,14 +30,15 @@ readInput::readInput(string testType, string inputVcfType, string vcfFile1, stri
     //Switching on test type to get proper input.
     if(testType == "wsbt")
     {
-        readVcfInitialInfo(vcfFile1);
-        genotypeGslMatrix = gsl_matrix_alloc(variantCount, subjectCount);
-        readGenotype(vcfFile1, genotypeGslMatrix);
+        //readVcfInitialInfo(userVcf);
+        //genotypeGslMatrix = gsl_matrix_alloc(variantCount, subjectCount);
+        //readGenotype(userVcf, genotypeGslMatrix, 0);
+        mergeData(userVcf);
     }
     else if(testType == "burden")
     {
         //Get basic info from VCF
-        readVcfInitialInfo(vcfFile1);
+        readVcfInitialInfo(userVcf);
         
         //Initilizing genotype data structures.
         genotypeGslMatrix = gsl_matrix_calloc(variantCount, subjectCount);
@@ -49,10 +48,10 @@ readInput::readInput(string testType, string inputVcfType, string vcfFile1, stri
         
         //Runs vcftools command to separate genotype data.
         //system(genoCommand.c_str());
-        readGenotype(vcfFile1, genotypeGslMatrix);
+        readGenotype(userVcf, genotypeGslMatrix, 0);
         
         //Parse the maf
-        readMaf(vcfFile1);
+        readMaf(userVcf);
     }
     else if (testType == "cast")
     {
@@ -60,12 +59,12 @@ readInput::readInput(string testType, string inputVcfType, string vcfFile1, stri
     }
     else if (testType == "skat")
     {
-        readVcfInitialInfo(vcfFile1);
+        readVcfInitialInfo(userVcf);
         genotypeGslMatrix = gsl_matrix_alloc(variantCount, subjectCount);
         pheno = gsl_vector_calloc(subjectCount);
         maf = gsl_vector_alloc(variantCount);
         readPhenotype(phenoFile);
-        readGenotype(vcfFile1, genotypeGslMatrix);
+        readGenotype(userVcf, genotypeGslMatrix, 0);
     }
     else if (testType == "skato")
     {
@@ -79,6 +78,8 @@ void readInput::readVcfInitialInfo(string filename)
     string line;
     string statsFileName = "";
     smatch match;
+    subjectCount = 0;
+    variantCount = 0;
     regex caseMatch("(\\t(\\d[^\\s]+))+");
     
     //Remove the filetype from filename.
@@ -126,7 +127,7 @@ void readInput::readVcfInitialInfo(string filename)
     }
 }
 
-void readInput::readGenotype(string filename, gsl_matrix *inputMatrix)
+void readInput::readGenotype(string filename, gsl_matrix *inputMatrix, int subjectOffset)
 {
     if(!inputFile.is_open())
     {
@@ -142,7 +143,7 @@ void readInput::readGenotype(string filename, gsl_matrix *inputMatrix)
         
         if(vcfType == "-gzvcf")
         {
-            string genoCommand = bgzip_loc + " -d " + filename;
+            string genoCommand = bgzip_loc + " -f -d " + filename;
             system(genoCommand.c_str());
             inputFile.open(filename.substr(0, filename.length() - 3));
         }
@@ -162,7 +163,21 @@ void readInput::readGenotype(string filename, gsl_matrix *inputMatrix)
             {
                 altAlleleCount = match.size() + 1;
             }
-             */
+            
+            //Cutting out the background data from the testcase
+            regex background("[A-Z]{2}\\d{5}");
+            if (regex_search(line, match, background))
+            {
+                regex_token_iterator<string::iterator> backParser(line.begin(), line.end(), background);
+                ofstream outfile;
+                outfile.open("background.txt");
+                while(backParser != lineEnd)
+                {
+                    outfile << *backParser++ << endl;
+                }
+                outfile.close();
+            }
+            */
             
             if(line[0] != '#')
             {
@@ -184,7 +199,7 @@ void readInput::readGenotype(string filename, gsl_matrix *inputMatrix)
                     //We need to move the iterator (genoParser) forward 3 times to find a new match.
                     if(*genoParser == "./.")
                     {
-                        gsl_matrix_set(inputMatrix, matrixInputLine, i, -1);
+                        gsl_matrix_set(inputMatrix, matrixInputLine, i + subjectOffset, -1);
                         advance(genoParser, 3);
                     }
                     else if(*genoParser++ == "")
@@ -206,7 +221,7 @@ void readInput::readGenotype(string filename, gsl_matrix *inputMatrix)
                         {
                             right = 1;
                         }
-                        gsl_matrix_set(inputMatrix, matrixInputLine, i, left + right);
+                        gsl_matrix_set(inputMatrix, matrixInputLine, i + subjectOffset, left + right);
                     }
                 }
                 matrixInputLine++;
@@ -335,13 +350,57 @@ void readInput::mergeData(string user_filename)
 {
     gsl_vector* chr = gsl_vector_alloc(30);
     int currentChr = 0;
+    string region = "gene";
     regex chrMatch("^\\d+");
 
-    inputFile.open(user_filename);
+    //Builds background with entire matching chromosome background data.
+    if(strcmp(region.c_str(), "all") == 0)
+    {
+        readVcfInitialInfo(user_filename);
+        int userSubjectCount = subjectCount;
+        readVcfInitialInfo("background.vcf");
+        subjectCount += userSubjectCount;
+        cout << "Merge Data final subject count, variant count: " << subjectCount << ", " << variantCount << endl;
+        genotypeGslMatrix = gsl_matrix_alloc(variantCount, subjectCount);
 
-    inputFile.close();
+        //Read in data.
+        readGenotype(user_filename, genotypeGslMatrix, 0);
+        readGenotype("background.vcf", genotypeGslMatrix, userSubjectCount);
+    }
+    //Builds background with matching gene region data.
+    else if(strcmp(region.c_str(), "gene") == 0)
+    {
+        //Make the background data vcf
 
-    string merge_command = externals_loc + "bcftools merge -o user.test.vcf -O v " + user_filename ;
+
+        if(vcfType == "-vcf")
+        {
+            string zip = bgzip_loc + " -f " + user_filename;
+            system(zip.c_str());
+            string tabix = externals_loc + "tabix -f -p vcf -s1 -b2 -e3 " + user_filename + ".gz";
+            system(tabix.c_str());
+            string merge = externals_loc + "bcftools merge -o mergetest.vcf " + user_filename + ".gz " + "fullbackground.vcf.gz";
+            system(merge.c_str());
+        }
+        else
+        {
+            string tabix = externals_loc + "tabix -f -p vcf -s1 -b2 -e3 " + user_filename;
+            system(tabix.c_str());
+            string merge = externals_loc + "bcftools merge -o mergetest.vcf " + user_filename + " " + "fullbackground.vcf.gz";
+            system(merge.c_str());
+        }
+
+        //Now read in from combined vcf
+        readVcfInitialInfo("mergetest.vcf");
+        genotypeGslMatrix = gsl_matrix_alloc(variantCount, subjectCount);
+        readGenotype("mergetest.vcf", genotypeGslMatrix, 0);
+    }
+    //Builds background with matching chromosome and position data.
+    else if(strcmp(region.c_str(), "exact") == 0)
+    {
+        readVcfInitialInfo(user_filename);
+        genotypeGslMatrix = gsl_matrix_alloc(variantCount, subjectCount + 2504);
+    }
 
 }
 
