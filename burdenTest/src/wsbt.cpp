@@ -69,14 +69,18 @@ wsbt::wsbt(gsl_matrix* totalGtype, int aCount, gsl_vector *inputMaf)
         cout << "TestStatisticSigma for permutation " << k << " is " << testStatSigma << endl;
         double zscore = (gsl_vector_get(testStatistics, 0) - testStatMean) / testStatSigma;
         cout << "Zscore for permutation " << k << " is " << zscore << endl;
-        //One-sided P-value calculation.
-        pvalue = gsl_cdf_ugaussian_P(zscore);
+        //Two-sided P-value calculation.
+        pvalue = 2 * gsl_cdf_ugaussian_P(zscore);
         cout << "Pvalue for permutation " << k << " is " << pvalue << endl;
         cout << endl;
         
         //Permutes the columns of the genotype matrix for the next permutation.
         gsl_ran_shuffle(r, subjectPerm->data, totalSubjects, sizeof(size_t));
-        gsl_permute_matrix(subjectPerm, totalGenotype);
+        for(int i = 0; i < affectedCount; i++)
+        {
+            gsl_matrix_swap_columns(totalGenotype, i, subjectPerm->data[i]);
+        }
+        //gsl_permute_matrix(subjectPerm, totalGenotype);
     }
     /*
     outfile.open("statoutput.txt");
