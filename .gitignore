@@ -5,3 +5,8 @@ bin/
 xcuserdata/
 *~
 burdenTest/third/
+burdenTest/externals/bin
+burdenTest/externals/include
+burdenTest/externals/lib
+burdenTest/externals/libexec
+burdenTest/externals/share

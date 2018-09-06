@@ -40,6 +40,7 @@ private:
     void setWeights(gsl_vector *maf);
     void makeKernel(string kernel_type);
     void setTestStatistic();
+    void setPvalue();
     gsl_vector* logisticRegression();
     double linearRegression();
     gsl_matrix* matrixInverse(gsl_matrix* m);
@@ -53,6 +54,7 @@ private:
     gsl_vector *pheno;
     gsl_vector *coeff;
     gsl_vector *res;
+    gsl_vector *eigenvalues;
 };
 
 

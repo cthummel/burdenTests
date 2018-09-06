@@ -82,21 +82,13 @@ wsbt::wsbt(gsl_matrix* totalGtype, int aCount, gsl_vector *inputMaf)
         }
         //gsl_permute_matrix(subjectPerm, totalGenotype);
     }
-    /*
-    outfile.open("statoutput.txt");
-    outfile << "test statistics: ";
-    for(int k = 0; k < permutationCount; k++)
-    {
-        outfile << gsl_vector_get(testStatistics, k) << " ";
-    }
-    outfile << endl;
-    outfile.close();
-     */
     
     cout << endl;
     gsl_rng_free(r);
     gsl_permutation_free(subjectPerm);
     gsl_vector_free(scores);
+    gsl_vector_free(weights);
+    gsl_vector_free(testStatistics);
     gsl_matrix_free(totalGenotype);
 }
 

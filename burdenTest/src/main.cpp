@@ -15,13 +15,13 @@
 #include "input.cpp"
 #include "output.cpp"
 #include "cast.cpp"
-//#include "skat.cpp"
+#include "skat.cpp"
 
 using namespace std;
 
 int main(int argc, const char * argv[])
 {
-    string vcffilename, vcfType, phenofilename, filename, testType, region;
+    string vcffilename, vcfType, phenofilename, covfilename, filename, testType, region;
     auto startTime = chrono::high_resolution_clock::now();
     auto currentTime = startTime;
     auto lasttime = startTime;
@@ -82,6 +82,20 @@ int main(int argc, const char * argv[])
                 i++;
             }
         }
+        if (strcmp(argv[i], "-cov") == 0)
+        {
+            if (argc > i)
+            {
+                covfilename = argv[i+1];
+                if (covfilename.substr(covfilename.length() - 4) != ".txt")
+                {
+                    //They input a filename that isnt a .txt
+                    cout << "burdenTest [testtype] -cov <filename.txt>\n";
+                    return 0;
+                }
+                i++;
+            }
+        }
         if (strcmp(argv[i], "-r") == 0 || strcmp(argv[i], "-region") == 0)
         {
             if( strcmp(argv[i+1], "all") == 0 || strcmp(argv[i+1], "gene") == 0 || strcmp(argv[i+1], "exact") == 0)
@@ -127,7 +141,7 @@ int main(int argc, const char * argv[])
     }
     
     //Run input on the given test and save results in Input
-    readInput result(testType, vcfType, vcffilename, region, phenofilename);
+    readInput result(testType, vcfType, vcffilename, region, phenofilename, covfilename);
     
     
     currentTime = std::chrono::high_resolution_clock::now();
@@ -174,9 +188,8 @@ int main(int argc, const char * argv[])
         currentTime = std::chrono::high_resolution_clock::now();
         cout << "Before SKAT Test." << std::chrono::duration_cast<std::chrono::milliseconds>(currentTime-lasttime).count() << endl;
         lasttime = currentTime;
-        
-        //Covariates not yet implemented. We will have to decide how thats done.
-        //skat test = skat(result.getGslGenotype(), result.getMaf(), gsl_vector_alloc(10));
+        //Covariates and Phenotype not yet implemented. We will have to decide how thats done.
+        skat test = skat(result.getGslGenotype(), result.getMaf(), result.getCovariates(), result.getPheno());
         currentTime = std::chrono::high_resolution_clock::now();
         cout << "SKAT Took "  << std::chrono::duration_cast<std::chrono::milliseconds>(currentTime-lasttime).count()/60000.0 << " minutes."<< endl;
         lasttime = currentTime;

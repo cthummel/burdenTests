@@ -6,6 +6,8 @@
 //  Copyright © 2018 Corin Thummel. All rights reserved.
 //
 
+#include <fstream>
+#include <gsl/gsl_statistics.h>
 #include "skat.hpp"
 #include "davies.cpp"
 
@@ -16,7 +18,7 @@ skat::skat(gsl_matrix *geno, gsl_vector *maf, gsl_matrix *covariates, gsl_vector
     //Initialize variables.
     subjectCount = (int)geno->size2;
     variantCount = (int)geno->size1;
-    X_Count = covariates->size2;
+    X_Count = (int)covariates->size2;
     isBinary = true;
     for (int i = 0; i < phenotype->size; i++)
     {
@@ -38,6 +40,7 @@ skat::skat(gsl_matrix *geno, gsl_vector *maf, gsl_matrix *covariates, gsl_vector
     weightMatrix = gsl_matrix_calloc(variantCount, variantCount);
     kernel = gsl_matrix_alloc(subjectCount, subjectCount);
     coeff = gsl_vector_alloc(covariates->size2);
+    eigenvalues = gsl_vector_alloc(subjectCount);
 
     string kernel_type = "linear";
 
@@ -59,11 +62,25 @@ skat::skat(gsl_matrix *geno, gsl_vector *maf, gsl_matrix *covariates, gsl_vector
 
     setTestStatistic();
     currentTime = chrono::high_resolution_clock::now();
-    cout << "Setting test statistic took " << std::chrono::duration_cast<std::chrono::milliseconds>(currentTime - lastTime).count() / 1000.0 << " seconds." << endl;
+    cout << "Setting test statistic took " << std::chrono::duration_cast<std::chrono::milliseconds>(currentTime - lastTime).count() / 60000.0 << " minutes." << endl;
     lastTime = currentTime;
+    cout << "Got Q=" << testStatistic << endl;
+    ofstream outfile;
+    outfile.open("skateigenvalues.txt");
+    for(int i = 0; i < eigenvalues->size; i++)
+    {
+        outfile << gsl_vector_get(eigenvalues, i) << endl;
+    }
+
+    setPvalue();
+    currentTime = chrono::high_resolution_clock::now();
+    cout << "Setting p-value took " << std::chrono::duration_cast<std::chrono::milliseconds>(currentTime - lastTime).count() / 1000.0 << " seconds." << endl;
+    lastTime = currentTime;
+    cout << "Got a pvalue of: " << pvalue << endl;
 
     //Cleanup after test.
     gsl_vector_free(pheno);
+    gsl_vector_free(eigenvalues);
     gsl_matrix_free(X);
     gsl_matrix_free(weightMatrix);
     gsl_matrix_free(kernel);
@@ -73,11 +90,16 @@ skat::skat(gsl_matrix *geno, gsl_vector *maf, gsl_matrix *covariates, gsl_vector
 //Creates the mxm matrix of weights.
 void skat::setWeights(gsl_vector *maf)
 {
+    cout << "Total number of entries in maf: " << maf->size << endl;
+    ofstream outfile;
+    outfile.open("skatweights.txt");
     for (int i = 0; i < maf->size; i++)
     {
         double tempWeight = gsl_ran_beta_pdf(gsl_vector_get(maf, i), 1, 25);
         gsl_matrix_set(weightMatrix, i, i, tempWeight * tempWeight);
+        outfile << i << " " << tempWeight * tempWeight << endl;
     }
+    outfile.close();
 }
 
 //Remember matrix multiplication goes right to left. So G'WG needs to calculate G'(WG) in a sense. (v = rows, s = columns)
@@ -96,141 +118,233 @@ void skat::makeKernel(string kernel_type)
         gsl_blas_dgemm(CblasNoTrans, CblasNoTrans, 1, weightMatrix, genoMatrix, 0, tempkernel);
         gsl_blas_dgemm(CblasTrans, CblasNoTrans, 1.0, genoMatrix, tempkernel, 0.0, kernel);
         gsl_matrix_add_constant(kernel, 1);
-        //We squared the weights earlier so now they are ^4 is this correct?
         gsl_matrix_mul_elements(kernel, kernel);
     }
     else if (kernel_type == "IBS")
     {
+        //Additively coded autosomal data
+        for(int i = 0; i < subjectCount; i++)
+        {
+            double temp = 0;
+            for(int j = 0; j < variantCount; j++)
+            {
+                temp += gsl_matrix_get(weightMatrix, i, i)
+                        * (2 - abs(gsl_matrix_get(genoMatrix, i, j) - gsl_matrix_get(genoMatrix, j, i)));
+            }
+            gsl_matrix_set(kernel, i, i, temp);
+        }
     }
 }
 
 void skat::setTestStatistic()
 {
-    bool exact = true;
+    //Test Statistic
+    //Q = (y - u) * K * (y - u)'
+    // 1xn nxn nx1 -> 1xn nx1 -> 1x1 = Q
+    gsl_vector *tempstat = gsl_vector_alloc(subjectCount);
+    gsl_blas_dgemv(CblasNoTrans, 1.0, kernel, pheno, 0.0, tempstat);
+    gsl_blas_ddot(pheno, tempstat, &testStatistic);
 
-    if (!exact)
+    //Find distribution of Q.
+    gsl_matrix *P0 = gsl_matrix_alloc(subjectCount, subjectCount);
+    gsl_matrix *V = gsl_matrix_calloc(subjectCount, subjectCount);
+    gsl_matrix *Xtilde;
+
+    //X is an n x (m + 1) matrix
+    //V is an n x n matrix
+    if (X_Count == 1)
     {
-        //Approximate Test Statistic
-        //Q = (y - u) * K * (y - u)'
-        // 1xn nxn nx1 -> 1xn nx1 -> 1x1 = Q
-        gsl_vector *pheno = gsl_vector_alloc(subjectCount);
-        gsl_vector *tempstat = gsl_vector_alloc(subjectCount);
-        gsl_blas_dgemv(CblasNoTrans, 1.0, weightMatrix, pheno, 0.0, tempstat);
-        gsl_blas_ddot(pheno, tempstat, &testStatistic);
+        //No covariates makes X and V formulation easy.
+        Xtilde = gsl_matrix_alloc(subjectCount, 1);
+        gsl_matrix_set_all(Xtilde, 1);
 
-        //Find pvalue of Q.
+        //P0 = ;
+        
+        double Vsum = 0;
+        double uhat = gsl_stats_mean(pheno->data, 1, subjectCount);
+        for (int i = 0; i < subjectCount; i++)
+        {
+            gsl_matrix_set(V, i, i, uhat*(1-uhat));
+            Vsum += gsl_matrix_get(V, i, i);
+        }
+        cout << "Vsum = " << Vsum << endl;
+
+        gsl_matrix *temp_V = gsl_matrix_alloc(subjectCount, subjectCount);
+        gsl_blas_dgemm(CblasNoTrans, CblasTrans, 1, V, V, 0.0, temp_V);
+        gsl_matrix_scale(temp_V, 1.0 / Vsum);
+        gsl_matrix_memcpy(P0, V);
+        for(int i = 0; i < 10; i++)
+        {
+            cout << i << " of V: " << gsl_matrix_get(V, i, i) << endl;
+        }
+        for(int i = 0; i < 10; i++)
+        {
+            cout << i << " of temp_V: " << gsl_matrix_get(temp_V, i, i) << endl;
+        }
+        for(int i = 0; i < 10; i++)
+        {
+            cout << i << " of P0: " << gsl_matrix_get(P0, i, i) << endl;
+        }
+        gsl_matrix_sub(P0, temp_V);
+        /*
+        gsl_matrix *A = gsl_matrix_alloc(2,2);
+        gsl_matrix *Acheck = gsl_matrix_alloc(2,2);
+        gsl_matrix_set(A, 0, 0, 33);
+        gsl_matrix_set(A, 0, 1, 24);
+        gsl_matrix_set(A, 1, 0, 48);
+        gsl_matrix_set(A, 1, 1, 57);
+        cout << "A: " << gsl_matrix_get(A, 0, 0) << " " << gsl_matrix_get(A, 0, 1) << endl;
+        cout << "   " << gsl_matrix_get(A, 1, 0) << " " << gsl_matrix_get(A, 1, 1) << endl;
+        sqrtMatrix(A);
+        cout << "A^{1/2}: " << gsl_matrix_get(A, 0, 0) << " " << gsl_matrix_get(A, 0, 1) << endl;
+        cout << "         " << gsl_matrix_get(A, 1, 0) << " " << gsl_matrix_get(A, 1, 1) << endl;
+        gsl_blas_dgemm(CblasNoTrans, CblasNoTrans, 1, A, A, 0, Acheck);
+        cout << "Acheck: " << gsl_matrix_get(Acheck, 0, 0) << " " << gsl_matrix_get(Acheck, 0, 1) << " " << gsl_matrix_get(Acheck, 1, 0) << " "
+            << gsl_matrix_get(Acheck, 1, 1) << endl;
+        */
+        //Calculate result = P0^{1/2} * K * P0^{1/2}
+        sqrtMatrix(P0);
+        
+        for(int i = 0; i < 10; i++)
+        {
+            cout << i << " of P0^{1/2}: " << gsl_matrix_get(P0, i, i) << endl;
+        }
+        gsl_matrix *squareCheck = gsl_matrix_alloc(subjectCount, subjectCount);
+        gsl_blas_dgemm(CblasNoTrans, CblasNoTrans, 1, P0, P0, 0, squareCheck);
+        for(int i = 0; i < 10; i++)
+        {
+            cout << i << " of squarecheck: " << gsl_matrix_get(squareCheck, i, i) << endl;
+        }
+        gsl_matrix *temp = gsl_matrix_alloc(subjectCount, subjectCount);
+        gsl_matrix *result = gsl_matrix_alloc(subjectCount, subjectCount);
+        gsl_blas_dgemm(CblasNoTrans, CblasNoTrans, 1, P0, kernel, 0.0, temp);
+        gsl_blas_dgemm(CblasNoTrans, CblasNoTrans, 1, temp, P0, 0.0, result);
+
+        //Calculate eigenvalues of result to send to davies formula for p-value of Q.
+        gsl_eigen_symm_workspace *work = gsl_eigen_symm_alloc(subjectCount);
+        gsl_eigen_symm(result, eigenvalues, work);
+
+        
+        //Cleanup
+        gsl_matrix_free(temp_V);
+        gsl_matrix_free(temp);
     }
     else
     {
-        gsl_matrix *P0 = gsl_matrix_alloc(subjectCount, subjectCount);
-        gsl_matrix *V = gsl_matrix_calloc(subjectCount, subjectCount);
-        gsl_matrix *Xtilde;
-
-        //X is an n x (m + 1) matrix
-        //V is an n x n matrix
-        if (X_Count == 0)
+        //Run logistic regression on data.
+        //V = diag(uhat_01*(1-uhat_01), ... ,uhat_0n*(1-uhat_0n)) where uhat_0i = logit^{-1}(alphahat + alphahat' X_i)
+        //When there are no covariates, uhat is the identity matrix?
+        if (isBinary)
         {
-            //No covariates makes X and V formulation easy.
-            Xtilde = gsl_matrix_alloc(subjectCount, 1);
-            gsl_matrix_set_all(Xtilde, 1);
+            gsl_vector *uhat = logisticRegression();
 
-            //P0 = ;
-            double Vsum = 0;
+            gsl_vector_set_all(uhat, .99);
+
             for (int i = 0; i < subjectCount; i++)
             {
-                Vsum += gsl_matrix_get(V, i, i);
+                gsl_matrix_set(V, i, i, gsl_vector_get(uhat, i)*(1 - gsl_vector_get(uhat, i)));
             }
-
-            gsl_matrix *temp_V = gsl_matrix_alloc(subjectCount, subjectCount);
-            gsl_blas_dgemm(CblasNoTrans, CblasTrans, 1, V, V, 0.0, temp_V);
-            gsl_matrix_scale(temp_V, 1.0 / Vsum);
-            gsl_matrix_memcpy(P0, V);
-            gsl_matrix_sub(P0, temp_V);
         }
+        //Run linear regression
+        //V = (sigma0^2 * I) where sigma0 is the estimator of sigma under null hypothesis.
         else
         {
-            //Run logistic regression on data.
-            //V = diag(uhat_01*(1-uhat_01), ... ,uhat_0n*(1-uhat_0n)) where uhat_0i = logit^{-1}(alphahat + alphahat' X_i)
-            //When there are no covariates, uhat is the identity matrix?
-            if (isBinary)
-            {
-                gsl_vector *uhat = logisticRegression();
-                for (int i = 0; i < subjectCount; i++)
-                {
-                    gsl_matrix_set(V, i, i, gsl_vector_get(uhat, i));
-                }
-            }
-            //Run linear regression
-            //V = (sigma0^2 * I) where sigma0 is the estimator of sigma under null hypothesis.
-            else
-            {
-                double sigma = linearRegression();
-                for (int i = 0; i < subjectCount; i++)
-                {
-                    gsl_matrix_set(V, i, i, sigma * sigma);
-                }
-            }
-
-            //Xtilde is [1, X]
-            Xtilde = gsl_matrix_alloc(subjectCount, X_Count + 1);
+            double sigma = linearRegression();
             for (int i = 0; i < subjectCount; i++)
             {
-                gsl_matrix_set(Xtilde, i, 0, 1);
+                gsl_matrix_set(V, i, i, sigma * sigma);
             }
-            for (int j = 0; j < X_Count + 1; j++)
-            {
-                gsl_vector *tempCol = gsl_vector_alloc(subjectCount);
-                gsl_matrix_get_col(tempCol, X, j);
-                gsl_matrix_set_col(Xtilde, j + 1, tempCol);
-            }
-
-            //Exact method of finding P-value. Building P0
-            gsl_matrix_memcpy(P0, V);
-
-            gsl_matrix *VX = gsl_matrix_alloc(subjectCount, X_Count + 1);           //VX
-            gsl_matrix *XtransverseV = gsl_matrix_alloc(X_Count + 1, subjectCount); //X'V
-            gsl_matrix *inverse = gsl_matrix_alloc(X_Count + 1, X_Count + 1);       //(X'VX)^-1
-            gsl_matrix *partRight = gsl_matrix_alloc(X_Count + 1, subjectCount);    //((X'VX)^-1) * X'V
-            gsl_matrix *right = gsl_matrix_alloc(X_Count + 1, subjectCount);        //VX * ((X'VX)^-1) * X'V
-
-            gsl_blas_dgemm(CblasNoTrans, CblasNoTrans, 1, V, Xtilde, 0.0, VX);
-            gsl_blas_dgemm(CblasTrans, CblasNoTrans, 1, Xtilde, V, 0.0, XtransverseV);
-            gsl_blas_dgemm(CblasNoTrans, CblasNoTrans, 1, XtransverseV, Xtilde, 0.0, inverse);
-            inverse = matrixInverse(inverse);
-            gsl_blas_dgemm(CblasNoTrans, CblasNoTrans, 1, inverse, XtransverseV, 0.0, partRight);
-            gsl_blas_dgemm(CblasNoTrans, CblasNoTrans, 1, VX, partRight, 0.0, right);
-            gsl_matrix_sub(P0, right);
-
-            //Calculate result = P0^{1/2} * K * P0^{1/2}
-            sqrtMatrix(P0);
-            gsl_matrix *temp = gsl_matrix_alloc(subjectCount, subjectCount);
-            gsl_matrix *result = gsl_matrix_alloc(subjectCount, subjectCount);
-            gsl_blas_dgemm(CblasNoTrans, CblasNoTrans, 1, P0, kernel, 0.0, temp);
-            gsl_blas_dgemm(CblasNoTrans, CblasNoTrans, 1, temp, P0, 0.0, result);
-
-            //Calculate eigenvalues of result to send to davies formula for p-value.
-            gsl_eigen_symm_workspace *work = gsl_eigen_symm_alloc(subjectCount);
-            gsl_vector *eigenvalues = gsl_vector_alloc(subjectCount);
-            gsl_eigen_symm(result, eigenvalues, work);
-
-            //Send eigenvalues to calculate p-value.
-            //pvalue = 1 - qf(eigenvalues->data, );
-
-            //Cleanup temporary matrices.
-            gsl_eigen_symm_free(work);
-            gsl_matrix_free(VX);
-            gsl_matrix_free(XtransverseV);
-            gsl_matrix_free(inverse);
-            gsl_matrix_free(partRight);
-            gsl_matrix_free(right);
-            gsl_matrix_free(temp);
-            gsl_matrix_free(result);
         }
 
-        //Cleanup
-        gsl_matrix_free(Xtilde);
-        gsl_matrix_free(V);
+        //Xtilde is [1, X]
+        Xtilde = gsl_matrix_alloc(subjectCount, X_Count + 1);
+        for (int i = 0; i < subjectCount; i++)
+        {
+            gsl_matrix_set(Xtilde, i, 0, 1);
+        }
+        for (int j = 0; j < X_Count + 1; j++)
+        {
+            gsl_vector *tempCol = gsl_vector_alloc(subjectCount);
+            gsl_matrix_get_col(tempCol, X, j);
+            gsl_matrix_set_col(Xtilde, j + 1, tempCol);
+        }
+
+        //Exact method of finding P-value. Building P0
+        gsl_matrix_memcpy(P0, V);
+
+        gsl_matrix *VX = gsl_matrix_alloc(subjectCount, X_Count + 1);           //VX
+        gsl_matrix *XtransverseV = gsl_matrix_alloc(X_Count + 1, subjectCount); //X'V
+        gsl_matrix *inverse = gsl_matrix_alloc(X_Count + 1, X_Count + 1);       //(X'VX)^-1
+        gsl_matrix *partRight = gsl_matrix_alloc(X_Count + 1, subjectCount);    //((X'VX)^-1) * X'V
+        gsl_matrix *right = gsl_matrix_alloc(X_Count + 1, subjectCount);        //VX * ((X'VX)^-1) * X'V
+
+        gsl_blas_dgemm(CblasNoTrans, CblasNoTrans, 1, V, Xtilde, 0.0, VX);
+        gsl_blas_dgemm(CblasTrans, CblasNoTrans, 1, Xtilde, V, 0.0, XtransverseV);
+        gsl_blas_dgemm(CblasNoTrans, CblasNoTrans, 1, XtransverseV, Xtilde, 0.0, inverse);
+        inverse = matrixInverse(inverse);
+        gsl_blas_dgemm(CblasNoTrans, CblasNoTrans, 1, inverse, XtransverseV, 0.0, partRight);
+        gsl_blas_dgemm(CblasNoTrans, CblasNoTrans, 1, VX, partRight, 0.0, right);
+        gsl_matrix_sub(P0, right);
+
+        //Calculate result = P0^{1/2} * K * P0^{1/2}
+        sqrtMatrix(P0);
+        gsl_matrix *temp = gsl_matrix_alloc(subjectCount, subjectCount);
+        gsl_matrix *result = gsl_matrix_alloc(subjectCount, subjectCount);
+        gsl_blas_dgemm(CblasNoTrans, CblasNoTrans, 1, P0, kernel, 0.0, temp);
+        gsl_blas_dgemm(CblasNoTrans, CblasNoTrans, 1, temp, P0, 0.0, result);
+
+        //Calculate eigenvalues of result to send to davies formula for p-value.
+        gsl_eigen_symm_workspace *work = gsl_eigen_symm_alloc(subjectCount);
+        gsl_eigen_symm(result, eigenvalues, work);
+
+        //Cleanup temporary matrices.
+        gsl_eigen_symm_free(work);
+        gsl_matrix_free(VX);
+        gsl_matrix_free(XtransverseV);
+        gsl_matrix_free(inverse);
+        gsl_matrix_free(partRight);
+        gsl_matrix_free(right);
+        gsl_matrix_free(temp);
+        gsl_matrix_free(result);
     }
+
+    //Cleanup
+    gsl_matrix_free(Xtilde);
+    gsl_matrix_free(V);
+}
+
+void skat::setPvalue()
+{
+    //Create Non-centrality parameter and degrees of freedom
+    gsl_vector *noncentral = gsl_vector_alloc(eigenvalues->size);
+    gsl_vector_int *df = gsl_vector_int_alloc(eigenvalues->size);
+    gsl_vector_set_zero(noncentral);
+    gsl_vector_int_set_all(df, 1);
+
+    int eigenCount = 0;
+    //cout << "Eigenvalues: ";
+    for(int i = 0; i < eigenvalues->size; i++)
+    {
+        double value = gsl_vector_get(eigenvalues, i);
+        if(value != 0)
+        {
+            //cout << value << endl;
+            eigenCount++;
+        }
+        
+    }
+    cout << "Total of " << eigenCount << " eigenvalues." << endl;
+
+    //Allocate other parameters for Davies Method
+    int fault;
+    double sigma = 0.0;
+    double lim = 1000;          //Max iterations
+    double acc = .000001;       //Target accuracy
+    double trace[7];            //Error cache
+
+    //Send eigenvalues to calculate p-value.
+    pvalue = 1 - qf(eigenvalues->data, noncentral->data, df->data, eigenCount, 
+                    sigma, testStatistic, lim, acc, trace, &fault);
 }
 
 gsl_vector *skat::logisticRegression()
@@ -274,29 +388,30 @@ gsl_matrix *skat::matrixInverse(gsl_matrix *m)
 
 int skat::sqrtMatrix(gsl_matrix *m)
 {
-    gsl_eigen_symmv_workspace *work = gsl_eigen_symmv_alloc(subjectCount);
-    gsl_matrix *result = gsl_matrix_alloc(subjectCount, subjectCount);
-    gsl_vector *eval = gsl_vector_alloc(subjectCount);
-    gsl_matrix *evec = gsl_matrix_alloc(subjectCount, subjectCount);
-    gsl_matrix *D = gsl_matrix_calloc(subjectCount, subjectCount);
+    int errorCode = 0;
+    gsl_eigen_symmv_workspace *work = gsl_eigen_symmv_alloc(m->size1);
+    gsl_matrix *result = gsl_matrix_alloc(m->size1, m->size1);
+    gsl_vector *eval = gsl_vector_alloc(m->size1);
+    gsl_matrix *evec = gsl_matrix_alloc(m->size1, m->size1);
+    gsl_matrix *D = gsl_matrix_calloc(m->size1, m->size1);
 
     gsl_eigen_symmv(m, eval, evec, work);
     for (int i = 0; i < eval->size; i++)
     {
         gsl_matrix_set(D, i, i, sqrt(gsl_vector_get(eval, i)));
     }
-    gsl_matrix *temp = gsl_matrix_alloc(subjectCount, subjectCount);
+    gsl_matrix *temp = gsl_matrix_alloc(m->size1, m->size1);
     gsl_blas_dgemm(CblasNoTrans, CblasNoTrans, 1.0, evec, D, 0, temp);
-    gsl_blas_dgemm(CblasNoTrans, CblasNoTrans, 1.0, matrixInverse(evec), temp, 0, result);
+    gsl_blas_dgemm(CblasNoTrans, CblasNoTrans, 1.0, temp, matrixInverse(evec), 0, result);
 
-    m = result;
+    //m = result;
     //If that doesnt work use below.
-    //gsl_matrix_memcpy(m, result);
+    gsl_matrix_memcpy(m, result);
 
     gsl_eigen_symmv_free(work);
     gsl_matrix_free(temp);
     gsl_matrix_free(evec);
     gsl_vector_free(eval);
     gsl_matrix_free(D);
-    return 0;
+    return errorCode;
 }

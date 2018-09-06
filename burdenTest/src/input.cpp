@@ -12,7 +12,7 @@ using namespace std;
 
 
 
-readInput::readInput(string testType, string inputVcfType, string userVcf, string region, string phenoFile)
+readInput::readInput(string testType, string inputVcfType, string userVcf, string region, string phenoFile, string covFile)
 {
     variantCount = 0;
     subjectCount = 0;
@@ -30,10 +30,10 @@ readInput::readInput(string testType, string inputVcfType, string userVcf, strin
     //Switching on test type to get proper input.
     if(testType == "wsbt")
     {
-        //readVcfInitialInfo(userVcf);
-        //genotypeGslMatrix = gsl_matrix_alloc(variantCount, subjectCount);
-        //readGenotype(userVcf, genotypeGslMatrix, 0);
-        mergeData(userVcf);
+        readVcfInitialInfo(userVcf);
+        genotypeGslMatrix = gsl_matrix_alloc(variantCount, subjectCount);
+        readGenotype(userVcf, genotypeGslMatrix, 0);
+        //mergeData(userVcf);
     }
     else if(testType == "burden")
     {
@@ -61,10 +61,32 @@ readInput::readInput(string testType, string inputVcfType, string userVcf, strin
     {
         readVcfInitialInfo(userVcf);
         genotypeGslMatrix = gsl_matrix_alloc(variantCount, subjectCount);
-        pheno = gsl_vector_calloc(subjectCount);
+        pheno = gsl_vector_alloc(subjectCount);
         maf = gsl_vector_alloc(variantCount);
-        readPhenotype(phenoFile);
+
         readGenotype(userVcf, genotypeGslMatrix, 0);
+        if(phenoFile == "")
+        {
+            gsl_vector_set_zero(pheno);
+            for(int i = 0; i < caseCount; i++)
+            {
+                gsl_vector_set(pheno, i, 1);
+            }
+        }
+        else
+        {
+            readPhenotype(phenoFile);
+        }
+        
+        if(covFile == "")
+        {
+            covariates = gsl_matrix_alloc(subjectCount, 1);
+            gsl_matrix_set_all(covariates, 1);
+        }
+        else
+        {
+
+        }
     }
     else if (testType == "skato")
     {
@@ -402,6 +424,22 @@ void readInput::mergeData(string user_filename)
         genotypeGslMatrix = gsl_matrix_alloc(variantCount, subjectCount + 2504);
     }
 
+}
+
+//Reading in genotype data from a bcf should be much faster.
+void readInput::bcfInput(string filename)
+{
+    string line;
+    uint32_t headerlength;
+    char * buffer = new char [4];
+    ifstream infile;
+
+    infile.open(filename, ios::binary);
+
+    infile.read(buffer, sizeof(headerlength));
+    infile.seekg(headerlength, ios::beg);
+
+    inputFile.close();
 }
 
 

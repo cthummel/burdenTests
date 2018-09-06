@@ -1,11 +1,3 @@
-//
-//  davies.hpp
-//  burdenTest
-//
-//  Created by Corin Thummel on 7/31/18.
-//  Copyright © 2018 Corin Thummel. All rights reserved.
-//
-
 #ifndef davies_hpp
 #define davies_hpp
 
