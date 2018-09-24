@@ -45,6 +45,7 @@ private:
     double linearRegression();
     gsl_matrix* matrixInverse(gsl_matrix* m);
     int sqrtMatrix(gsl_matrix *input);
+    double dotProductCheck(gsl_vector* left, gsl_vector *right);
 
     
     gsl_matrix *genoMatrix;

@@ -1,3 +1,7 @@
+/*
+This entire file is a c++ implementation of the Davies Algorithm (1980). I have copied it from the ctf.cpp file from rvtests.
+They are the ones who adapted that old programming language to one that is more modern. Not me.
+*/
 #define UseDouble 0 /* all floating point double */
 
 #include <stdio.h>
@@ -82,7 +86,8 @@ static void counter(void)
 {
   extern int count, lim;
   count = count + 1;
-  if (count > lim) longjmp(env, 1);
+  if (count > lim)
+    longjmp(env, 1);
 }
 
 static real square(real x) { return x * x; }
@@ -92,16 +97,20 @@ static real cube(real x) { return x * x * x; }
 static real log1(real x, BOOL first)
 /* if (first) log(1 + x) ; else  log(1 + x) - x */
 {
-  if (fabs(x) > 0.1) {
+  if (fabs(x) > 0.1)
+  {
     return (first ? log(1.0 + x) : (log(1.0 + x) - x));
-  } else {
+  }
+  else
+  {
     real s, s1, term, y, k;
     y = x / (2.0 + x);
     term = 2.0 * cube(y);
     k = 3.0;
     s = (first ? 2.0 : -x) * y;
     y = square(y);
-    for (s1 = s + term / k; s1 != s; s1 = s + term / k) {
+    for (s1 = s + term / k; s1 != s; s1 = s + term / k)
+    {
       k = k + 2.0;
       term = term * y;
       s = s1;
@@ -119,9 +128,11 @@ static void order(void)
   extern int *th;
   extern int r;
   extern BOOL ndtsrt;
-  for (j = 0; j < r; j++) {
+  for (j = 0; j < r; j++)
+  {
     lj = fabs(lb[j]);
-    for (k = j - 1; k >= 0; k--) {
+    for (k = j - 1; k >= 0; k--)
+    {
       if (lj > fabs(lb[th[k]]))
         th[k + 1] = th[k];
       else
@@ -147,7 +158,8 @@ static real errbd(real u, real *cx)
   xconst = u * sigsq;
   sum1 = u * xconst;
   u = 2.0 * u;
-  for (j = r - 1; j >= 0; j--) {
+  for (j = r - 1; j >= 0; j--)
+  {
     nj = n[j];
     lj = lb[j];
     ncj = nc[j];
@@ -171,17 +183,22 @@ static real ctff(real accx, real *upn)
   c1 = mean;
   rb = 2.0 * ((u2 > 0.0) ? lmax : lmin);
   for (u = u2 / (1.0 + u2 * rb); errbd(u, &c2) > accx;
-       u = u2 / (1.0 + u2 * rb)) {
+       u = u2 / (1.0 + u2 * rb))
+  {
     u1 = u2;
     c1 = c2;
     u2 = 2.0 * u2;
   }
-  for (u = (c1 - mean) / (c2 - mean); u < 0.9; u = (c1 - mean) / (c2 - mean)) {
+  for (u = (c1 - mean) / (c2 - mean); u < 0.9; u = (c1 - mean) / (c2 - mean))
+  {
     u = (u1 + u2) / 2.0;
-    if (errbd(u / (1.0 + u * rb), &xconst) > accx) {
+    if (errbd(u / (1.0 + u * rb), &xconst) > accx)
+    {
       u1 = u;
       c1 = xconst;
-    } else {
+    }
+    else
+    {
       u2 = u;
       c2 = xconst;
     }
@@ -207,17 +224,20 @@ static real truncation(real u, real tausq)
   sum2 = (sigsq + tausq) * square(u);
   prod1 = 2.0 * sum2;
   u = 2.0 * u;
-  for (j = 0; j < r; j++) {
+  for (j = 0; j < r; j++)
+  {
     lj = lb[j];
     ncj = nc[j];
     nj = n[j];
     x = square(u * lj);
     sum1 = sum1 + ncj * x / (1.0 + x);
-    if (x > 1.0) {
+    if (x > 1.0)
+    {
       prod2 = prod2 + nj * log(x);
       prod3 = prod3 + nj * log1(x, TRUE);
       s = s + nj;
-    } else
+    }
+    else
       prod1 = prod1 + nj * log1(x, TRUE);
   }
   sum1 = 0.5 * sum1;
@@ -227,7 +247,8 @@ static real truncation(real u, real tausq)
   y = exp1(-sum1 - 0.25 * prod3) / pi;
   err1 = (s == 0) ? 1.0 : x * 2.0 / s;
   err2 = (prod3 > 1.0) ? 2.5 * y : 1.0;
-  if (err2 < err1) err1 = err2;
+  if (err2 < err1)
+    err1 = err2;
   x = 0.5 * sum2;
   err2 = (x <= y) ? 1.0 : y / x;
   return (err1 < err2) ? err1 : err2;
@@ -241,15 +262,22 @@ static void findu(real *utx, real accx)
   static real divis[] = {2.0, 1.4, 1.2, 1.1};
   ut = *utx;
   u = ut / 4.0;
-  if (truncation(u, 0.0) > accx) {
-    for (u = ut; truncation(u, 0.0) > accx; u = ut) ut = ut * 4.0;
-  } else {
-    ut = u;
-    for (u = u / 4.0; truncation(u, 0.0) <= accx; u = u / 4.0) ut = u;
+  if (truncation(u, 0.0) > accx)
+  {
+    for (u = ut; truncation(u, 0.0) > accx; u = ut)
+      ut = ut * 4.0;
   }
-  for (i = 0; i < 4; i++) {
+  else
+  {
+    ut = u;
+    for (u = u / 4.0; truncation(u, 0.0) <= accx; u = u / 4.0)
+      ut = u;
+  }
+  for (i = 0; i < 4; i++)
+  {
     u = ut / divis[i];
-    if (truncation(u, 0.0) <= accx) ut = u;
+    if (truncation(u, 0.0) <= accx)
+      ut = u;
   }
   *utx = ut;
 }
@@ -267,12 +295,14 @@ static void integrate(int nterm, real interv, real tausq, BOOL mainx)
   extern real *lb, *nc;
   extern int r;
   inpi = interv / pi;
-  for (k = nterm; k >= 0; k--) {
+  for (k = nterm; k >= 0; k--)
+  {
     u = (k + 0.5) * interv;
     sum1 = -2.0 * u * c;
     sum2 = fabs(sum1);
     sum3 = -0.5 * sigsq * square(u);
-    for (j = r - 1; j >= 0; j--) {
+    for (j = r - 1; j >= 0; j--)
+    {
       nj = n[j];
       x = 2.0 * lb[j] * u;
       y = square(x);
@@ -284,7 +314,8 @@ static void integrate(int nterm, real interv, real tausq, BOOL mainx)
       sum3 = sum3 - 0.5 * x * y;
     }
     x = inpi * exp1(sum3) / u;
-    if (!mainx) x = x * (1.0 - exp1(-0.5 * tausq * square(u)));
+    if (!mainx)
+      x = x * (1.0 - exp1(-0.5 * tausq * square(u)));
     sum1 = sin(0.5 * sum1) * x;
     sum2 = 0.5 * sum2 * x;
     intl = intl + sum1;
@@ -303,31 +334,39 @@ static real cfe(real x)
   extern real *lb, *nc;
   extern int r;
   counter();
-  if (ndtsrt) order();
+  if (ndtsrt)
+    order();
   axl = fabs(x);
   sxl = (x > 0.0) ? 1.0 : -1.0;
   sum1 = 0.0;
-  for (j = r - 1; j >= 0; j--) {
+  for (j = r - 1; j >= 0; j--)
+  {
     t = th[j];
-    if (lb[t] * sxl > 0.0) {
+    if (lb[t] * sxl > 0.0)
+    {
       lj = fabs(lb[t]);
       axl1 = axl - lj * (n[t] + nc[t]);
       axl2 = lj / log28;
       if (axl1 > axl2)
         axl = axl1;
-      else {
-        if (axl > axl2) axl = axl2;
+      else
+      {
+        if (axl > axl2)
+          axl = axl2;
         sum1 = (axl - axl1) / lj;
-        for (k = j - 1; k >= 0; k--) sum1 = sum1 + (n[th[k]] + nc[th[k]]);
+        for (k = j - 1; k >= 0; k--)
+          sum1 = sum1 + (n[th[k]] + nc[th[k]]);
         goto l;
       }
     }
   }
 l:
-  if (sum1 > 100.0) {
+  if (sum1 > 100.0)
+  {
     fail = TRUE;
     return 1.0;
-  } else
+  }
+  else
     return pow(2.0, (sum1 / 4.0)) / (pi * square(axl));
 }
 
@@ -375,7 +414,8 @@ real qf(real *lb1, real *nc1, int *n1, int r1, real sigma, real c1, int lim1,
   real qfval;
   static int rats[] = {1, 2, 4, 8};
 
-  if (setjmp(env) != 0) {
+  if (setjmp(env) != 0)
+  {
     *ifault = 4;
     goto endofproc;
   }
@@ -385,7 +425,8 @@ real qf(real *lb1, real *nc1, int *n1, int r1, real sigma, real c1, int lim1,
   n = n1;
   lb = lb1;
   nc = nc1;
-  for (j = 0; j < 7; j++) trace[j] = 0.0;
+  for (j = 0; j < 7; j++)
+    trace[j] = 0.0;
   *ifault = 0;
   count = 0;
   intl = 0.0;
@@ -396,7 +437,8 @@ real qf(real *lb1, real *nc1, int *n1, int r1, real sigma, real c1, int lim1,
   fail = FALSE;
   xlim = (real)lim;
   th = (int *)malloc(r * (sizeof(int)));
-  if (!th) {
+  if (!th)
+  {
     *ifault = 5;
     goto endofproc;
   }
@@ -408,11 +450,13 @@ real qf(real *lb1, real *nc1, int *n1, int r1, real sigma, real c1, int lim1,
   lmax = 0.0;
   lmin = 0.0;
   mean = 0.0;
-  for (j = 0; j < r; j++) {
+  for (j = 0; j < r; j++)
+  {
     nj = n[j];
     lj = lb[j];
     ncj = nc[j];
-    if (nj < 0 || ncj < 0.0) {
+    if (nj < 0 || ncj < 0.0)
+    {
       *ifault = 3;
       goto endofproc;
     }
@@ -423,17 +467,19 @@ real qf(real *lb1, real *nc1, int *n1, int r1, real sigma, real c1, int lim1,
     else if (lmin > lj)
       lmin = lj;
   }
-  if (sd == 0.0) {
+  if (sd == 0.0)
+  {
     qfval = (c > 0.0) ? 1.0 : 0.0;
     goto endofproc;
   }
-  if (lmin == 0.0 && lmax == 0.0 && sigma == 0.0) {
+  if (lmin == 0.0 && lmax == 0.0 && sigma == 0.0)
+  {
     *ifault = 3;
     goto endofproc;
   }
   sd = sqrt(sd);
   almx = (lmax < -lmin) ? -lmin : lmax;
-
+  cout << "min,max,sd,mean " << lmin << ", " << lmax << ", " << sd << ", " << mean << endl;
   /* starting values for findu, ctff */
   utx = 16.0 / sd;
   up = 4.5 / sd;
@@ -441,11 +487,13 @@ real qf(real *lb1, real *nc1, int *n1, int r1, real sigma, real c1, int lim1,
   /* truncation point with no convergence factor */
   findu(&utx, .5 * acc1);
   /* does convergence factor help */
-  if (c != 0.0 && (almx > 0.07 * sd)) {
+  if (c != 0.0 && (almx > 0.07 * sd))
+  {
     tausq = .25 * acc1 / cfe(c);
     if (fail)
       fail = FALSE;
-    else if (truncation(utx, tausq) < .2 * acc1) {
+    else if (truncation(utx, tausq) < .2 * acc1)
+    {
       sigsq = sigsq + tausq;
       findu(&utx, .25 * acc1);
       trace[5] = sqrt(tausq);
@@ -453,38 +501,50 @@ real qf(real *lb1, real *nc1, int *n1, int r1, real sigma, real c1, int lim1,
   }
   trace[4] = utx;
   acc1 = 0.5 * acc1;
-
+std::cout << "right before the l1 call." << std::endl;
 /* find RANGE of distribution, quit if outside this */
 l1:
   d1 = ctff(acc1, &up) - c;
-  if (d1 < 0.0) {
+  std::cout << "d1: " << d1 << endl;
+  if (d1 < 0.0)
+  {
+    std::cout << "We are outside the range of the distribution. Setting p-value to 1." << endl;
     qfval = 1.0;
     goto endofproc;
   }
   d2 = c - ctff(acc1, &un);
-  if (d2 < 0.0) {
+  cout << "d2: " << d2 << endl;
+  if (d2 < 0.0)
+  {
+    std::cout << "We are outside the range of the distribution. Setting p-value to 0." << endl;
     qfval = 0.0;
     goto endofproc;
   }
   /* find integration interval */
   intv = 2.0 * pi / ((d1 > d2) ? d1 : d2);
+  std::cout << "intv: " << intv << endl;
   /* calculate number of terms required for main and
      auxillary integrations */
   xnt = utx / intv;
   xntm = 3.0 / sqrt(acc1);
-  if (xnt > xntm * 1.5) {
+  std::cout << "xnt: " << xnt << ", xntm * 1.5: " << xntm * 1.5 << std::endl;
+  if (xnt > xntm * 1.5)
+  {
     /* parameters for auxillary integration */
-    if (xntm > xlim) {
+    if (xntm > xlim)
+    {
       *ifault = 1;
       goto endofproc;
     }
     ntm = (int)floor(xntm + 0.5);
     intv1 = utx / ntm;
     x = 2.0 * pi / intv1;
-    if (x <= fabs(c)) goto l2;
+    if (x <= fabs(c))
+      goto l2;
     /* calculate convergence factor */
     tausq = .33 * acc1 / (1.1 * (cfe(c - x) + cfe(c + x)));
-    if (fail) goto l2;
+    if (fail)
+      goto l2;
     acc1 = .67 * acc1;
     /* auxillary integration */
     integrate(ntm, intv1, tausq, FALSE);
@@ -501,7 +561,8 @@ l1:
 /* main integration */
 l2:
   trace[3] = intv;
-  if (xnt > xlim) {
+  if (xnt > xlim)
+  {
     *ifault = 1;
     goto endofproc;
   }
@@ -516,8 +577,10 @@ l2:
      allow for radix 8 or 16 machines */
   up = ersm;
   x = up + acc / 10.0;
-  for (j = 0; j < 4; j++) {
-    if (rats[j] * x == rats[j] * up) *ifault = 2;
+  for (j = 0; j < 4; j++)
+  {
+    if (rats[j] * x == rats[j] * up)
+      *ifault = 2;
   }
 
 endofproc:

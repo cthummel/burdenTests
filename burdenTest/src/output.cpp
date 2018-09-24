@@ -58,7 +58,7 @@ writeOutput::writeOutput(string filename, string test_type, gsl_vector* weights)
     }
     else if (test_type == "skat")
     {
-        
+           
     }
     else if (test_type == "skato")
     {

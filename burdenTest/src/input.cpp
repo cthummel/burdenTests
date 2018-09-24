@@ -12,12 +12,13 @@ using namespace std;
 
 
 
-readInput::readInput(string testType, string inputVcfType, string userVcf, string region, string phenoFile, string covFile)
+readInput::readInput(string tType, string inputVcfType, string userVcf, string region, string phenoFile, string covFile)
 {
     variantCount = 0;
     subjectCount = 0;
     caseCount = 0;
     vcfType = inputVcfType;
+    testType = tType;
     
     gMatch = regex("(\\.\\/\\.)|(\\d)(\\/|\\|)(\\d)");
     altAlleleCountMatch = regex("[ATGCN],[ATGCN]");
@@ -32,7 +33,9 @@ readInput::readInput(string testType, string inputVcfType, string userVcf, strin
     {
         readVcfInitialInfo(userVcf);
         genotypeGslMatrix = gsl_matrix_alloc(variantCount, subjectCount);
-        readGenotype(userVcf, genotypeGslMatrix, 0);
+        //readGenotype(userVcf, genotypeGslMatrix, 0);
+        readMaf(userVcf);
+        bcfInput(userVcf);
         //mergeData(userVcf);
     }
     else if(testType == "burden")
@@ -64,7 +67,9 @@ readInput::readInput(string testType, string inputVcfType, string userVcf, strin
         pheno = gsl_vector_alloc(subjectCount);
         maf = gsl_vector_alloc(variantCount);
 
-        readGenotype(userVcf, genotypeGslMatrix, 0);
+        readMaf(userVcf);
+        bcfInput(userVcf);
+        //readGenotype(userVcf, genotypeGslMatrix, 0);
         if(phenoFile == "")
         {
             gsl_vector_set_zero(pheno);
@@ -173,6 +178,16 @@ void readInput::readGenotype(string filename, gsl_matrix *inputMatrix, int subje
         {
             inputFile.open(filename);
         }
+        bool binRead = false;
+        if(binRead)
+        {
+            inputFile.close();
+            FILE *input;
+            input = fopen("SKAT_GenoData_Binary", "r");
+            gsl_matrix_fread(input, inputMatrix);
+            fclose(input);
+            return;
+        }
         
         for(int j = 0; getline(inputFile, line); j++)
         {
@@ -221,7 +236,16 @@ void readInput::readGenotype(string filename, gsl_matrix *inputMatrix, int subje
                     //We need to move the iterator (genoParser) forward 3 times to find a new match.
                     if(*genoParser == "./.")
                     {
-                        gsl_matrix_set(inputMatrix, matrixInputLine, i + subjectOffset, -1);
+                        if(testType == "skat")
+                        {
+                            //gsl_matrix_set(inputMatrix, matrixInputLine, i + subjectOffset, 2 * gsl_vector_get(maf, matrixInputLine));
+                            gsl_matrix_set(inputMatrix, matrixInputLine, i + subjectOffset, 9);
+                        }
+                        if (testType == "wsbt")
+                        {
+                            gsl_matrix_set(inputMatrix, matrixInputLine, i + subjectOffset, -1);
+                        }
+                        
                         advance(genoParser, 3);
                     }
                     else if(*genoParser++ == "")
@@ -282,10 +306,23 @@ void readInput::readGenotype(string filename, gsl_matrix *inputMatrix, int subje
             std::cout << "] " << int(progress * 100.0) << " % (" << matrixInputLine << "/" << variantCount << ") \r";
             std::cout.flush();
             progress = (matrixInputLine * 1.0) / variantCount;
-             */
+            */
+             
              
         }
         inputFile.close();
+        if(testType == "skat")
+        {
+            FILE *outfile;
+            outfile = fopen("SKAT_GenoData_Binary", "w");
+            int pass = gsl_matrix_fwrite(outfile, inputMatrix);
+            if(pass != 0)
+            {
+                cout << "writing matrix failed" << endl;
+            }
+            fclose(outfile);
+        }
+        
     }
 }
 
@@ -318,21 +355,13 @@ void readInput::readMaf(string filename)
     if(!inputFile.is_open())
     {
         string line;
-        smatch match;
+        string command = externals_loc + "bcftools query -f '%AF\\n' " + filename + " > mafdata.txt";
         maf = gsl_vector_alloc(variantCount);
         
-        inputFile.open(filename);
-        int mafPos = 0;
-        for(int j = 0; getline(inputFile, line); j++)
+        inputFile.open("mafdata.txt");
+        for(int i = 0; getline(inputFile, line); i++)
         {
-            if(!regex_search(line, match, headerMatch))
-            {
-                if(regex_search(line, match, mafMatch))
-                {
-                    gsl_vector_set(maf, mafPos, stod(match[1]));
-                    mafPos++;
-                }
-            }
+            gsl_vector_set(maf, i, stod(line));
         }
         inputFile.close();
     }
@@ -430,14 +459,63 @@ void readInput::mergeData(string user_filename)
 void readInput::bcfInput(string filename)
 {
     string line;
-    uint32_t headerlength;
-    char * buffer = new char [4];
-    ifstream infile;
+    string command = externals_loc + "bcftools query -f '[ %GT]\\n' " + filename + " > bcfgenodata.txt";
+    cout << "Parse command: " << command << endl;
+    system(command.c_str());
+    inputFile.open("bcfgenodata.txt");
 
-    infile.open(filename, ios::binary);
+    caseCount = 4;
 
-    infile.read(buffer, sizeof(headerlength));
-    infile.seekg(headerlength, ios::beg);
+    for(int i = 0; getline(inputFile, line); i++)
+    {
+        int j = 0;
+        for(string::iterator it = line.begin(); it != line.end(); j++)
+        {
+            //Skip space.
+            it++;
+            char leftAllele = *it++;
+            char phase = *it++;
+            char rightAllele = *it++;
+            int left = 0;
+            int right = 0;
+            if(leftAllele == '.')
+            {
+                if(testType == "wsbt")
+                {
+                    gsl_matrix_set(genotypeGslMatrix, i, j, -1);
+                }
+                if (testType == "skat")
+                {
+                    gsl_matrix_set(genotypeGslMatrix, i, j, 2 * gsl_vector_get(maf, i));
+                }
+            }
+            else if(leftAllele != '0')
+            {
+                left = 1;
+            }
+            if(rightAllele == '.')
+            {
+                //If we have already taken care of the missing data we dont need to again.
+                if (leftAllele != '.')
+                {
+                    if (testType == "wsbt")
+                    {
+                        gsl_matrix_set(genotypeGslMatrix, i, j, -1);
+                    }
+                    if (testType == "skat")
+                    {
+                        gsl_matrix_set(genotypeGslMatrix, i, j, 2 * gsl_vector_get(maf, i));
+                    }
+                }
+                continue;
+            }
+            else if (rightAllele != '0')
+            {
+                right = 1;
+            }  
+            gsl_matrix_set(genotypeGslMatrix, i, j, left + right);
+        }
+    }
 
     inputFile.close();
 }

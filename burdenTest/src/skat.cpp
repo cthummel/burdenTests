@@ -40,7 +40,7 @@ skat::skat(gsl_matrix *geno, gsl_vector *maf, gsl_matrix *covariates, gsl_vector
     weightMatrix = gsl_matrix_calloc(variantCount, variantCount);
     kernel = gsl_matrix_alloc(subjectCount, subjectCount);
     coeff = gsl_vector_alloc(covariates->size2);
-    eigenvalues = gsl_vector_alloc(subjectCount);
+    eigenvalues = gsl_vector_calloc(subjectCount);
 
     string kernel_type = "linear";
 
@@ -103,14 +103,60 @@ void skat::setWeights(gsl_vector *maf)
 }
 
 //Remember matrix multiplication goes right to left. So G'WG needs to calculate G'(WG) in a sense. (v = rows, s = columns)
-//sxv vxv vxs -> sxv vxs -> sxs is kernal's final dimensions.
+//sxv vxv vxs -> sxv vxs -> sxs is kernel's final dimensions.
+//Currently, missing genotype data is coded as -1 in the geno matrix. Wat do.
 void skat::makeKernel(string kernel_type)
 {
     if (kernel_type == "linear")
     {
+        string buildType = "notcareful";
         gsl_matrix *tempkernel = gsl_matrix_alloc(variantCount, subjectCount);
-        gsl_blas_dgemm(CblasNoTrans, CblasNoTrans, 1, weightMatrix, genoMatrix, 0, tempkernel);
-        gsl_blas_dgemm(CblasTrans, CblasNoTrans, 1.0, genoMatrix, tempkernel, 0.0, kernel);
+        if (buildType == "careful")
+        {        
+            for(int i = 0; i < variantCount; i++)
+            {
+                gsl_vector *weightRow = gsl_vector_alloc(variantCount);
+                gsl_matrix_get_row(weightRow, weightMatrix, i);
+                for(int j = 0; j < subjectCount; j++)
+                {
+                    gsl_vector *genoColumn = gsl_vector_alloc(variantCount);
+                    gsl_matrix_get_row(genoColumn, genoMatrix, j);
+                    gsl_matrix_set(tempkernel, i, j, dotProductCheck(weightRow, genoColumn));
+                }
+            }
+
+        }
+        else
+        {
+            //gsl_matrix *tempkernel = gsl_matrix_alloc(variantCount, subjectCount);
+            gsl_blas_dgemm(CblasNoTrans, CblasNoTrans, 1, weightMatrix, genoMatrix, 0, tempkernel);
+            gsl_blas_dgemm(CblasTrans, CblasNoTrans, 1.0, genoMatrix, tempkernel, 0.0, kernel);
+        }
+
+        
+
+        ofstream outfile;
+        outfile.open("kernel.txt");
+        for (int i = 0; i < kernel->size1; i++)
+        {
+            for (int j = 0; j < kernel->size2; j++)
+            {
+                outfile << gsl_matrix_get(kernel, i, j) << " ";
+            }
+            outfile << endl;
+        }
+        outfile.close();
+        //ofstream outfile;
+        outfile.open("tempkernel.txt");
+        for (int i = 0; i < variantCount; i++)
+        {
+            for (int j = 0; j < subjectCount; j++)
+            {
+                outfile << gsl_matrix_get(tempkernel, i, j) << " ";
+            }
+            outfile << endl;
+        }
+        outfile.close();
     }
     else if (kernel_type == "quad")
     {
@@ -171,50 +217,12 @@ void skat::setTestStatistic()
 
         gsl_matrix *temp_V = gsl_matrix_alloc(subjectCount, subjectCount);
         gsl_blas_dgemm(CblasNoTrans, CblasTrans, 1, V, V, 0.0, temp_V);
-        gsl_matrix_scale(temp_V, 1.0 / Vsum);
+        gsl_matrix_scale(temp_V, -1.0 / Vsum);
         gsl_matrix_memcpy(P0, V);
-        for(int i = 0; i < 10; i++)
-        {
-            cout << i << " of V: " << gsl_matrix_get(V, i, i) << endl;
-        }
-        for(int i = 0; i < 10; i++)
-        {
-            cout << i << " of temp_V: " << gsl_matrix_get(temp_V, i, i) << endl;
-        }
-        for(int i = 0; i < 10; i++)
-        {
-            cout << i << " of P0: " << gsl_matrix_get(P0, i, i) << endl;
-        }
-        gsl_matrix_sub(P0, temp_V);
-        /*
-        gsl_matrix *A = gsl_matrix_alloc(2,2);
-        gsl_matrix *Acheck = gsl_matrix_alloc(2,2);
-        gsl_matrix_set(A, 0, 0, 33);
-        gsl_matrix_set(A, 0, 1, 24);
-        gsl_matrix_set(A, 1, 0, 48);
-        gsl_matrix_set(A, 1, 1, 57);
-        cout << "A: " << gsl_matrix_get(A, 0, 0) << " " << gsl_matrix_get(A, 0, 1) << endl;
-        cout << "   " << gsl_matrix_get(A, 1, 0) << " " << gsl_matrix_get(A, 1, 1) << endl;
-        sqrtMatrix(A);
-        cout << "A^{1/2}: " << gsl_matrix_get(A, 0, 0) << " " << gsl_matrix_get(A, 0, 1) << endl;
-        cout << "         " << gsl_matrix_get(A, 1, 0) << " " << gsl_matrix_get(A, 1, 1) << endl;
-        gsl_blas_dgemm(CblasNoTrans, CblasNoTrans, 1, A, A, 0, Acheck);
-        cout << "Acheck: " << gsl_matrix_get(Acheck, 0, 0) << " " << gsl_matrix_get(Acheck, 0, 1) << " " << gsl_matrix_get(Acheck, 1, 0) << " "
-            << gsl_matrix_get(Acheck, 1, 1) << endl;
-        */
+        
         //Calculate result = P0^{1/2} * K * P0^{1/2}
         sqrtMatrix(P0);
         
-        for(int i = 0; i < 10; i++)
-        {
-            cout << i << " of P0^{1/2}: " << gsl_matrix_get(P0, i, i) << endl;
-        }
-        gsl_matrix *squareCheck = gsl_matrix_alloc(subjectCount, subjectCount);
-        gsl_blas_dgemm(CblasNoTrans, CblasNoTrans, 1, P0, P0, 0, squareCheck);
-        for(int i = 0; i < 10; i++)
-        {
-            cout << i << " of squarecheck: " << gsl_matrix_get(squareCheck, i, i) << endl;
-        }
         gsl_matrix *temp = gsl_matrix_alloc(subjectCount, subjectCount);
         gsl_matrix *result = gsl_matrix_alloc(subjectCount, subjectCount);
         gsl_blas_dgemm(CblasNoTrans, CblasNoTrans, 1, P0, kernel, 0.0, temp);
@@ -224,7 +232,6 @@ void skat::setTestStatistic()
         gsl_eigen_symm_workspace *work = gsl_eigen_symm_alloc(subjectCount);
         gsl_eigen_symm(result, eigenvalues, work);
 
-        
         //Cleanup
         gsl_matrix_free(temp_V);
         gsl_matrix_free(temp);
@@ -321,36 +328,51 @@ void skat::setPvalue()
     gsl_vector_set_zero(noncentral);
     gsl_vector_int_set_all(df, 1);
 
+    //Get a count of actual number of eigenvalues. Should be equal to subjectCount but just in case.
     int eigenCount = 0;
-    //cout << "Eigenvalues: ";
+    double sum = 0;
+    cout << "Eigenvalues: ";
     for(int i = 0; i < eigenvalues->size; i++)
     {
         double value = gsl_vector_get(eigenvalues, i);
         if(value != 0)
         {
-            //cout << value << endl;
+            //cout << value << " ";
             eigenCount++;
+            sum += value;
         }
         
     }
+    cout << endl;
     cout << "Total of " << eigenCount << " eigenvalues." << endl;
-
+    cout << "Eigenvalue sum is " << sum << "." << endl;
+    gsl_vector_reverse(eigenvalues);
     //Allocate other parameters for Davies Method
     int fault;
     double sigma = 0.0;
-    double lim = 1000;          //Max iterations
+    double lim = 10000;          //Max iterations
     double acc = .000001;       //Target accuracy
     double trace[7];            //Error cache
 
     //Send eigenvalues to calculate p-value.
     pvalue = 1 - qf(eigenvalues->data, noncentral->data, df->data, eigenCount, 
                     sigma, testStatistic, lim, acc, trace, &fault);
+    if(fault)
+    {
+        cout << "Fault is " << fault << endl;
+        pvalue = -1;
+    }
+    
+    for (int i = 0; i < 7; i++)
+    {
+        cout << "trace at " << i << " is " << trace[i] << endl;
+    }
 }
 
 gsl_vector *skat::logisticRegression()
 {
     gsl_vector *uhat = gsl_vector_alloc(subjectCount);
-    if (X->size2 == 0)
+    if (X->size2 == 1)
     {
         //No covariates
     }
@@ -363,7 +385,7 @@ gsl_vector *skat::logisticRegression()
 double skat::linearRegression()
 {
     double sigma;
-    if (X->size2 == 0)
+    if (X->size2 == 1)
     {
         //No covariates
     }
@@ -415,3 +437,28 @@ int skat::sqrtMatrix(gsl_matrix *m)
     gsl_matrix_free(D);
     return errorCode;
 }
+
+//This is for checking if the genotype matrix has entries for missing data.
+//We want to skip that missing data entirely and just continue marking it as missing.
+//If most of the data is there, this function is slow.
+double skat::dotProductCheck(gsl_vector *left, gsl_vector *right)
+{
+    double result;
+    for(int i = 0; i < left->size; i++)
+    {
+        if(gsl_vector_get(left, i) < 0)
+        {
+            return -1;
+        }
+    }
+    for(int i = 0; i < right->size; i++)
+    {
+        if(gsl_vector_get(right, i) < 0)
+        {
+            return -1;
+        }
+    }
+    gsl_blas_ddot(left, right, &result);
+    return result;
+}
+

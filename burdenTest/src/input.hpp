@@ -44,6 +44,7 @@ private:
     int variantCount;
     int subjectCount;
     int caseCount;
+    string testType;
     string vcfType;
     string bcftools_loc = "../externals/bin/bcftools";
     string bgzip_loc = "../externals/bin/bgzip";
