@@ -24,7 +24,7 @@ writeOutput::writeOutput(string filename, string test_type, gsl_vector* weights)
     //If a test doesnt output weights then the vector will be empty.
     if(weights->size != 0)
     {
-        outfile.open("anno.tab");
+        outfile.open("tmp/anno.tab");
         infile.open(filename);
         for(int i = 0; getline(infile, line); )
         {
@@ -50,7 +50,7 @@ writeOutput::writeOutput(string filename, string test_type, gsl_vector* weights)
     {
         testInfoTag = "WSBT_WEIGHT";
         description = "\"Weight from Weighted Sums Burden Test. Low weight means high impact and high weight means low impact.\"";
-        outfile.open("anno.hdr");
+        outfile.open("tmp/anno.hdr");
         outfile << "##INFO=<ID=" + testInfoTag + ",Number=1,Type=Float,Description=" + description + ">" << endl;
         outfile.close();
         
@@ -77,13 +77,13 @@ writeOutput::writeOutput(string filename, string test_type, gsl_vector* weights)
     
     
     
-    zip = bgzip_loc + " -f anno.tab";
+    zip = bgzip_loc + " -f tmp/anno.tab";
     system(zip.c_str());
-    string tabix = tabix_loc + " -f -s1 -b2 -e3 anno.tab.gz";
+    string tabix = tabix_loc + " -f -s1 -b2 -e3 tmp/anno.tab.gz";
     system(tabix.c_str());
     //zip = "bgzip test5.vcf";
     //system(zip.c_str());
-    string annotateCommand = bcftools_loc + " annotate -a anno.tab.gz -h anno.hdr -c CHROM,FROM,TO," + testInfoTag + " " + filename + " > testOutput.vcf";
+    string annotateCommand = bcftools_loc + " annotate -a tmp/anno.tab.gz -h tmp/anno.hdr -c CHROM,FROM,TO," + testInfoTag + " " + filename + " > testOutput.vcf";
     system(annotateCommand.c_str());
     zip = bgzip_loc + " -f testOutput.vcf";
     system(zip.c_str());

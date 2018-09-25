@@ -25,8 +25,8 @@ class skat
     
 public:
     skat(gsl_matrix* geno, gsl_vector* maf, gsl_matrix* covariates, gsl_vector* pheno);
-    
-    
+    double getPvalue(){return pvalue;}
+    double getQ(){return testStatistic;}
     
 private:
     int X_Count;

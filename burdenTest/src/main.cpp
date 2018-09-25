@@ -73,10 +73,10 @@ int main(int argc, const char * argv[])
             if (argc > i)
             {
                 phenofilename = argv[i+1];
-                if (phenofilename.substr(phenofilename.length() - 6) != ".pheno")
+                if (phenofilename.substr(phenofilename.length() - 4) != ".ped")
                 {
                     //They input a filename that isnt a .pheno
-                    cout << "burdenTest -pheno <filename.pheno>\n";
+                    cout << "burdenTest -pheno <filename.ped>\n";
                     return 0;
                 }
                 i++;
@@ -195,7 +195,6 @@ int main(int argc, const char * argv[])
         lasttime = currentTime;
         auto endTime = std::chrono::high_resolution_clock::now();
         cout << "Total Time: " << std::chrono::duration_cast<std::chrono::milliseconds>(endTime-startTime).count()/60000.0 << " minutes." << endl;
-        cout << testType << " is not yet implemented." << endl;
     }
     else if (testType == "skato")
     {

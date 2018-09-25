@@ -102,61 +102,15 @@ void skat::setWeights(gsl_vector *maf)
     outfile.close();
 }
 
-//Remember matrix multiplication goes right to left. So G'WG needs to calculate G'(WG) in a sense. (v = rows, s = columns)
+//(v = rows, s = columns)
 //sxv vxv vxs -> sxv vxs -> sxs is kernel's final dimensions.
-//Currently, missing genotype data is coded as -1 in the geno matrix. Wat do.
 void skat::makeKernel(string kernel_type)
 {
     if (kernel_type == "linear")
     {
-        string buildType = "notcareful";
         gsl_matrix *tempkernel = gsl_matrix_alloc(variantCount, subjectCount);
-        if (buildType == "careful")
-        {        
-            for(int i = 0; i < variantCount; i++)
-            {
-                gsl_vector *weightRow = gsl_vector_alloc(variantCount);
-                gsl_matrix_get_row(weightRow, weightMatrix, i);
-                for(int j = 0; j < subjectCount; j++)
-                {
-                    gsl_vector *genoColumn = gsl_vector_alloc(variantCount);
-                    gsl_matrix_get_row(genoColumn, genoMatrix, j);
-                    gsl_matrix_set(tempkernel, i, j, dotProductCheck(weightRow, genoColumn));
-                }
-            }
-
-        }
-        else
-        {
-            //gsl_matrix *tempkernel = gsl_matrix_alloc(variantCount, subjectCount);
-            gsl_blas_dgemm(CblasNoTrans, CblasNoTrans, 1, weightMatrix, genoMatrix, 0, tempkernel);
-            gsl_blas_dgemm(CblasTrans, CblasNoTrans, 1.0, genoMatrix, tempkernel, 0.0, kernel);
-        }
-
-        
-
-        ofstream outfile;
-        outfile.open("kernel.txt");
-        for (int i = 0; i < kernel->size1; i++)
-        {
-            for (int j = 0; j < kernel->size2; j++)
-            {
-                outfile << gsl_matrix_get(kernel, i, j) << " ";
-            }
-            outfile << endl;
-        }
-        outfile.close();
-        //ofstream outfile;
-        outfile.open("tempkernel.txt");
-        for (int i = 0; i < variantCount; i++)
-        {
-            for (int j = 0; j < subjectCount; j++)
-            {
-                outfile << gsl_matrix_get(tempkernel, i, j) << " ";
-            }
-            outfile << endl;
-        }
-        outfile.close();
+        gsl_blas_dgemm(CblasNoTrans, CblasNoTrans, 1, weightMatrix, genoMatrix, 0, tempkernel);
+        gsl_blas_dgemm(CblasTrans, CblasNoTrans, 1.0, genoMatrix, tempkernel, 0.0, kernel);
     }
     else if (kernel_type == "quad")
     {
@@ -164,6 +118,7 @@ void skat::makeKernel(string kernel_type)
         gsl_blas_dgemm(CblasNoTrans, CblasNoTrans, 1, weightMatrix, genoMatrix, 0, tempkernel);
         gsl_blas_dgemm(CblasTrans, CblasNoTrans, 1.0, genoMatrix, tempkernel, 0.0, kernel);
         gsl_matrix_add_constant(kernel, 1);
+        //Should actually square the matrix.
         gsl_matrix_mul_elements(kernel, kernel);
     }
     else if (kernel_type == "IBS")

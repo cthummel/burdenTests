@@ -26,7 +26,7 @@ public:
     readInput(string testType, string vcfType, string vcfFile1, string region, string phenoFile, string covFile);
     
     void readVcfInitialInfo(string filename);
-    void readGenotype(string filename, gsl_matrix *inputMatrix, int subjectOffset);
+    void readCaseCount(string filename);
     void readPhenotype(string phenoFile);
     void readMaf(string filename);
     void makePositionFile(string filename);
@@ -46,9 +46,9 @@ private:
     int caseCount;
     string testType;
     string vcfType;
-    string bcftools_loc = "../externals/bin/bcftools";
-    string bgzip_loc = "../externals/bin/bgzip";
-    string externals_loc = "../externals/bin/";
+    string bcftools_loc = "../../externals/bin/bcftools";
+    string bgzip_loc = "../../externals/bin/bgzip";
+    string externals_loc = "../../externals/bin/";
     regex gMatch;
     regex altAlleleCountMatch;
     regex mafMatch;
