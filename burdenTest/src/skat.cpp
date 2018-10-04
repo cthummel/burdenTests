@@ -8,6 +8,7 @@
 
 #include <fstream>
 #include <gsl/gsl_statistics.h>
+#include <cmath>
 #include "skat.hpp"
 #include "davies.cpp"
 
@@ -129,8 +130,8 @@ void skat::makeKernel(string kernel_type)
             double temp = 0;
             for(int j = 0; j < variantCount; j++)
             {
-                temp += gsl_matrix_get(weightMatrix, i, i)
-                        * (2 - abs(gsl_matrix_get(genoMatrix, i, j) - gsl_matrix_get(genoMatrix, j, i)));
+                double diff = gsl_matrix_get(genoMatrix, i, j) - gsl_matrix_get(genoMatrix, j, i);
+                temp += gsl_matrix_get(weightMatrix, i, i) * (2 - fabs(diff));
             }
             gsl_matrix_set(kernel, i, i, temp);
         }

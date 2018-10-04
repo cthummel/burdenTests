@@ -12,13 +12,14 @@ using namespace std;
 
 
 
-readInput::readInput(string tType, string inputVcfType, string userVcf, string region, string phenoFile, string covFile)
+readInput::readInput(string dir, string tType, string inputVcfType, string userVcf, string region, string phenoFile, string covFile)
 {
     variantCount = 0;
     subjectCount = 0;
     caseCount = 0;
     vcfType = inputVcfType;
     testType = tType;
+    testDir = dir;
     
     gMatch = regex("(\\.\\/\\.)|(\\d)(\\/|\\|)(\\d)");
     altAlleleCountMatch = regex("[ATGCN],[ATGCN]");
@@ -70,6 +71,7 @@ readInput::readInput(string tType, string inputVcfType, string userVcf, string r
         readMaf(userVcf);
         bcfInput(userVcf);
         readCaseCount(userVcf);
+        readGenes("refFlat.txt");
 
         if(phenoFile == "")
         {
@@ -110,23 +112,35 @@ void readInput::readVcfInitialInfo(string filename)
     variantCount = 0;
     regex caseMatch("(\\t(\\d[^\\s]+))+");
     
+    //So we can remove the directory that has the file and just keep the filename itself.
+    int filePos;
+    for(int i = filename.length(); i >= 0; i--)
+    {
+        if (filename[i] == '/')
+        {
+            filePos = i + 1;
+            break;
+        }
+    }
+
     //Remove the filetype from filename.
     if(filename.substr(filename.length() - 7) == ".vcf.gz")
     {
-        statsFileName = filename.substr(0, filename.length() - vcfType.length() - 1);
+        statsFileName = filename.substr(filePos, filename.length() - 7);
     }
     else if(filename.substr(filename.length() - 4) == ".vcf")
     {
-        statsFileName = filename.substr(0, filename.length() - vcfType.length());
+        statsFileName = filename.substr(filePos, filename.length() - vcfType.length());
     }
-    
-    string summaryCommand = bcftools_loc + " stats " + filename + " > tmp/" + statsFileName + ".stats";
+    cout << "statsFileName: " << statsFileName << endl;
+    string summaryCommand = bcftools_loc + " stats " + filename + " > " + testDir + "/tmp/" + statsFileName + ".stats";
+    cout << "summaryCommand: " << summaryCommand << endl;
     system(summaryCommand.c_str());
     
     
     if(!inputFile.is_open())
     {
-        inputFile.open("tmp/" + statsFileName + ".stats");
+        inputFile.open(testDir + "/tmp/" + statsFileName + ".stats");
         for(int j = 0; getline(inputFile, line); j++)
         {
             if (subjectCount == 0)
@@ -242,10 +256,10 @@ void readInput::readMaf(string filename)
     if(!inputFile.is_open())
     {
         string line;
-        string command = externals_loc + "bcftools query -f '%AF\\n' " + filename + " > tmp/mafdata.txt";
+        string command = externals_loc + "bcftools query -f '%AF\\n' " + filename + " > mafdata.txt";
         maf = gsl_vector_alloc(variantCount);
         
-        inputFile.open("tmp/mafdata.txt");
+        inputFile.open("mafdata.txt");
         for(int i = 0; getline(inputFile, line); i++)
         {
             gsl_vector_set(maf, i, stod(line));
@@ -261,7 +275,7 @@ void readInput::makePositionFile(string filename)
     
     if (!inputFile.is_open())
     {
-        ofstream outFile("tmp/pos.txt", ofstream::out);
+        ofstream outFile("pos.txt", ofstream::out);
         inputFile.open(filename);
         for(int j = 0; getline(inputFile, line); j++)
         {
@@ -277,9 +291,6 @@ void readInput::makePositionFile(string filename)
         outFile.close();
         inputFile.close();
     }
-    //filename here should be the background file we use for unaffected.
-    //string subsetCommand = "vcftools -" + vcfType + " " + backgroundVcf + " --positions pos.txt --recode";
-    //system(subsetCommand.c_str());
     
 }
 
@@ -348,15 +359,35 @@ void readInput::bcfInput(string filename)
 {
     string line;
     string geneFile = "tmp/" + filename + ".genodata.txt";
-    string command = externals_loc + "bcftools query -f '[ %GT]\\n' " + filename + " > " + geneFile;
+    string command = externals_loc + "bcftools query -f '%CHROM,%POS[ %GT]\\n' " + filename + " > " + geneFile;
     //cout << "Parse command: " << command << endl;
     system(command.c_str());
-    inputFile.open(geneFile);
 
+    string currentChrom;
+    inputFile.open(geneFile);
     for(int i = 0; getline(inputFile, line); i++)
     {
-        int j = 0;
-        for(string::iterator it = line.begin(); it != line.end(); j++)
+        //Pull out variant chomosome and base pair position.
+        string::iterator it = line.begin();
+        int comma = line.find_first_of(',');
+        int pos = line.find_first_of(' ');
+        if (i == 0)
+        {
+            currentChrom = line.substr(0, comma);
+        }
+        if (currentChrom != line.substr(0, comma))
+        {
+            posMap.insert(pair<string, vector<int> >(currentChrom, vcfPos));
+            cout << vcfPos.size() << " variants in chromosome " << currentChrom << endl;
+            vcfPos.clear();
+            currentChrom = line.substr(0, comma);
+        }
+        //vcfChrom.push_back(line.substr(0, comma));
+        vcfPos.push_back(stoi(line.substr(comma + 1, pos)));
+        advance(it, pos);
+        //cout << "(" << vcfChrom[i] << ", " << vcfPos[i] << ")";
+        //if(vcfChrom.size() == 0 || vcfPos.size() == 0)
+        for(int j = 0; it != line.end(); j++)
         {
             //Skip space.
             it++;
@@ -376,6 +407,7 @@ void readInput::bcfInput(string filename)
                     gsl_matrix_set(genotypeGslMatrix, i, j, 2 * gsl_vector_get(maf, i));
                 }
             }
+            //Not set up to handle multiallelic sites.
             else if(leftAllele != '0')
             {
                 left = 1;
@@ -403,8 +435,109 @@ void readInput::bcfInput(string filename)
             gsl_matrix_set(genotypeGslMatrix, i, j, left + right);
         }
     }
-
+    posMap.insert(pair<string, vector<int> >(currentChrom, vcfPos));
+    cout << vcfPos.size() << " variants in chromosome " << currentChrom << endl;
     inputFile.close();
+}
+
+//Only run after reading in combined data set.
+//Generates a gsl_matrix_view for the variants in a given gene and saves it in a dictionary with the gene name as key.
+void readInput::readGenes(string filename)
+{
+    string line;
+    vector<string> geneName;    //Column 1
+    vector<string> geneChrom;   //Column 3
+    vector<int> codingStartPos; //Column 7
+    vector<int> codingEndPos;   //Column 8
+
+    cout << "Reading gene data from " << filename << endl;
+
+    if (inputFile.is_open())
+    {
+        cout << "inputFile already in use." << endl;
+        inputFile.close();
+    }
+    inputFile.open(filename);
+    for(int i = 0; getline(inputFile, line); i++)
+    {
+        size_t last = 0;
+        size_t current = line.find('\t', last);
+        for (int j = 0; current != string::npos; j++)
+        {
+            string token = line.substr(last, current - last);
+            if (j == 0)
+            {
+                geneName.push_back(token);
+            }
+            if (j == 2)
+            {
+                geneChrom.push_back(token);
+            }
+            if (j == 6)
+            {
+                codingStartPos.push_back(stoi(token));
+            }
+            if (j == 7)
+            {
+                codingEndPos.push_back(stoi(token));
+            }
+            last = current + 1;
+            current = line.find('\t', last);
+        }
+    }
+    inputFile.close();
+
+    cout << "Looking through " << geneName.size() << " genes." << endl;
+
+    //Subsets the user data so variants match with known genes.
+    //Could improve speed by making sure we dont re-search over the same chromosome when looking for user variant matches.
+    for(int i = 0; i < geneName.size(); i++)
+    {
+        //Check if the chromosome of current gene is even in the data set.
+        if(posMap.find(geneChrom[i]) == posMap.end())
+        {
+            cout << geneName[i] << "'s chromosome was not found in data set. Skipping." << endl;
+            continue;
+        }
+        cout << "AT least some chromosome made it through" << endl;
+        //Iterate through all the variants in a chromosome to find a match.
+        vector<gsl_vector *> tempVariant;
+        vector<double> tempMaf;
+        for(int j = 0; j < posMap[geneChrom[i]].size(); j++)
+        {
+            //Consider not searching the early positions multiple times. Could initiate j to the last seen useful position.
+            if (posMap[geneChrom[i]][j] >= codingStartPos[i] && posMap[geneChrom[i]][j] <= codingEndPos[i])
+            {
+                cout << "Matched variant to " << geneName[i] << endl;
+                gsl_vector *tempGenoData = gsl_vector_alloc(subjectCount);
+                gsl_matrix_get_row(tempGenoData, genotypeGslMatrix, j);
+                tempVariant.push_back(tempGenoData);
+                tempMaf.push_back(gsl_vector_get(maf, j));
+            }
+            if (posMap[geneChrom[i]][j] > codingEndPos[i])
+            {
+                break;
+            }
+        }
+        if(tempVariant.size() == 0)
+        {
+            //Gene chromosome matched some variants chromosome in user data set but positions didnt match.
+            cout << geneName[i] << " was not found in data set. Skipping." << endl;
+        }
+        else
+        {
+            gsl_matrix *genotypeSubset = gsl_matrix_alloc((int)tempVariant.size(), subjectCount);
+            gsl_vector *mafSubset = gsl_vector_alloc((int)tempMaf.size());
+            for (int j = 0; j < tempVariant.size(); j++)
+            {
+                gsl_matrix_set_row(genotypeSubset, j, tempVariant[j]);
+                gsl_vector_set(mafSubset, j, tempMaf[j]);
+            }
+            genes.insert(pair<string, gsl_matrix *>(geneName[i], genotypeSubset));
+            geneMaf.insert(pair<string, gsl_vector *>(geneName[i], mafSubset));
+            cout << "Found " << tempVariant.size() <<  " variants in " << geneName[i] << endl;
+        }
+    }
 }
 
 
