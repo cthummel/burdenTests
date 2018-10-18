@@ -45,9 +45,11 @@ public:
     
 
 private:
+    void parseGenes(string chromosome, vector<string> *geneName);
     int variantCount;
     int subjectCount;
     int caseCount;
+    string variantRegion;
     string testType;
     string vcfType;
     string bcftools_loc = "../../externals/bin/bcftools";

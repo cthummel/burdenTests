@@ -14,7 +14,7 @@
 #include "wsbt.cpp"
 #include "input.cpp"
 #include "output.cpp"
-#include "cast.cpp"
+//#include "cast.cpp"
 #include "skat.cpp"
 
 using namespace std;
@@ -147,6 +147,7 @@ int main(int argc, const char * argv[])
         if(strcmp(argv[i], "-g") == 0)
         {
             geneBased = true;
+            region = argv[i];
         }
     }
     
@@ -163,8 +164,8 @@ int main(int argc, const char * argv[])
     currentTime = std::chrono::high_resolution_clock::now();
     lasttime = currentTime;
     cout << endl;
-    cout << "After Input. Took " << std::chrono::duration_cast<std::chrono::milliseconds>(currentTime-startTime).count() / 60000.0 << " minutes."<< endl;
-    
+    cout << "After Input. Took " << std::chrono::duration_cast<std::chrono::milliseconds>(currentTime-startTime).count() / 1000.0 << " seconds."<< endl;
+    cout << endl;
     
     if(testType == "wsbt")
     {
@@ -202,16 +203,18 @@ int main(int argc, const char * argv[])
     else if (testType == "skat")
     {
         currentTime = std::chrono::high_resolution_clock::now();
-        cout << "Before SKAT Test." << std::chrono::duration_cast<std::chrono::milliseconds>(currentTime - lasttime).count() << endl;
+        //cout << "Before SKAT Test." << endl;
         lasttime = currentTime;
         if (geneBased)
         {
             map<string, gsl_matrix*> subsets = result.getGeneSubsets();
             for(map<string, gsl_matrix *>::iterator iter = subsets.begin(); iter != subsets.end(); iter++)
             {
+                cout << "Running SKAT test on gene " << iter->first << endl;
                 skat test = skat(iter->second, result.getMaf(iter->first), result.getCovariates(), result.getPheno());
                 currentTime = std::chrono::high_resolution_clock::now();
                 cout << "SKAT Took " << std::chrono::duration_cast<std::chrono::milliseconds>(currentTime - lasttime).count() / 60000.0 << " minutes." << endl;
+                cout << endl;
                 lasttime = currentTime;
             }
         }

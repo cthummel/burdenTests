@@ -32,6 +32,7 @@ private:
     int X_Count;
     int subjectCount;
     int variantCount;
+    int caseCount;
     double testStatistic;
     double regression;
     double pvalue;
@@ -40,12 +41,14 @@ private:
     void setWeights(gsl_vector *maf);
     void makeKernel(string kernel_type);
     void setTestStatistic();
+    void qDistribution();
     void setPvalue();
     gsl_vector* logisticRegression();
     double linearRegression();
     gsl_matrix* matrixInverse(gsl_matrix* m);
     int sqrtMatrix(gsl_matrix *input);
     double dotProductCheck(gsl_vector* left, gsl_vector *right);
+    bool checkVariants(gsl_matrix *genotype, gsl_vector *phenotype);
 
     
     gsl_matrix *genoMatrix;

@@ -16,11 +16,20 @@ using namespace std;
 
 skat::skat(gsl_matrix *geno, gsl_vector *maf, gsl_matrix *covariates, gsl_vector *phenotype)
 {
+    isBinary = true;
+    //Check whether the affected individuals even have the variants in question.
+    if(!checkVariants(geno, phenotype))
+    {
+        cout << "Affected individuals do not have genotype data for current set of variants." << endl;
+        return;
+    }
+
     //Initialize variables.
     subjectCount = (int)geno->size2;
     variantCount = (int)geno->size1;
+    cout << "Variant Count: " << endl;
     X_Count = (int)covariates->size2;
-    isBinary = true;
+    /*
     for (int i = 0; i < phenotype->size; i++)
     {
         if (gsl_vector_get(phenotype, i) == 0 || gsl_vector_get(phenotype, i) == 1)
@@ -34,7 +43,7 @@ skat::skat(gsl_matrix *geno, gsl_vector *maf, gsl_matrix *covariates, gsl_vector
             break;
         }
     }
-
+    */
     genoMatrix = geno;
     X = covariates;
     pheno = phenotype;
@@ -63,12 +72,18 @@ skat::skat(gsl_matrix *geno, gsl_vector *maf, gsl_matrix *covariates, gsl_vector
 
     setTestStatistic();
     currentTime = chrono::high_resolution_clock::now();
-    cout << "Setting test statistic took " << std::chrono::duration_cast<std::chrono::milliseconds>(currentTime - lastTime).count() / 60000.0 << " minutes." << endl;
+    cout << "Setting test statistic took " << std::chrono::duration_cast<std::chrono::milliseconds>(currentTime - lastTime).count() / 1000.0 << " seconds." << endl;
     lastTime = currentTime;
     cout << "Got Q=" << testStatistic << endl;
+
+    qDistribution();
+    currentTime = chrono::high_resolution_clock::now();
+    cout << "Finding Q distribution took " << std::chrono::duration_cast<std::chrono::milliseconds>(currentTime - lastTime).count() / 60000.0 << " minutes." << endl;
+    lastTime = currentTime;
+
     ofstream outfile;
     outfile.open("skateigenvalues.txt");
-    for(int i = 0; i < eigenvalues->size; i++)
+    for (int i = 0; i < eigenvalues->size; i++)
     {
         outfile << gsl_vector_get(eigenvalues, i) << endl;
     }
@@ -80,12 +95,9 @@ skat::skat(gsl_matrix *geno, gsl_vector *maf, gsl_matrix *covariates, gsl_vector
     cout << "Got a pvalue of: " << pvalue << endl;
 
     //Cleanup after test.
-    gsl_vector_free(pheno);
     gsl_vector_free(eigenvalues);
-    gsl_matrix_free(X);
-    gsl_matrix_free(weightMatrix);
-    gsl_matrix_free(kernel);
-    gsl_matrix_free(genoMatrix);
+    //gsl_matrix_free(weightMatrix);
+    //gsl_matrix_free(kernel);
 }
 
 //Creates the mxm matrix of weights.
@@ -125,10 +137,10 @@ void skat::makeKernel(string kernel_type)
     else if (kernel_type == "IBS")
     {
         //Additively coded autosomal data
-        for(int i = 0; i < subjectCount; i++)
+        for (int i = 0; i < subjectCount; i++)
         {
             double temp = 0;
-            for(int j = 0; j < variantCount; j++)
+            for (int j = 0; j < variantCount; j++)
             {
                 double diff = gsl_matrix_get(genoMatrix, i, j) - gsl_matrix_get(genoMatrix, j, i);
                 temp += gsl_matrix_get(weightMatrix, i, i) * (2 - fabs(diff));
@@ -143,11 +155,69 @@ void skat::setTestStatistic()
     //Test Statistic
     //Q = (y - u) * K * (y - u)'
     // 1xn nxn nx1 -> 1xn nx1 -> 1x1 = Q
+    double uhat = gsl_stats_mean(pheno->data, 1, pheno->size);
+    gsl_vector *diff = gsl_vector_alloc(subjectCount);
+    for(int i = 0; i < subjectCount; i++)
+    {
+        gsl_vector_set(diff, i, gsl_vector_get(pheno, i) - uhat);
+    }
     gsl_vector *tempstat = gsl_vector_alloc(subjectCount);
-    gsl_blas_dgemv(CblasNoTrans, 1.0, kernel, pheno, 0.0, tempstat);
-    gsl_blas_ddot(pheno, tempstat, &testStatistic);
+    gsl_blas_dgemv(CblasNoTrans, 1.0, kernel, diff, 0.0, tempstat);
+    /*
+    ofstream out;
+    out.open("teststatvector.txt");
+    for (int i = 0; i < tempstat->size; i++)
+    {
+        out << gsl_vector_get(tempstat, i) << " ";
+    }
+    out.close();
+    out.open("phenovector.txt");
+    for (int i = 0; i < pheno->size; i++)
+    {
+        out << gsl_vector_get(pheno, i) << " ";
+    }
+    out.close();
+    out.open("kernelpeek.txt");
+    for (int i = 0; i < kernel->size1; i++)
+    {
+        for (int j = 0; j < kernel->size2; j++)
+        {
+            out << gsl_matrix_get(kernel, i, j) << " ";
+        }
+        out << endl;
+    }
+    out.close();
+    out.open("weightMatrixpeek.txt");
+    for (int i = 0; i < weightMatrix->size1; i++)
+    {
+        for (int j = 0; j < weightMatrix->size2; j++)
+        {
+            out << gsl_matrix_get(weightMatrix, i, j) << " ";
+        }
+        out << endl;
+    }
+    out.close();
+    if (variantCount == 9)
+    {
+        out.open("genopeek.txt");
+        for (int i = 0; i < genoMatrix->size1; i++)
+        {
+            for (int j = 0; j < genoMatrix->size2; j++)
+            {
+                out << gsl_matrix_get(genoMatrix, i, j) << " ";
+            }
+            out << endl;
+        }
+        out.close();
+    }
+    */
+    gsl_blas_ddot(diff, tempstat, &testStatistic);
+    gsl_vector_free(tempstat);
+}
 
-    //Find distribution of Q.
+//Find distribution of Q.
+void skat::qDistribution()
+{
     gsl_matrix *P0 = gsl_matrix_alloc(subjectCount, subjectCount);
     gsl_matrix *V = gsl_matrix_calloc(subjectCount, subjectCount);
     gsl_matrix *Xtilde;
@@ -161,12 +231,12 @@ void skat::setTestStatistic()
         gsl_matrix_set_all(Xtilde, 1);
 
         //P0 = ;
-        
+
         double Vsum = 0;
-        double uhat = gsl_stats_mean(pheno->data, 1, subjectCount);
+        double uhat = gsl_stats_mean(pheno->data, 1, pheno->size);
         for (int i = 0; i < subjectCount; i++)
         {
-            gsl_matrix_set(V, i, i, uhat*(1-uhat));
+            gsl_matrix_set(V, i, i, uhat * (1 - uhat));
             Vsum += gsl_matrix_get(V, i, i);
         }
         cout << "Vsum = " << Vsum << endl;
@@ -175,10 +245,12 @@ void skat::setTestStatistic()
         gsl_blas_dgemm(CblasNoTrans, CblasTrans, 1, V, V, 0.0, temp_V);
         gsl_matrix_scale(temp_V, -1.0 / Vsum);
         gsl_matrix_memcpy(P0, V);
-        
+        gsl_matrix_add(P0, temp_V);
+        cout << "Built P0." << endl;
+
         //Calculate result = P0^{1/2} * K * P0^{1/2}
         sqrtMatrix(P0);
-        
+
         gsl_matrix *temp = gsl_matrix_alloc(subjectCount, subjectCount);
         gsl_matrix *result = gsl_matrix_alloc(subjectCount, subjectCount);
         gsl_blas_dgemm(CblasNoTrans, CblasNoTrans, 1, P0, kernel, 0.0, temp);
@@ -191,6 +263,7 @@ void skat::setTestStatistic()
         //Cleanup
         gsl_matrix_free(temp_V);
         gsl_matrix_free(temp);
+        gsl_matrix_free(result);
     }
     else
     {
@@ -201,11 +274,11 @@ void skat::setTestStatistic()
         {
             gsl_vector *uhat = logisticRegression();
 
-            gsl_vector_set_all(uhat, .99);
+            //gsl_vector_set_all(uhat, .99);
 
             for (int i = 0; i < subjectCount; i++)
             {
-                gsl_matrix_set(V, i, i, gsl_vector_get(uhat, i)*(1 - gsl_vector_get(uhat, i)));
+                gsl_matrix_set(V, i, i, gsl_vector_get(uhat, i) * (1 - gsl_vector_get(uhat, i)));
             }
         }
         //Run linear regression
@@ -287,38 +360,49 @@ void skat::setPvalue()
     //Get a count of actual number of eigenvalues. Should be equal to subjectCount but just in case.
     int eigenCount = 0;
     double sum = 0;
+    double min = 0;
+    double max = 0;
     cout << "Eigenvalues: ";
-    for(int i = 0; i < eigenvalues->size; i++)
+    for (int i = 0; i < eigenvalues->size; i++)
     {
         double value = gsl_vector_get(eigenvalues, i);
-        if(value != 0)
+        if (value != 0)
         {
             //cout << value << " ";
             eigenCount++;
             sum += value;
+            if (value > max)
+            {
+                max = value;
+            }
+            if (value < min)
+            {
+                min = value;
+            }
         }
-        
     }
     cout << endl;
     cout << "Total of " << eigenCount << " eigenvalues." << endl;
     cout << "Eigenvalue sum is " << sum << "." << endl;
+    cout << "Max Eigenvalue is " << max << endl;
+    cout << "Min Eigenvalue is " << min << endl;
     gsl_vector_reverse(eigenvalues);
     //Allocate other parameters for Davies Method
     int fault;
     double sigma = 0.0;
-    double lim = 10000;          //Max iterations
-    double acc = .000001;       //Target accuracy
-    double trace[7];            //Error cache
+    double lim = 10000;  //Max iterations
+    double acc = .00001; //Target accuracy
+    double trace[7];     //Error cache
 
     //Send eigenvalues to calculate p-value.
-    pvalue = 1 - qf(eigenvalues->data, noncentral->data, df->data, eigenCount, 
+    pvalue = 1 - qf(eigenvalues->data, noncentral->data, df->data, eigenCount,
                     sigma, testStatistic, lim, acc, trace, &fault);
-    if(fault)
+    if (fault)
     {
         cout << "Fault is " << fault << endl;
         pvalue = -1;
     }
-    
+
     for (int i = 0; i < 7; i++)
     {
         cout << "trace at " << i << " is " << trace[i] << endl;
@@ -391,6 +475,7 @@ int skat::sqrtMatrix(gsl_matrix *m)
     gsl_matrix_free(evec);
     gsl_vector_free(eval);
     gsl_matrix_free(D);
+    gsl_matrix_free(result);
     return errorCode;
 }
 
@@ -400,16 +485,16 @@ int skat::sqrtMatrix(gsl_matrix *m)
 double skat::dotProductCheck(gsl_vector *left, gsl_vector *right)
 {
     double result;
-    for(int i = 0; i < left->size; i++)
+    for (int i = 0; i < left->size; i++)
     {
-        if(gsl_vector_get(left, i) < 0)
+        if (gsl_vector_get(left, i) < 0)
         {
             return -1;
         }
     }
-    for(int i = 0; i < right->size; i++)
+    for (int i = 0; i < right->size; i++)
     {
-        if(gsl_vector_get(right, i) < 0)
+        if (gsl_vector_get(right, i) < 0)
         {
             return -1;
         }
@@ -418,3 +503,25 @@ double skat::dotProductCheck(gsl_vector *left, gsl_vector *right)
     return result;
 }
 
+bool skat::checkVariants(gsl_matrix *geno, gsl_vector *pheno)
+{
+    caseCount = 0;
+    for (int i = 0; i < pheno->size; i++)
+    {
+        if (isBinary && gsl_vector_get(pheno, i) == 1)
+        {
+            caseCount++;
+        }
+    }
+    for(int i = 0; i < geno->size1; i++)
+    {
+        for(int j = 0; j < caseCount; j++)
+        {
+            if(gsl_matrix_get(geno, i, j) != 0)
+            {
+                return true;
+            }
+        }
+    }
+    return false;
+}

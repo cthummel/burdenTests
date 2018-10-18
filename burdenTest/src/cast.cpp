@@ -7,3 +7,8 @@
 //
 
 #include "cast.hpp"
+#include <iostream>
+
+using namespace std;
+
+//cout << "Cast is probably never going to get implemented." << endl;

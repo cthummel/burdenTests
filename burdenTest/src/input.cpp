@@ -17,6 +17,7 @@ readInput::readInput(string dir, string tType, string inputVcfType, string userV
     variantCount = 0;
     subjectCount = 0;
     caseCount = 0;
+    variantRegion = region;
     vcfType = inputVcfType;
     testType = tType;
     testDir = dir;
@@ -71,7 +72,11 @@ readInput::readInput(string dir, string tType, string inputVcfType, string userV
         readMaf(userVcf);
         bcfInput(userVcf);
         readCaseCount(userVcf);
-        readGenes("refFlat.txt");
+        if(variantRegion == "-g")
+        {
+            readGenes("refFlat.txt");
+        }
+        
 
         if(phenoFile == "")
         {
@@ -136,7 +141,6 @@ void readInput::readVcfInitialInfo(string filename)
     string summaryCommand = bcftools_loc + " stats " + filename + " > " + testDir + "/tmp/" + statsFileName + ".stats";
     cout << "summaryCommand: " << summaryCommand << endl;
     system(summaryCommand.c_str());
-    
     
     if(!inputFile.is_open())
     {
@@ -257,6 +261,7 @@ void readInput::readMaf(string filename)
     {
         string line;
         string command = externals_loc + "bcftools query -f '%AF\\n' " + filename + " > mafdata.txt";
+        system(command.c_str());
         maf = gsl_vector_alloc(variantCount);
         
         inputFile.open("mafdata.txt");
@@ -367,6 +372,14 @@ void readInput::bcfInput(string filename)
     inputFile.open(geneFile);
     for(int i = 0; getline(inputFile, line); i++)
     {
+        //Check for passing filter.
+        /*
+        if(line.find("PASS") == string::npos)
+        {
+            cout << "Variant did not pass VCF file's filter. Skipping." << endl;
+            continue;
+        }
+        */
         //Pull out variant chomosome and base pair position.
         string::iterator it = line.begin();
         int comma = line.find_first_of(',');
@@ -382,11 +395,10 @@ void readInput::bcfInput(string filename)
             vcfPos.clear();
             currentChrom = line.substr(0, comma);
         }
-        //vcfChrom.push_back(line.substr(0, comma));
+
         vcfPos.push_back(stoi(line.substr(comma + 1, pos)));
         advance(it, pos);
-        //cout << "(" << vcfChrom[i] << ", " << vcfPos[i] << ")";
-        //if(vcfChrom.size() == 0 || vcfPos.size() == 0)
+
         for(int j = 0; it != line.end(); j++)
         {
             //Skip space.
@@ -445,16 +457,20 @@ void readInput::bcfInput(string filename)
 void readInput::readGenes(string filename)
 {
     string line;
-    vector<string> geneName;    //Column 1
-    vector<string> geneChrom;   //Column 3
-    vector<int> codingStartPos; //Column 7
-    vector<int> codingEndPos;   //Column 8
+    vector<string> geneName;        //Column 1
+    vector<string> transcriptName;  //Column 2
+    vector<string> geneChrom;       //Column 3
+    vector<int> txStartPos;         //Column 5
+    vector<int> txEndPos;           //Column 6
+    vector<int> codingStartPos;     //Column 7
+    vector<int> codingEndPos;       //Column 8
 
-    cout << "Reading gene data from " << filename << endl;
+    //cout << "Reading gene data from " << filename << endl;
 
+    //Honestly have no idea why the input stream is still in use.
     if (inputFile.is_open())
     {
-        cout << "inputFile already in use." << endl;
+        //cout << "inputFile already in use." << endl;
         inputFile.close();
     }
     inputFile.open(filename);
@@ -469,9 +485,22 @@ void readInput::readGenes(string filename)
             {
                 geneName.push_back(token);
             }
+            if (j == 1)
+            {
+                transcriptName.push_back(token);
+            }
             if (j == 2)
             {
-                geneChrom.push_back(token);
+                //Not chr#
+                geneChrom.push_back(token.substr(3));
+            }
+            if (j == 4)
+            {
+                txStartPos.push_back(stoi(token));
+            }
+            if (j == 5)
+            {
+                txEndPos.push_back(stoi(token));
             }
             if (j == 6)
             {
@@ -486,64 +515,125 @@ void readInput::readGenes(string filename)
         }
     }
     inputFile.close();
-
-    cout << "Looking through " << geneName.size() << " genes." << endl;
-
+    
+    string currentGene = geneName[0];
+    vector<gsl_vector *> tempVariant;
+    map<string, string> transcript;
+    vector<double> tempMaf;
+    cout << endl << "Looking through " << geneName.size() << " genes." << endl;
     //Subsets the user data so variants match with known genes.
     //Could improve speed by making sure we dont re-search over the same chromosome when looking for user variant matches.
     for(int i = 0; i < geneName.size(); i++)
     {
-        //Check if the chromosome of current gene is even in the data set.
-        if(posMap.find(geneChrom[i]) == posMap.end())
+        //Once we have a new gene, gather all variants and then reset.
+        if(currentGene != geneName[i] || i + 1 == geneName.size())
         {
-            cout << geneName[i] << "'s chromosome was not found in data set. Skipping." << endl;
+            if (tempVariant.size() == 0)
+            {
+                //Gene chromosome matched some variants chromosome in user data set but positions didnt match.
+            }
+            else
+            {
+                gsl_matrix *genotypeSubset = gsl_matrix_alloc((int)tempVariant.size(), subjectCount);
+                gsl_vector *mafSubset = gsl_vector_alloc((int)tempMaf.size());
+                for (int j = 0; j < tempVariant.size(); j++)
+                {
+                    gsl_matrix_set_row(genotypeSubset, j, tempVariant[j]);
+                    gsl_vector_set(mafSubset, j, tempMaf[j]);
+                }
+                pair<map<string,gsl_matrix *>::iterator,bool> duplicate;
+                duplicate = genes.insert(pair<string, gsl_matrix *>(currentGene, genotypeSubset));
+                //If we have already found the gene in a different transcript ID.
+                //This is where we select the gene description with the most variants.
+                if (duplicate.second == false)
+                {
+                    //If the new gene is bigger than the old one.
+                    if (genes[currentGene]->size1 < genotypeSubset->size1)
+                    {
+                        genes[currentGene] = genotypeSubset;
+                        geneMaf[currentGene] = mafSubset;
+                        transcript[currentGene] = transcriptName[i-1];
+                    }
+                }
+                else 
+                {   
+                    geneMaf.insert(pair<string, gsl_vector *>(currentGene, mafSubset));
+                    transcript.insert(pair<string, string>(currentGene, transcriptName[i-1]));
+                }
+                
+            }
+            //Set up for next gene.
+            currentGene = geneName[i];
+            tempVariant.clear();
+            tempMaf.clear();
+        }
+        //Check if the chromosome of current gene is even in the data set.
+        if (posMap.find(geneChrom[i]) == posMap.end())
+        {
             continue;
         }
-        cout << "AT least some chromosome made it through" << endl;
+
         //Iterate through all the variants in a chromosome to find a match.
-        vector<gsl_vector *> tempVariant;
-        vector<double> tempMaf;
         for(int j = 0; j < posMap[geneChrom[i]].size(); j++)
         {
             //Consider not searching the early positions multiple times. Could initiate j to the last seen useful position.
-            if (posMap[geneChrom[i]][j] >= codingStartPos[i] && posMap[geneChrom[i]][j] <= codingEndPos[i])
+            if (posMap[geneChrom[i]][j] >= txStartPos[i] && posMap[geneChrom[i]][j] <= txEndPos[i])
             {
-                cout << "Matched variant to " << geneName[i] << endl;
                 gsl_vector *tempGenoData = gsl_vector_alloc(subjectCount);
                 gsl_matrix_get_row(tempGenoData, genotypeGslMatrix, j);
                 tempVariant.push_back(tempGenoData);
                 tempMaf.push_back(gsl_vector_get(maf, j));
             }
-            if (posMap[geneChrom[i]][j] > codingEndPos[i])
+            if (posMap[geneChrom[i]][j] > txEndPos[i])
             {
                 break;
             }
         }
-        if(tempVariant.size() == 0)
+    }
+    /*
+    //Handle data at the end of the geneList.
+    if (tempVariant.size() == 0)
+    {
+        //Gene chromosome matched some variants chromosome in user data set but positions didnt match.
+        //cout << geneName[i] << " was not found in data set. Skipping." << endl;
+    }
+    else
+    {
+        //cout << "Matched " << tempVariant.size() << " variant(s) to " << currentGene << endl;
+        gsl_matrix *genotypeSubset = gsl_matrix_alloc((int)tempVariant.size(), subjectCount);
+        gsl_vector *mafSubset = gsl_vector_alloc((int)tempMaf.size());
+        for (int j = 0; j < tempVariant.size(); j++)
         {
-            //Gene chromosome matched some variants chromosome in user data set but positions didnt match.
-            cout << geneName[i] << " was not found in data set. Skipping." << endl;
+            gsl_matrix_set_row(genotypeSubset, j, tempVariant[j]);
+            gsl_vector_set(mafSubset, j, tempMaf[j]);
+        }
+        pair<map<string, gsl_matrix *>::iterator, bool> duplicate;
+        duplicate = genes.insert(pair<string, gsl_matrix *>(currentGene, genotypeSubset));
+        //If we have already found the gene in a different transcript ID.
+        if (duplicate.second == false)
+        {
+            //If the new gene is bigger than the old one.
+            if (genes[currentGene]->size1 < genotypeSubset->size1)
+            {
+                genes[currentGene] = genotypeSubset;
+                geneMaf[currentGene] = mafSubset;
+                transcript[currentGene] = transcriptName[transcriptName.size() - 1];
+            }
         }
         else
         {
-            gsl_matrix *genotypeSubset = gsl_matrix_alloc((int)tempVariant.size(), subjectCount);
-            gsl_vector *mafSubset = gsl_vector_alloc((int)tempMaf.size());
-            for (int j = 0; j < tempVariant.size(); j++)
-            {
-                gsl_matrix_set_row(genotypeSubset, j, tempVariant[j]);
-                gsl_vector_set(mafSubset, j, tempMaf[j]);
-            }
-            genes.insert(pair<string, gsl_matrix *>(geneName[i], genotypeSubset));
-            geneMaf.insert(pair<string, gsl_vector *>(geneName[i], mafSubset));
-            cout << "Found " << tempVariant.size() <<  " variants in " << geneName[i] << endl;
+            geneMaf.insert(pair<string, gsl_vector *>(currentGene, mafSubset));
+            transcript.insert(pair<string, string>(currentGene, transcriptName[transcriptName.size() - 1]));
         }
     }
+    */
+
+    map<string, gsl_matrix*>::iterator it;
+    for (it = genes.begin(); it != genes.end(); it++)
+    {
+        cout << "Matched " << it->second->size1 << " variant(s) to " << it->first << " at transcript ID " << transcript[it->first] << endl;
+    }
+
 }
-
-
-
-
-
-
 
 

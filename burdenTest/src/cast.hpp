@@ -9,7 +9,8 @@
 #ifndef cast_hpp
 #define cast_hpp
 
-#include <stdio.h>
+//#include <stdio.h>
+#include <iostream>
 #include <vector>
 #include <gsl/gsl_randist.h>
 #include <gsl/gsl_cdf.h>
