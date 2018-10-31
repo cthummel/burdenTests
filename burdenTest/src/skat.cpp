@@ -8,6 +8,9 @@
 
 #include <fstream>
 #include <gsl/gsl_statistics.h>
+#include <gsl/gsl_linalg.h>
+#include <gsl/gsl_multifit.h>
+#include <gsl/gsl_fit.h>
 #include <cmath>
 #include "skat.hpp"
 #include "davies.cpp"
@@ -21,6 +24,13 @@ skat::skat(gsl_matrix *geno, gsl_vector *maf, gsl_matrix *covariates, gsl_vector
     if(!checkVariants(geno, phenotype))
     {
         cout << "Affected individuals do not have genotype data for current set of variants." << endl;
+        return;
+    }
+    if (maf->size == 2)
+    {
+        cout << "skipping small gene to not get stuck." << endl;
+        pvalue = -1;
+        testStatistic = -1;
         return;
     }
 
@@ -93,9 +103,9 @@ skat::skat(gsl_matrix *geno, gsl_vector *maf, gsl_matrix *covariates, gsl_vector
     cout << "Setting p-value took " << std::chrono::duration_cast<std::chrono::milliseconds>(currentTime - lastTime).count() / 1000.0 << " seconds." << endl;
     lastTime = currentTime;
     cout << "Got a pvalue of: " << pvalue << endl;
-
+    
     //Cleanup after test.
-    gsl_vector_free(eigenvalues);
+    //gsl_vector_free(eigenvalues);
     //gsl_matrix_free(weightMatrix);
     //gsl_matrix_free(kernel);
 }
@@ -109,8 +119,10 @@ void skat::setWeights(gsl_vector *maf)
     for (int i = 0; i < maf->size; i++)
     {
         double tempWeight = gsl_ran_beta_pdf(gsl_vector_get(maf, i), 1, 25);
-        gsl_matrix_set(weightMatrix, i, i, tempWeight * tempWeight);
-        outfile << i << " " << tempWeight * tempWeight << endl;
+        //gsl_matrix_set(weightMatrix, i, i, tempWeight * tempWeight);
+        //outfile << i << " " << tempWeight * tempWeight << endl;
+        gsl_matrix_set(weightMatrix, i, i, tempWeight);
+        outfile << i << " " << tempWeight << endl;
     }
     outfile.close();
 }
@@ -121,6 +133,15 @@ void skat::makeKernel(string kernel_type)
 {
     if (kernel_type == "linear")
     {
+        gsl_matrix *tempWeight = gsl_matrix_alloc(variantCount, variantCount);
+        for(int i = 0; i < variantCount; i++)
+        {
+            gsl_matrix_set(tempWeight, i, i, gsl_matrix_get(weightMatrix, i, i));
+        }
+        
+        rvKernel = gsl_matrix_alloc(variantCount, subjectCount);
+        gsl_blas_dgemm(CblasNoTrans, CblasNoTrans, 1, tempWeight, genoMatrix, 0, rvKernel);
+
         gsl_matrix *tempkernel = gsl_matrix_alloc(variantCount, subjectCount);
         gsl_blas_dgemm(CblasNoTrans, CblasNoTrans, 1, weightMatrix, genoMatrix, 0, tempkernel);
         gsl_blas_dgemm(CblasTrans, CblasNoTrans, 1.0, genoMatrix, tempkernel, 0.0, kernel);
@@ -155,64 +176,29 @@ void skat::setTestStatistic()
     //Test Statistic
     //Q = (y - u) * K * (y - u)'
     // 1xn nxn nx1 -> 1xn nx1 -> 1x1 = Q
+    res = gsl_vector_alloc(subjectCount);
     double uhat = gsl_stats_mean(pheno->data, 1, pheno->size);
+    for (int i = 0; i < subjectCount; i++)
+    {
+        gsl_vector_set(res, i, gsl_vector_get(pheno, i) - uhat);
+    }
+    gsl_vector *tempstat = gsl_vector_alloc(variantCount);
+    gsl_blas_dgemv(CblasNoTrans, 1.0, rvKernel, res, 0.0, tempstat);
+    gsl_blas_ddot(tempstat, tempstat, &rvStat);
+
+    //double uhat = gsl_stats_mean(pheno->data, 1, pheno->size);
     gsl_vector *diff = gsl_vector_alloc(subjectCount);
-    for(int i = 0; i < subjectCount; i++)
+    for (int i = 0; i < subjectCount; i++)
     {
         gsl_vector_set(diff, i, gsl_vector_get(pheno, i) - uhat);
     }
-    gsl_vector *tempstat = gsl_vector_alloc(subjectCount);
+    tempstat = gsl_vector_alloc(subjectCount);
     gsl_blas_dgemv(CblasNoTrans, 1.0, kernel, diff, 0.0, tempstat);
-    /*
-    ofstream out;
-    out.open("teststatvector.txt");
-    for (int i = 0; i < tempstat->size; i++)
-    {
-        out << gsl_vector_get(tempstat, i) << " ";
-    }
-    out.close();
-    out.open("phenovector.txt");
-    for (int i = 0; i < pheno->size; i++)
-    {
-        out << gsl_vector_get(pheno, i) << " ";
-    }
-    out.close();
-    out.open("kernelpeek.txt");
-    for (int i = 0; i < kernel->size1; i++)
-    {
-        for (int j = 0; j < kernel->size2; j++)
-        {
-            out << gsl_matrix_get(kernel, i, j) << " ";
-        }
-        out << endl;
-    }
-    out.close();
-    out.open("weightMatrixpeek.txt");
-    for (int i = 0; i < weightMatrix->size1; i++)
-    {
-        for (int j = 0; j < weightMatrix->size2; j++)
-        {
-            out << gsl_matrix_get(weightMatrix, i, j) << " ";
-        }
-        out << endl;
-    }
-    out.close();
-    if (variantCount == 9)
-    {
-        out.open("genopeek.txt");
-        for (int i = 0; i < genoMatrix->size1; i++)
-        {
-            for (int j = 0; j < genoMatrix->size2; j++)
-            {
-                out << gsl_matrix_get(genoMatrix, i, j) << " ";
-            }
-            out << endl;
-        }
-        out.close();
-    }
-    */
     gsl_blas_ddot(diff, tempstat, &testStatistic);
+
+    //Clean
     gsl_vector_free(tempstat);
+    gsl_vector_free(diff);
 }
 
 //Find distribution of Q.
@@ -239,11 +225,11 @@ void skat::qDistribution()
             gsl_matrix_set(V, i, i, uhat * (1 - uhat));
             Vsum += gsl_matrix_get(V, i, i);
         }
-        cout << "Vsum = " << Vsum << endl;
+        //cout << "Vsum = " << Vsum << endl;
 
         gsl_matrix *temp_V = gsl_matrix_alloc(subjectCount, subjectCount);
-        gsl_blas_dgemm(CblasNoTrans, CblasTrans, 1, V, V, 0.0, temp_V);
-        gsl_matrix_scale(temp_V, -1.0 / Vsum);
+        gsl_blas_dgemm(CblasNoTrans, CblasTrans, -1, V, V, 0.0, temp_V);
+        gsl_matrix_scale(temp_V, 1.0 / Vsum);
         gsl_matrix_memcpy(P0, V);
         gsl_matrix_add(P0, temp_V);
         cout << "Built P0." << endl;
@@ -269,7 +255,7 @@ void skat::qDistribution()
     {
         //Run logistic regression on data.
         //V = diag(uhat_01*(1-uhat_01), ... ,uhat_0n*(1-uhat_0n)) where uhat_0i = logit^{-1}(alphahat + alphahat' X_i)
-        //When there are no covariates, uhat is the identity matrix?
+        //When there are no covariates, uhat is the mean of pheno.
         if (isBinary)
         {
             gsl_vector *uhat = logisticRegression();
@@ -424,13 +410,36 @@ gsl_vector *skat::logisticRegression()
 
 double skat::linearRegression()
 {
+    //Needs to re think the return values. Do we only need coefficients?
+    //Do we care about R^2?
+
+
     double sigma;
     if (X->size2 == 1)
     {
         //No covariates
+        double *intercept;
+        double *coeff;
+        double *cov00;
+        double *cov01;
+        double *cov11;
+        double *sumsq;
+
+        gsl_vector *dummy = gsl_vector_alloc(subjectCount);
+        gsl_matrix_get_col(dummy, X, 0);
+        gsl_fit_linear(dummy->data, 1, pheno->data, 1, subjectCount, intercept, coeff, cov00, cov01, cov11, sumsq);
     }
     else
     {
+        double rsq;
+        double *chisq;
+        gsl_matrix *varCovMatrix = gsl_matrix_alloc(X->size2, X->size2);
+        gsl_vector *coeff = gsl_vector_alloc(X->size2);
+        gsl_multifit_linear_workspace *work = gsl_multifit_linear_alloc(subjectCount, X->size2);
+
+        gsl_multifit_linear(X, pheno, coeff, varCovMatrix, chisq, work);
+
+        rsq = 1 - (*chisq / gsl_stats_tss(pheno->data, 1, subjectCount));
     }
     return sigma;
 }

@@ -27,16 +27,19 @@ public:
     skat(gsl_matrix* geno, gsl_vector* maf, gsl_matrix* covariates, gsl_vector* pheno);
     double getPvalue(){return pvalue;}
     double getQ(){return testStatistic;}
+    double getRvQ(){return rvStat;}
     
 private:
     int X_Count;
     int subjectCount;
     int variantCount;
     int caseCount;
+    double rvStat;
     double testStatistic;
     double regression;
     double pvalue;
     bool isBinary;
+    bool rvtestVersion = true;
     
     void setWeights(gsl_vector *maf);
     void makeKernel(string kernel_type);
@@ -54,6 +57,7 @@ private:
     gsl_matrix *genoMatrix;
     gsl_matrix *weightMatrix;
     gsl_matrix *kernel;
+    gsl_matrix *rvKernel;
     gsl_matrix *X;
     gsl_vector *pheno;
     gsl_vector *coeff;

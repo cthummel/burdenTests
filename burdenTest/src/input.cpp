@@ -38,6 +38,10 @@ readInput::readInput(string dir, string tType, string inputVcfType, string userV
         readMaf(userVcf);
         bcfInput(userVcf);
         readCaseCount(userVcf);
+        if(variantRegion == "-g")
+        {
+            readGenes("refFlat.txt");
+        }
         //mergeData(userVcf);
     }
     else if(testType == "burden")
@@ -232,28 +236,57 @@ void readInput::readPhenotype(string phenoFile)
     else
     {
         //Parse phenotype and add to vector;
-        string line;
+        
         inputFile.open(phenoFile);
-        int phenoPos = 0;
-        for(int i = 0; getline(inputFile, line, '\t'); i++)
+        string line;
+        //Parse the header
+        getline(inputFile, line);
+        vector<string> fid;
+        vector<string> iid;
+        vector<string> fatid;
+        vector<string> matid;
+        vector<int> sex;
+        
+        for(int i = 0; getline(inputFile, line); i++)
         {
-            if(((i + 1) % 6) == 0)
+            size_t last = 0;
+            size_t current = line.find('\t', last);
+            for (int j = 0; current != string::npos; j++)
             {
-                gsl_vector_set(pheno, phenoPos, stod(line));
-                phenoPos++;
+                string token = line.substr(last, current - last);
+                if (j == 0)
+                {
+                    fid.push_back(token);
+                }
+                if (j == 1)
+                {
+                    iid.push_back(token);
+                }
+                if (j == 2)
+                {
+                    //Not chr#
+                    fatid.push_back(token.substr(3));
+                }
+                if (j == 3)
+                {
+                    matid.push_back(token);
+                }
+                if (j == 4)
+                {
+                    sex.push_back(stoi(token));
+                }
+                if (j == 5)
+                {
+                    gsl_vector_set(pheno, i, stoi(token));
+                }
+                
+                last = current + 1;
+                current = line.find('\t', last);
             }
         }
-        ofstream outFile;
-        outFile.open("tmp/inputpheno.txt");
-        for (int i = 0; i < pheno->size; i++)
-        {
-            outFile << gsl_vector_get(pheno, i) << endl;
-        }
-        outFile.close();
         inputFile.close();
     }
 }
-
 
 void readInput::readMaf(string filename)
 {
@@ -263,11 +296,36 @@ void readInput::readMaf(string filename)
         string command = externals_loc + "bcftools query -f '%AF\\n' " + filename + " > mafdata.txt";
         system(command.c_str());
         maf = gsl_vector_alloc(variantCount);
-        
         inputFile.open("mafdata.txt");
         for(int i = 0; getline(inputFile, line); i++)
         {
-            gsl_vector_set(maf, i, stod(line));
+            int alleleCount = 1;
+            if (line.find(',') == string::npos)
+            {
+                gsl_vector_set(maf, i, stod(line));
+            }
+            else
+            {
+                size_t last = 0;
+                size_t current = line.find(',', last);
+                vector<double> mafs;
+                while(current != string::npos)
+                {
+                    string token = line.substr(last, current - last);
+                    mafs.push_back(stod(token));
+                    last = current + 1;
+                    current = line.find(',', last);
+                }
+                double max = 0;
+                for(int i = 0; i < mafs.size(); i++)
+                {
+                    if (max < mafs[i])
+                    {
+                        max = mafs[i];
+                    }
+                }
+                gsl_vector_set(maf, i, max);
+            }
         }
         inputFile.close();
     }
@@ -399,6 +457,8 @@ void readInput::bcfInput(string filename)
         vcfPos.push_back(stoi(line.substr(comma + 1, pos)));
         advance(it, pos);
 
+        bool missingData = false;
+        int missingCount = 0;
         for(int j = 0; it != line.end(); j++)
         {
             //Skip space.
@@ -410,12 +470,15 @@ void readInput::bcfInput(string filename)
             int right = 0;
             if(leftAllele == '.')
             {
+                missingData = true;
+                missingCount++;
                 if(testType == "wsbt")
                 {
                     gsl_matrix_set(genotypeGslMatrix, i, j, -1);
                 }
                 if (testType == "skat")
                 {
+                    //gsl_matrix_set(genotypeGslMatrix, i, j, -1);
                     gsl_matrix_set(genotypeGslMatrix, i, j, 2 * gsl_vector_get(maf, i));
                 }
             }
@@ -429,12 +492,15 @@ void readInput::bcfInput(string filename)
                 //If we have already taken care of the missing data we dont need to again.
                 if (leftAllele != '.')
                 {
+                    missingData = true;
+                    missingCount++;
                     if (testType == "wsbt")
                     {
                         gsl_matrix_set(genotypeGslMatrix, i, j, -1);
                     }
                     if (testType == "skat")
                     {
+                        //gsl_matrix_set(genotypeGslMatrix, i, j, -1);
                         gsl_matrix_set(genotypeGslMatrix, i, j, 2 * gsl_vector_get(maf, i));
                     }
                 }
@@ -446,6 +512,38 @@ void readInput::bcfInput(string filename)
             }  
             gsl_matrix_set(genotypeGslMatrix, i, j, left + right);
         }
+        //Fix missing data points by imputing their value with the mean of the geno data for the variant
+        /*
+        if(missingData && testType != "wsbt")
+        {
+            int alleleCount = 0;
+            int denominator = 0;
+            for(int j = 0; j < subjectCount; j++)
+            {
+                //Getting counts of non-missing alleles
+                if (gsl_matrix_get(genotypeGslMatrix, i, j) >= 0)
+                {
+                    alleleCount += gsl_matrix_get(genotypeGslMatrix, i, j);
+                    denominator++;
+                }
+            }
+            double mean = (1.0 * alleleCount) / denominator;
+            //cout << mean << " ";
+            int fixed = 0;
+            for(int j = 0; j < subjectCount; j++)
+            {
+                if (gsl_matrix_get(genotypeGslMatrix, i, j) < 0)
+                {
+                    gsl_matrix_set(genotypeGslMatrix, i, j, mean);
+                    fixed++;
+                    if (fixed == missingCount)
+                    {
+                        break;
+                    }
+                }
+            }
+        }
+        */
     }
     posMap.insert(pair<string, vector<int> >(currentChrom, vcfPos));
     cout << vcfPos.size() << " variants in chromosome " << currentChrom << endl;
@@ -491,8 +589,17 @@ void readInput::readGenes(string filename)
             }
             if (j == 2)
             {
-                //Not chr#
-                geneChrom.push_back(token.substr(3));
+                //If coded as chr#
+                if(token.length() > 3)
+                {
+                    geneChrom.push_back(token.substr(3));
+                }
+                //If coded as #
+                else
+                {
+                    geneChrom.push_back(token);
+                }
+                
             }
             if (j == 4)
             {

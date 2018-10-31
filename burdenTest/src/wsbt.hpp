@@ -30,7 +30,8 @@ class wsbt
 public:
     wsbt(gsl_matrix* totalGenotype, int affectedCount, gsl_vector* maf);
     
-    double getPvalue(){return pvalue;}
+    double getPvalue(){return normpvalue;}
+    double getPermPvalue(){return permpvalue;}
     gsl_vector* getWeights(){return initialWeights;}
     
 private:
@@ -38,7 +39,8 @@ private:
     void setScores();
     double testStatistic();
     
-    double pvalue;
+    double normpvalue;
+    double permpvalue;
     int affectedCount;
     
     gsl_matrix* totalGenotype;

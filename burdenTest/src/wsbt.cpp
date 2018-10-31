@@ -17,7 +17,7 @@ wsbt::wsbt(gsl_matrix* totalGtype, int aCount, gsl_vector *inputMaf)
     
     ofstream outfile;
     affectedCount = aCount;
-    pvalue = 0;
+    normpvalue = 0;
     totalGenotype = totalGtype;
     
     testStatistics = gsl_vector_alloc(permutationCount);
@@ -70,8 +70,12 @@ wsbt::wsbt(gsl_matrix* totalGtype, int aCount, gsl_vector *inputMaf)
         double zscore = (gsl_vector_get(testStatistics, 0) - testStatMean) / testStatSigma;
         cout << "Zscore for permutation " << k << " is " << zscore << endl;
         //Two-sided P-value calculation.
-        pvalue = 2 * gsl_cdf_ugaussian_P(zscore);
-        cout << "Pvalue for permutation " << k << " is " << pvalue << endl;
+        normpvalue = 2 * gsl_cdf_ugaussian_P(zscore);
+        if(normpvalue > 1)
+        {
+            normpvalue = 1;
+        }
+        cout << "Pvalue for permutation " << k << " is " << normpvalue << endl;
         cout << endl;
         
         //Permutes the columns of the genotype matrix for the next permutation.
@@ -82,14 +86,23 @@ wsbt::wsbt(gsl_matrix* totalGtype, int aCount, gsl_vector *inputMaf)
         }
         //gsl_permute_matrix(subjectPerm, totalGenotype);
     }
-    
+    int extremeCount = 1;
+    for(int i = 1; i < permutationCount; i++)
+    {
+        if(gsl_vector_get(testStatistics, 0) > gsl_vector_get(testStatistics, i))
+        {
+            extremeCount++;
+        }
+    }
+    permpvalue = (1.0 * extremeCount) / (permutationCount + 1);
+
     cout << endl;
     gsl_rng_free(r);
     gsl_permutation_free(subjectPerm);
     gsl_vector_free(scores);
     gsl_vector_free(weights);
     gsl_vector_free(testStatistics);
-    gsl_matrix_free(totalGenotype);
+    //gsl_matrix_free(totalGenotype);
 }
 
 void wsbt::setWeights()

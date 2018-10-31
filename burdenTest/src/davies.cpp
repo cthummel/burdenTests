@@ -479,7 +479,7 @@ real qf(real *lb1, real *nc1, int *n1, int r1, real sigma, real c1, int lim1,
   }
   sd = sqrt(sd);
   almx = (lmax < -lmin) ? -lmin : lmax;
-  cout << "min,max,sd,mean " << lmin << ", " << lmax << ", " << sd << ", " << mean << endl;
+  //cout << "min,max,sd,mean " << lmin << ", " << lmax << ", " << sd << ", " << mean << endl;
   /* starting values for findu, ctff */
   utx = 16.0 / sd;
   up = 4.5 / sd;
@@ -501,14 +501,14 @@ real qf(real *lb1, real *nc1, int *n1, int r1, real sigma, real c1, int lim1,
   }
   trace[4] = utx;
   acc1 = 0.5 * acc1;
-std::cout << "right before the l1 call." << std::endl;
+//std::cout << "right before the l1 call." << std::endl;
 /* find RANGE of distribution, quit if outside this */
 l1:
   d1 = ctff(acc1, &up) - c;
-  std::cout << "d1: " << d1 << endl;
+  //std::cout << "d1: " << d1 << endl;
   if (d1 < 0.0)
   {
-    std::cout << "We are outside the range of the distribution. Setting p-value to 1." << endl;
+    //std::cout << "We are outside the range of the distribution. Setting p-value to 1." << endl;
     qfval = 1.0;
     goto endofproc;
   }
@@ -516,18 +516,18 @@ l1:
   cout << "d2: " << d2 << endl;
   if (d2 < 0.0)
   {
-    std::cout << "We are outside the range of the distribution. Setting p-value to 0." << endl;
+    //std::cout << "We are outside the range of the distribution. Setting p-value to 0." << endl;
     qfval = 0.0;
     goto endofproc;
   }
   /* find integration interval */
   intv = 2.0 * pi / ((d1 > d2) ? d1 : d2);
-  std::cout << "intv: " << intv << endl;
+  //std::cout << "intv: " << intv << endl;
   /* calculate number of terms required for main and
      auxillary integrations */
   xnt = utx / intv;
   xntm = 3.0 / sqrt(acc1);
-  std::cout << "xnt: " << xnt << ", xntm * 1.5: " << xntm * 1.5 << std::endl;
+  //std::cout << "xnt: " << xnt << ", xntm * 1.5: " << xntm * 1.5 << std::endl;
   if (xnt > xntm * 1.5)
   {
     /* parameters for auxillary integration */
