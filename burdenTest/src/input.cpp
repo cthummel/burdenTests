@@ -8,7 +8,10 @@
 
 #include "input.hpp"
 #include <fstream>
+#include <sstream>
 using namespace std;
+
+
 
 
 
@@ -22,26 +25,32 @@ readInput::readInput(string dir, string tType, string inputVcfType, string userV
     testType = tType;
     testDir = dir;
     
-    gMatch = regex("(\\.\\/\\.)|(\\d)(\\/|\\|)(\\d)");
-    altAlleleCountMatch = regex("[ATGCN],[ATGCN]");
-    mafMatch = regex(";AF=(0\\.*\\d*)");
     subjectCountMatch = regex("number of samples:\\s(\\d*)");
     variantCountMatch = regex("number of records:\\s(\\d*)");
-    headerMatch = regex("^#");
-    posMatch = regex("^(\\d+)\\t(\\d+)");
     
     //Switching on test type to get proper input.
     if(testType == "wsbt")
     {
-        readVcfInitialInfo(userVcf);
-        genotypeGslMatrix = gsl_matrix_alloc(variantCount, subjectCount);
-        readMaf(userVcf);
-        bcfInput(userVcf);
-        readCaseCount(userVcf);
-        if(variantRegion == "-g")
+        bool tst = false;
+        if(tst)
         {
-            readGenes("refFlat.txt");
+            //test(userVcf);
+            testReadFromStream(userVcf, "3:9000000-10000000");
         }
+        else
+        {
+            readVcfInitialInfo(userVcf);
+            genotypeGslMatrix = gsl_matrix_alloc(variantCount, subjectCount);
+            readMaf(userVcf);
+            bcfInput(userVcf);
+            readCaseCount(userVcf);
+            if (variantRegion == "-g")
+            {
+                buildGeneInfo("orderedRefFlat.txt");
+                readGenes("orderedRefFlat.txt");
+            }
+        }
+
         //mergeData(userVcf);
     }
     else if(testType == "burden")
@@ -78,6 +87,7 @@ readInput::readInput(string dir, string tType, string inputVcfType, string userV
         readCaseCount(userVcf);
         if(variantRegion == "-g")
         {
+            buildGeneInfo("refFlat.txt");
             readGenes("refFlat.txt");
         }
         
@@ -112,6 +122,56 @@ readInput::readInput(string dir, string tType, string inputVcfType, string userV
     
 }
 
+readInput::readInput(string user, string back, string region, int count, int thread_ID)
+{
+    string line;
+    ifstream in;
+    smatch match;
+    subjectCountMatch = regex("number of samples:\\s(\\d*)");
+    variantCountMatch = regex("number of records:\\s(\\d*)");
+    subjectCount = 0;
+    variantCount = 0;
+    caseCount = count;
+    
+    //Build our stats file and GT file for later parsing.
+    string command = externals_loc + "bcftools stats -r " + region + " " + user + " > data" + to_string(thread_ID) + ".stats";
+    cout << command << endl;
+    system(command.c_str());
+
+    //Parsing background info
+    in.open("data" + to_string(thread_ID) + ".stats");
+    for (int j = 0; getline(in, line); j++)
+    {
+        if (subjectCount == 0)
+        {
+            if (regex_search(line, match, subjectCountMatch))
+            {
+                subjectCount = stoi(match[1]);
+            }
+        }
+        if (regex_search(line, match, variantCountMatch))
+        {
+            variantCount = stoi(match[1]);
+        }
+        if (variantCount != 0 && subjectCount != 0)
+        {
+            break;
+        }
+    }
+    in.close();
+
+    cout << "Subject count: " << subjectCount << endl;
+    cout << "Variant count: " << variantCount << endl;
+
+    genotypeGslMatrix = gsl_matrix_alloc(variantCount, subjectCount);
+    maf = gsl_vector_alloc(variantCount);
+
+    //Parsing geno data.
+    bcfInput(user, region, "data" + to_string(thread_ID) + ".txt");
+    readMaf(user, region, "maf" + to_string(thread_ID) + ".txt");
+}
+
+
 void readInput::readVcfInitialInfo(string filename)
 {
     string line;
@@ -141,9 +201,9 @@ void readInput::readVcfInitialInfo(string filename)
     {
         statsFileName = filename.substr(filePos, filename.length() - vcfType.length());
     }
-    cout << "statsFileName: " << statsFileName << endl;
+    //cout << "statsFileName: " << statsFileName << endl;
     string summaryCommand = bcftools_loc + " stats " + filename + " > " + testDir + "/tmp/" + statsFileName + ".stats";
-    cout << "summaryCommand: " << summaryCommand << endl;
+    //cout << "summaryCommand: " << summaryCommand << endl;
     system(summaryCommand.c_str());
     
     if(!inputFile.is_open())
@@ -155,7 +215,6 @@ void readInput::readVcfInitialInfo(string filename)
             {
                 if(regex_search(line, match, subjectCountMatch))
                 {
-		            //cout << "Match we are trying to stoi: " << match[1] << endl;
 		            subjectCount = stoi(match[1]);
                 }
             }
@@ -177,6 +236,7 @@ void readInput::readVcfInitialInfo(string filename)
     }
 }
 
+//Needs fixing.
 void readInput::readCaseCount(string filename)
 {
     if(!inputFile.is_open())
@@ -185,7 +245,8 @@ void readInput::readCaseCount(string filename)
         smatch match;
         regex caseMatch("(\\t(\\d[^\\s]+))+");
         regex_token_iterator<string::iterator> lineEnd;
-        
+        caseCount = subjectCount - 2504;
+        /*
         if(vcfType == "-gzvcf")
         {
             string genoCommand = bgzip_loc + " -f -d " + filename;
@@ -219,7 +280,13 @@ void readInput::readCaseCount(string filename)
                 }
             }
         }
+        if(vcfType == "-gzvcf")
+        {
+            string genoCommand = bgzip_loc + " " + filename.substr(0, filename.length() - 3);
+            system(genoCommand.c_str());
+        }
         inputFile.close();
+        */
     }
 }
 
@@ -264,8 +331,7 @@ void readInput::readPhenotype(string phenoFile)
                 }
                 if (j == 2)
                 {
-                    //Not chr#
-                    fatid.push_back(token.substr(3));
+                    fatid.push_back(token);
                 }
                 if (j == 3)
                 {
@@ -331,30 +397,47 @@ void readInput::readMaf(string filename)
     }
 }
 
-void readInput::makePositionFile(string filename)
+//Gene version of reading MAF data.
+void readInput::readMaf(string filename, string region, string outfile)
 {
-    string line;
-    smatch match;
-    
-    if (!inputFile.is_open())
+    if(!inputFile.is_open())
     {
-        ofstream outFile("pos.txt", ofstream::out);
-        inputFile.open(filename);
-        for(int j = 0; getline(inputFile, line); j++)
+        string line;
+        string command = externals_loc + "bcftools query -r " + region + " -f '%AF\\n' " + filename + " > " + outfile;
+        system(command.c_str());
+        inputFile.open(outfile);
+        for(int i = 0; getline(inputFile, line); i++)
         {
-            if(!regex_search(line, match, headerMatch))
+            int alleleCount = 1;
+            if (line.find(',') == string::npos)
             {
-                if(regex_search(line, match, posMatch))
+                gsl_vector_set(maf, i, stod(line));
+            }
+            else
+            {
+                size_t last = 0;
+                size_t current = line.find(',', last);
+                vector<double> mafs;
+                while(current != string::npos)
                 {
-                    outFile << line << "\n";
+                    string token = line.substr(last, current - last);
+                    mafs.push_back(stod(token));
+                    last = current + 1;
+                    current = line.find(',', last);
                 }
+                double max = 0;
+                for(int i = 0; i < mafs.size(); i++)
+                {
+                    if (max < mafs[i])
+                    {
+                        max = mafs[i];
+                    }
+                }
+                gsl_vector_set(maf, i, max);
             }
         }
-        
-        outFile.close();
         inputFile.close();
     }
-    
 }
 
 //Merge the user vcf file with the right background set. The resulting vcf will be used in readGenotype().
@@ -478,8 +561,8 @@ void readInput::bcfInput(string filename)
                 }
                 if (testType == "skat")
                 {
-                    //gsl_matrix_set(genotypeGslMatrix, i, j, -1);
-                    gsl_matrix_set(genotypeGslMatrix, i, j, 2 * gsl_vector_get(maf, i));
+                    gsl_matrix_set(genotypeGslMatrix, i, j, -1);
+                    //gsl_matrix_set(genotypeGslMatrix, i, j, 2 * gsl_vector_get(maf, i));
                 }
             }
             //Not set up to handle multiallelic sites.
@@ -500,8 +583,8 @@ void readInput::bcfInput(string filename)
                     }
                     if (testType == "skat")
                     {
-                        //gsl_matrix_set(genotypeGslMatrix, i, j, -1);
-                        gsl_matrix_set(genotypeGslMatrix, i, j, 2 * gsl_vector_get(maf, i));
+                        gsl_matrix_set(genotypeGslMatrix, i, j, -1);
+                        //gsl_matrix_set(genotypeGslMatrix, i, j, 2 * gsl_vector_get(maf, i));
                     }
                 }
                 continue;
@@ -512,8 +595,8 @@ void readInput::bcfInput(string filename)
             }  
             gsl_matrix_set(genotypeGslMatrix, i, j, left + right);
         }
+
         //Fix missing data points by imputing their value with the mean of the geno data for the variant
-        /*
         if(missingData && testType != "wsbt")
         {
             int alleleCount = 0;
@@ -543,10 +626,194 @@ void readInput::bcfInput(string filename)
                 }
             }
         }
-        */
+        
     }
     posMap.insert(pair<string, vector<int> >(currentChrom, vcfPos));
     cout << vcfPos.size() << " variants in chromosome " << currentChrom << endl;
+    inputFile.close();
+}
+
+//Gene version of input.
+void readInput::bcfInput(string filename, string region, string outfile)
+{
+    string line;
+    string command = externals_loc + "bcftools query -r " + region + " -f '[ %GT]\\n' " + filename + " > " + outfile;
+    system(command.c_str());
+
+    string currentChrom;
+    inputFile.open(outfile);
+    for(int i = 0; getline(inputFile, line); i++)
+    {
+        string::iterator it = line.begin();
+        bool missingData = false;
+        int missingCount = 0;
+        for(int j = 0; it != line.end(); j++)
+        {
+            //Skip space.
+            it++;
+            char leftAllele = *it++;
+            char phase = *it++;
+            char rightAllele = *it++;
+            int left = 0;
+            int right = 0;
+            if(leftAllele == '.')
+            {
+                missingData = true;
+                missingCount++;
+                if(testType == "wsbt")
+                {
+                    gsl_matrix_set(genotypeGslMatrix, i, j, -1);
+                }
+                if (testType == "skat")
+                {
+                    gsl_matrix_set(genotypeGslMatrix, i, j, -1);
+                    //gsl_matrix_set(genotypeGslMatrix, i, j, 2 * gsl_vector_get(maf, i));
+                }
+            }
+            //Not set up to handle multiallelic sites.
+            else if(leftAllele != '0')
+            {
+                left = 1;
+            }
+            if(rightAllele == '.')
+            {
+                //If we have already taken care of the missing data we dont need to again.
+                if (leftAllele != '.')
+                {
+                    missingData = true;
+                    missingCount++;
+                    if (testType == "wsbt")
+                    {
+                        gsl_matrix_set(genotypeGslMatrix, i, j, -1);
+                    }
+                    if (testType == "skat")
+                    {
+                        gsl_matrix_set(genotypeGslMatrix, i, j, -1);
+                        //gsl_matrix_set(genotypeGslMatrix, i, j, 2 * gsl_vector_get(maf, i));
+                    }
+                }
+                continue;
+            }
+            else if (rightAllele != '0')
+            {
+                right = 1;
+            }  
+            gsl_matrix_set(genotypeGslMatrix, i, j, left + right);
+        }
+
+        //Fix missing data points by imputing their value with the mean of the geno data for the variant
+        if(missingData && testType != "wsbt")
+        {
+            int alleleCount = 0;
+            int denominator = 0;
+            for(int j = 0; j < subjectCount; j++)
+            {
+                //Getting counts of non-missing alleles
+                if (gsl_matrix_get(genotypeGslMatrix, i, j) >= 0)
+                {
+                    alleleCount += gsl_matrix_get(genotypeGslMatrix, i, j);
+                    denominator++;
+                }
+            }
+            double mean = (1.0 * alleleCount) / denominator;
+            int fixed = 0;
+            for(int j = 0; j < subjectCount; j++)
+            {
+                if (gsl_matrix_get(genotypeGslMatrix, i, j) < 0)
+                {
+                    gsl_matrix_set(genotypeGslMatrix, i, j, mean);
+                    fixed++;
+                    if (fixed == missingCount)
+                    {
+                        break;
+                    }
+                }
+            }
+        }
+        
+    }
+    inputFile.close();
+}
+
+//Builds an ordered (by chromosome then starting transcription region) list of genes.
+void readInput::buildGeneInfo(string filename)
+{
+    string line;
+    /*
+    vector<string> geneName;       //Column 1
+    vector<string> transcriptName; //Column 2
+    vector<string> geneChrom;      //Column 3
+    vector<int> txStartPos;        //Column 5
+    vector<int> txEndPos;          //Column 6
+    vector<int> codingStartPos;    //Column 7
+    vector<int> codingEndPos;      //Column 8
+    */
+
+    //Honestly have no idea why the input stream is still in use. Be careful here if trying to multithread this code.
+    if (inputFile.is_open())
+    {
+        //cout << "inputFile already in use." << endl;
+        inputFile.close();
+    }
+    inputFile.open(filename);
+    for (int i = 0; getline(inputFile, line); i++)
+    {
+        size_t last = 0;
+        size_t current = line.find('\t', last);
+        geneId currentGene;
+        for (int j = 0; current != string::npos; j++)
+        {
+            string token = line.substr(last, current - last);
+            if (j == 0)
+            {
+                currentGene.geneName = token;
+                //geneName.push_back(token);
+            }
+            if (j == 1)
+            {
+                currentGene.transcriptName = token;
+                //transcriptName.push_back(token);
+            }
+            if (j == 2)
+            {
+                //If coded as chr#
+                if (token.length() > 3)
+                {
+                    currentGene.geneChrom = token.substr(3);
+                    //geneChrom.push_back(token.substr(3));
+                }
+                //If coded as just the number.
+                else
+                {
+                    currentGene.geneChrom = token;
+                    //geneChrom.push_back(token);
+                }
+            }
+            if (j == 4)
+            {
+                currentGene.txStartPos = stoi(token);
+                //txStartPos.push_back(stoi(token));
+            }
+            if (j == 5)
+            {
+                currentGene.txEndPos = stoi(token);
+                //txEndPos.push_back(stoi(token));
+            }
+            if (j == 6)
+            {
+                currentGene.codingStartPos = stoi(token);
+                //codingStartPos.push_back(stoi(token));
+            }
+            if (j == 7)
+            {
+                currentGene.codingEndPos = stoi(token);
+                //codingEndPos.push_back(stoi(token));
+            }
+            last = current + 1;
+            current = line.find('\t', last);
+        }
+        info.push_back(currentGene);
+    }
     inputFile.close();
 }
 
@@ -555,86 +822,18 @@ void readInput::bcfInput(string filename)
 void readInput::readGenes(string filename)
 {
     string line;
-    vector<string> geneName;        //Column 1
-    vector<string> transcriptName;  //Column 2
-    vector<string> geneChrom;       //Column 3
-    vector<int> txStartPos;         //Column 5
-    vector<int> txEndPos;           //Column 6
-    vector<int> codingStartPos;     //Column 7
-    vector<int> codingEndPos;       //Column 8
-
-    //cout << "Reading gene data from " << filename << endl;
-
-    //Honestly have no idea why the input stream is still in use.
-    if (inputFile.is_open())
-    {
-        //cout << "inputFile already in use." << endl;
-        inputFile.close();
-    }
-    inputFile.open(filename);
-    for(int i = 0; getline(inputFile, line); i++)
-    {
-        size_t last = 0;
-        size_t current = line.find('\t', last);
-        for (int j = 0; current != string::npos; j++)
-        {
-            string token = line.substr(last, current - last);
-            if (j == 0)
-            {
-                geneName.push_back(token);
-            }
-            if (j == 1)
-            {
-                transcriptName.push_back(token);
-            }
-            if (j == 2)
-            {
-                //If coded as chr#
-                if(token.length() > 3)
-                {
-                    geneChrom.push_back(token.substr(3));
-                }
-                //If coded as #
-                else
-                {
-                    geneChrom.push_back(token);
-                }
-                
-            }
-            if (j == 4)
-            {
-                txStartPos.push_back(stoi(token));
-            }
-            if (j == 5)
-            {
-                txEndPos.push_back(stoi(token));
-            }
-            if (j == 6)
-            {
-                codingStartPos.push_back(stoi(token));
-            }
-            if (j == 7)
-            {
-                codingEndPos.push_back(stoi(token));
-            }
-            last = current + 1;
-            current = line.find('\t', last);
-        }
-    }
-    inputFile.close();
-    
-    string currentGene = geneName[0];
+    string currentGene = info[0].geneName;
     vector<gsl_vector *> tempVariant;
     map<string, string> transcript;
     vector<double> tempMaf;
-    cout << endl << "Looking through " << geneName.size() << " genes." << endl;
+    cout << endl << "Looking through " << info.size() << " gene entries." << endl;
     //Subsets the user data so variants match with known genes.
     //Could improve speed by making sure we dont re-search over the same chromosome when looking for user variant matches.
-    for(int i = 0; i < geneName.size(); i++)
+    for (int i = 0; i < info.size(); i++)
     {
         //Once we have a new gene, gather all variants and then reset.
-        if(currentGene != geneName[i] || i + 1 == geneName.size())
-        {
+        //if (currentGene != info[i].geneName || i + 1 == info.size())
+        //{
             if (tempVariant.size() == 0)
             {
                 //Gene chromosome matched some variants chromosome in user data set but positions didnt match.
@@ -648,7 +847,7 @@ void readInput::readGenes(string filename)
                     gsl_matrix_set_row(genotypeSubset, j, tempVariant[j]);
                     gsl_vector_set(mafSubset, j, tempMaf[j]);
                 }
-                pair<map<string,gsl_matrix *>::iterator,bool> duplicate;
+                pair<map<string, gsl_matrix *>::iterator, bool> duplicate;
                 duplicate = genes.insert(pair<string, gsl_matrix *>(currentGene, genotypeSubset));
                 //If we have already found the gene in a different transcript ID.
                 //This is where we select the gene description with the most variants.
@@ -659,88 +858,299 @@ void readInput::readGenes(string filename)
                     {
                         genes[currentGene] = genotypeSubset;
                         geneMaf[currentGene] = mafSubset;
-                        transcript[currentGene] = transcriptName[i-1];
+                        transcript[currentGene] = info[i-1].transcriptName;
+                        string temp = info[i-1].geneChrom + ":" + to_string(info[i-1].txStartPos) + "-" + to_string(info[i-1].txEndPos);
+                        region[currentGene] = temp;
                     }
                 }
-                else 
-                {   
+                else
+                {
                     geneMaf.insert(pair<string, gsl_vector *>(currentGene, mafSubset));
-                    transcript.insert(pair<string, string>(currentGene, transcriptName[i-1]));
+                    transcript.insert(pair<string, string>(currentGene, info[i-1].transcriptName));
+                    string temp = info[i-1].geneChrom + ":" + to_string(info[i-1].txStartPos) + "-" + to_string(info[i-1].txEndPos);
+                    region.insert(pair<string, string>(currentGene, temp));
                 }
-                
             }
             //Set up for next gene.
-            currentGene = geneName[i];
+            currentGene = info[i].geneName;
             tempVariant.clear();
             tempMaf.clear();
-        }
+        //}
         //Check if the chromosome of current gene is even in the data set.
-        if (posMap.find(geneChrom[i]) == posMap.end())
+        if (posMap.find(info[i].geneChrom) == posMap.end())
         {
             continue;
         }
 
         //Iterate through all the variants in a chromosome to find a match.
-        for(int j = 0; j < posMap[geneChrom[i]].size(); j++)
+        for (int j = 0; j < posMap[info[i].geneChrom].size(); j++)
         {
             //Consider not searching the early positions multiple times. Could initiate j to the last seen useful position.
-            if (posMap[geneChrom[i]][j] >= txStartPos[i] && posMap[geneChrom[i]][j] <= txEndPos[i])
+            if (posMap[info[i].geneChrom][j] >= info[i].txStartPos && posMap[info[i].geneChrom][j] <= info[i].txEndPos)
             {
                 gsl_vector *tempGenoData = gsl_vector_alloc(subjectCount);
                 gsl_matrix_get_row(tempGenoData, genotypeGslMatrix, j);
                 tempVariant.push_back(tempGenoData);
                 tempMaf.push_back(gsl_vector_get(maf, j));
             }
-            if (posMap[geneChrom[i]][j] > txEndPos[i])
+            if (posMap[info[i].geneChrom][j] > info[i].txEndPos)
             {
                 break;
             }
         }
     }
-    /*
-    //Handle data at the end of the geneList.
-    if (tempVariant.size() == 0)
-    {
-        //Gene chromosome matched some variants chromosome in user data set but positions didnt match.
-        //cout << geneName[i] << " was not found in data set. Skipping." << endl;
-    }
-    else
-    {
-        //cout << "Matched " << tempVariant.size() << " variant(s) to " << currentGene << endl;
-        gsl_matrix *genotypeSubset = gsl_matrix_alloc((int)tempVariant.size(), subjectCount);
-        gsl_vector *mafSubset = gsl_vector_alloc((int)tempMaf.size());
-        for (int j = 0; j < tempVariant.size(); j++)
-        {
-            gsl_matrix_set_row(genotypeSubset, j, tempVariant[j]);
-            gsl_vector_set(mafSubset, j, tempMaf[j]);
-        }
-        pair<map<string, gsl_matrix *>::iterator, bool> duplicate;
-        duplicate = genes.insert(pair<string, gsl_matrix *>(currentGene, genotypeSubset));
-        //If we have already found the gene in a different transcript ID.
-        if (duplicate.second == false)
-        {
-            //If the new gene is bigger than the old one.
-            if (genes[currentGene]->size1 < genotypeSubset->size1)
-            {
-                genes[currentGene] = genotypeSubset;
-                geneMaf[currentGene] = mafSubset;
-                transcript[currentGene] = transcriptName[transcriptName.size() - 1];
-            }
-        }
-        else
-        {
-            geneMaf.insert(pair<string, gsl_vector *>(currentGene, mafSubset));
-            transcript.insert(pair<string, string>(currentGene, transcriptName[transcriptName.size() - 1]));
-        }
-    }
-    */
-
     map<string, gsl_matrix*>::iterator it;
     for (it = genes.begin(); it != genes.end(); it++)
     {
-        cout << "Matched " << it->second->size1 << " variant(s) to " << it->first << " at transcript ID " << transcript[it->first] << endl;
+        cout << "Matched " << it->second->size1 << " variant(s) to " << it->first << " at transcript ID " << transcript[it->first] << " with region " << region[it->first] << endl;
     }
 
 }
 
 
+
+void readInput::geneWiseInput(string filename)
+{
+    string line;
+    string geneFile = "tmp/" + filename + ".genodata.txt";
+    string command = externals_loc + "bcftools query -f '%CHROM,%POS[ %GT]\\n' " + filename + " > " + geneFile;
+    //cout << "Parse command: " << command << endl;
+    system(command.c_str());
+
+    geneId currentGene = info[0];
+    int geneListPos = 0;
+    vector<pair<int, gsl_vector*> > genodata;
+    inputFile.open(geneFile);
+    for (int i = 0; getline(inputFile, line); i++)
+    {
+        //Pull out variant chomosome and base pair position.
+        string::iterator it = line.begin();
+        int comma = line.find_first_of(',');
+        int pos = line.find_first_of(' ');
+        string currentChrom = line.substr(0, comma);
+        int currentPos = stoi(line.substr(comma + 1, pos));
+        bool update = false;
+
+        if(info[geneListPos].geneChrom != currentChrom)
+        {
+            for(; geneListPos < info.size(); geneListPos++)
+            {
+                if(info[geneListPos].geneChrom == currentChrom)
+                {
+                    update = true;
+                    break;
+                }
+            }   
+        }
+        if(info[geneListPos].txEndPos < currentPos)
+        {
+            for(; geneListPos < info.size(); geneListPos++)
+            {
+                if(info[geneListPos].txEndPos >= currentPos && info[geneListPos].txStartPos <= currentPos)
+                {
+                    update = true;
+                    break;
+                }
+            }
+        }
+        if(geneListPos == info.size())
+        {
+            cout << "Variant in input file does not fall within any known genes." << endl;
+            return;
+        }
+        if(update)
+        {
+            //loadGene(currentGene, genodata);
+            genodata.clear();
+            currentGene = info[geneListPos];
+            update = false;
+        }
+        
+        bool missingData = false;
+        int missingCount = 0;
+        gsl_vector* varData = gsl_vector_alloc(subjectCount);
+        for (int j = 0; it != line.end(); j++)
+        {
+            //Skip space.
+            it++;
+            char leftAllele = *it++;
+            char phase = *it++;
+            char rightAllele = *it++;
+            int left = 0;
+            int right = 0;
+            if (leftAllele == '.')
+            {
+                missingData = true;
+                missingCount++;
+                if (testType == "wsbt")
+                {
+                    gsl_vector_set(varData, j, -1);
+                }
+                if (testType == "skat")
+                {
+                    gsl_vector_set(varData, j, -1);
+                    //gsl_matrix_set(genotypeGslMatrix, i, j, 2 * gsl_vector_get(maf, i));
+                }
+            }
+            //Not set up to handle multiallelic sites.
+            else if (leftAllele != '0')
+            {
+                left = 1;
+            }
+            if (rightAllele == '.')
+            {
+                //If we have already taken care of the missing data we dont need to again.
+                if (leftAllele != '.')
+                {
+                    missingData = true;
+                    missingCount++;
+                    if (testType == "wsbt")
+                    {
+                        gsl_vector_set(varData, j, -1);
+                    }
+                    if (testType == "skat")
+                    {
+                        gsl_vector_set(varData, j, -1);
+                        //gsl_matrix_set(genotypeGslMatrix, i, j, 2 * gsl_vector_get(maf, i));
+                    }
+                }
+                continue;
+            }
+            else if (rightAllele != '0')
+            {
+                right = 1;
+            }
+            gsl_vector_set(varData, j, left + right);
+        }
+        genodata.push_back(pair<int, gsl_vector *>(currentPos, varData));
+    }
+    inputFile.close();
+}
+
+
+/*
+void readInput::test(string filename)
+{
+
+    string line;
+    
+    vector<string> geneName;       //Column 1
+    vector<string> transcriptName; //Column 2
+    vector<string> geneChrom;      //Column 3
+    vector<int> txStartPos;        //Column 5
+    vector<int> txEndPos;          //Column 6
+    vector<int> codingStartPos;    //Column 7
+    vector<int> codingEndPos;      //Column 8
+    
+
+    //Honestly have no idea why the input stream is still in use. Be careful here if trying to multithread this code.
+    if (inputFile.is_open())
+    {
+        //cout << "inputFile already in use." << endl;
+        inputFile.close();
+    }
+    //inputFile.open("orderedRefFlat.txt");
+    inputFile.open("refFlat.txt");
+    for (int i = 0; getline(inputFile, line); i++)
+    {
+        size_t last = 0;
+        size_t current = line.find('\t', last);
+        geneId currentGene;
+        for (int j = 0; current != string::npos; j++)
+        {
+            string token = line.substr(last, current - last);
+            if (j == 0)
+            {
+                currentGene.geneName = token;
+            }
+            if (j == 1)
+            {
+                currentGene.transcriptName = token;
+            }
+            if (j == 2)
+            {
+                //If coded as chr#
+                if (token.length() > 3)
+                {
+                    currentGene.geneChrom = token.substr(3);
+                }
+                //If coded as just the number.
+                else
+                {
+                    currentGene.geneChrom = token;
+                }
+            }
+            if (j == 4)
+            {
+                currentGene.txStartPos = stoi(token);
+            }
+            if (j == 5)
+            {
+                currentGene.txEndPos = stoi(token);
+            }
+            if (j == 6)
+            {
+                currentGene.codingStartPos = stoi(token);
+            }
+            if (j == 7)
+            {
+                currentGene.codingEndPos = stoi(token);
+            }
+            last = current + 1;
+            current = line.find('\t', last);
+        }
+        stringstream region;
+        stringstream in;
+        region << currentGene.geneChrom << ":" << currentGene.txStartPos << "-" << currentGene.txEndPos;
+        //string command = externals_loc + "bcftools query -r " + region.str() + " -f '%CHROM\\n' " + filename + " | head -c1 | wc -c";
+        string command = externals_loc + "bcftools query -r " + region.str() + " -f '%CHROM,%POS[ %GT]\\n' " + filename;
+        in = exec(command.c_str());
+        if(in.str() != "")
+        {
+            cout << in.str() << endl;
+        }
+        
+        //cout << currentGene.geneName << " " << in.str()[in.str().length() - 2] << endl;
+        if(in.str()[in.str().length() - 2] == 1)
+        {
+            cout << "We found gene " << currentGene.geneName << endl;
+            info.push_back(currentGene);
+        }
+        
+    }
+    inputFile.close();
+}
+
+*/
+
+void readInput::testReadFromStream(string filename, string region)
+{
+    string temp;
+    stringstream in;
+    string command = externals_loc + "bcftools query -r " + region + " -f '%CHROM,%POS[ %GT]\\n' " + filename;
+    in = exec(command.c_str());
+    int varCount = 0;
+    while (getline(in, temp))
+    {
+        varCount++;
+        cout << temp << endl;
+    }
+    if (varCount != 0)
+    {
+    }
+}
+
+
+//Copy and pasted from stackexchange. (modified to use a string stream rather than string for speed)
+//https://stackoverflow.com/questions/478898/how-to-execute-a-command-and-get-output-of-command-within-c-using-posix
+stringstream readInput::exec(const char* cmd) {
+    char buffer[512];
+    stringstream result;
+    shared_ptr<FILE> pipe(popen(cmd, "r"), pclose);
+    if (!pipe) throw runtime_error("popen() failed!");
+    while (!feof(pipe.get())) {
+        if (fgets(buffer, 512, pipe.get()) != nullptr)
+            result << buffer;
+    }
+    return result;
+}

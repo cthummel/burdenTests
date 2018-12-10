@@ -164,26 +164,37 @@ int main(int argc, const char *argv[])
         if (geneBased)
         {
             map<string, gsl_matrix *> subsets = result.getGeneSubsets();
+            map<string, string> regions = result.getRegions();
+            size_t perm[subsets.size()];
+            vector<string> genes;
             vector<double> pvalues;
             vector<double> permpvalues;
             vector<double> runTime;
-            for (map<string, gsl_matrix *>::iterator iter = subsets.begin(); iter != subsets.end(); iter++)
+            
+            for (map<string, string>::iterator iter = regions.begin(); iter != regions.end(); iter++)
             {
-                cout << "Running WSBT test on gene " << iter->first << endl;
-                wsbt test = wsbt(iter->second, result.getCaseCount(), result.getMaf(iter->first));
+                //cout << "Running WSBT test on gene " << iter->first << endl;
+                readInput dataCollector = readInput(vcffilename, "", iter->second, result.getCaseCount(), 1);
+                wsbt test = wsbt(dataCollector.getGslGenotype(), result.getCaseCount(), result.getMaf(iter->first));
+                genes.push_back(iter->first);
                 pvalues.push_back(test.getPvalue());
                 permpvalues.push_back(test.getPermPvalue());
                 currentTime = std::chrono::high_resolution_clock::now();
-                cout << "WSBT on " << iter->first << " took " << std::chrono::duration_cast<std::chrono::milliseconds>(currentTime - lasttime).count() / 1000.0 << " minutes." << endl;
+                //cout << "WSBT on " << iter->first << " took " << std::chrono::duration_cast<std::chrono::milliseconds>(currentTime - lasttime).count() / 60000.0 << " minutes." << endl;
                 runTime.push_back(std::chrono::duration_cast<std::chrono::milliseconds>(currentTime - lasttime).count() / 60000.0);
                 lasttime = currentTime;
             }
-            int i = 0;
-            for (map<string, gsl_matrix *>::iterator iter = subsets.begin(); iter != subsets.end(); i++, iter++)
+            gsl_sort_index(perm, pvalues.data(), 1, pvalues.size());
+            ofstream out;
+            out.open("wsbtResults.txt");
+            for (int i = 0; i < pvalues.size(); i++)
             {
-                cout << "Pvalue for gene " << iter->first << " is " << pvalues[i] << ", " << permpvalues[i];
-                cout << " with a test run time of " << runTime[i] << " seconds." << endl;
+                //perm contains the sorted order.
+                //cout << "Pvalue for gene " << genes[perm[i]] << " is " << pvalues[perm[i]] << ", " << permpvalues[perm[i]];
+                //cout << " with a test run time of " << runTime[perm[i]] << " minutes." << endl;
+                out << "Pvalue for gene " << genes[perm[i]] << " is " << pvalues[perm[i]] << ", " << permpvalues[perm[i]] << endl;
             }
+            out.close();
             double fisherStat = 0;
             int geneCount = 0;
             for (int i = 0; i < pvalues.size(); i++)

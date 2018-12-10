@@ -22,17 +22,37 @@ using namespace std;
 
 class readInput
 {
-    
-public:
+    struct geneId
+    {
+        string geneName;        //Column 1
+        string transcriptName;  //Column 2
+        string geneChrom;       //Column 3
+        bool strand;            //Column 4
+        int txStartPos;         //Column 5
+        int txEndPos;           //Column 6
+        int codingStartPos;     //Column 7
+        int codingEndPos;       //Column 8
+        int exonCount;          //Column 9
+        gsl_vector_int *exonStarts; //Column 10
+        gsl_vector_int *exonEnds;   //Column 11
+        gsl_matrix *genoData;
+        gsl_vector *maf;
+    };
+
+  public:
     readInput(string dir, string testType, string vcfType, string vcfFile1, string region, string phenoFile, string covFile);
+    readInput(string userVcf, string background, string region, int cases, int thread);
     
     void readVcfInitialInfo(string filename);
     void readCaseCount(string filename);
     void readPhenotype(string phenoFile);
     void readMaf(string filename);
+    void readMaf(string filename, string region, string outfile);
     void makePositionFile(string filename);
     void mergeData(string filename);
     void bcfInput(string filename);
+    void bcfInput(string filename, string region, string outfile);
+    void geneWiseInput(string filename);
     void readGenes(string filename);
     
     int getCaseCount(){return caseCount;}
@@ -42,10 +62,16 @@ public:
     gsl_vector* getMaf(string geneName){return geneMaf[geneName];}
     gsl_vector* getPheno(){return pheno;}
     map<string, gsl_matrix*> getGeneSubsets(){return genes;}
+    map<string, string> getRegions(){return region;}
     
 
 private:
     void parseGenes(string chromosome, vector<string> *geneName);
+    void buildGeneInfo(string filename);
+    void loadGene(geneId gene, vector<pair<int, gsl_vector*> > userData);
+    void testReadFromStream(string filename, string region);
+    void test(string filename);
+    stringstream exec(const char* cmd);
     int variantCount;
     int subjectCount;
     int caseCount;
@@ -56,22 +82,18 @@ private:
     string bgzip_loc = "../../externals/bin/bgzip";
     string externals_loc = "../../externals/bin/";
     string testDir;
-    regex gMatch;
-    regex altAlleleCountMatch;
-    regex mafMatch;
     regex subjectCountMatch;
     regex variantCountMatch;
-    regex headerMatch;
-    regex posMatch;
 
     ifstream inputFile;
     
     //vector<string> vcfChrom;
     vector<int> vcfPos;
-
+    vector<geneId> info;
     map<string, vector<int> > posMap;
     map<string, gsl_matrix *> genes;
     map<string, gsl_vector *> geneMaf;
+    map<string, string> region;
 
     gsl_matrix* genotypeGslMatrix;
     gsl_matrix* covariates;

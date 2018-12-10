@@ -42,6 +42,7 @@ private:
     double normpvalue;
     double permpvalue;
     int affectedCount;
+    bool verbose = false;
     
     gsl_matrix* totalGenotype;
     gsl_vector* scores;
