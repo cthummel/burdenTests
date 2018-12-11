@@ -104,7 +104,7 @@ genericBurdenTest setupGenericBurdenTest(int subjectCount, int variantCount)
     {
         ptype[i] = gsl_ran_gaussian(r, 10) + 175;
     }
-    return genericBurdenTest(G, maf, ptype);
+    //return genericBurdenTest(G, maf, ptype);
 }
 
 TEST(Mathtest, allDifferentRank)

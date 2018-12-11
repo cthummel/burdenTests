@@ -11,6 +11,7 @@
 #include <fstream>
 #include <string.h>
 #include <chrono>
+//#include <omp.h>
 #include "genericBurdenTest.cpp"
 #include "wsbt.cpp"
 #include "input.cpp"
@@ -151,16 +152,13 @@ int main(int argc, const char *argv[])
     readInput result(currentDir, testType, vcfType, vcffilename, region, phenofilename, covfilename);
 
     currentTime = std::chrono::high_resolution_clock::now();
-    lasttime = currentTime;
     cout << endl;
     cout << "After Input. Took " << std::chrono::duration_cast<std::chrono::milliseconds>(currentTime - startTime).count() / 1000.0 << " seconds." << endl;
     cout << endl;
+    lasttime = currentTime;
 
     if (testType == "wsbt")
     {
-        currentTime = std::chrono::high_resolution_clock::now();
-        cout << "Before WSBT Test." << std::chrono::duration_cast<std::chrono::milliseconds>(currentTime - lasttime).count() << endl;
-        lasttime = currentTime;
         if (geneBased)
         {
             map<string, gsl_matrix *> subsets = result.getGeneSubsets();
@@ -170,12 +168,13 @@ int main(int argc, const char *argv[])
             vector<double> pvalues;
             vector<double> permpvalues;
             vector<double> runTime;
-            
+            #pragma omp parallel for schedule(dynamic)
             for (map<string, string>::iterator iter = regions.begin(); iter != regions.end(); iter++)
             {
                 //cout << "Running WSBT test on gene " << iter->first << endl;
+                //readInput dataCollector = readInput(vcffilename, "", iter->second, result.getCaseCount(), omp_get_thread_num());
                 readInput dataCollector = readInput(vcffilename, "", iter->second, result.getCaseCount(), 1);
-                wsbt test = wsbt(dataCollector.getGslGenotype(), result.getCaseCount(), result.getMaf(iter->first));
+                wsbt test = wsbt(dataCollector.getGslGenotype(), result.getCaseCount(), dataCollector.getMaf());
                 genes.push_back(iter->first);
                 pvalues.push_back(test.getPvalue());
                 permpvalues.push_back(test.getPermPvalue());

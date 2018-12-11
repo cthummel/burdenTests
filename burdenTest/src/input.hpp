@@ -55,6 +55,7 @@ class readInput
     void geneWiseInput(string filename);
     void readGenes(string filename);
     
+    
     int getCaseCount(){return caseCount;}
     gsl_matrix* getGslGenotype(){return genotypeGslMatrix;}
     gsl_matrix* getCovariates(){return covariates;}
@@ -69,9 +70,11 @@ private:
     void parseGenes(string chromosome, vector<string> *geneName);
     void buildGeneInfo(string filename);
     void loadGene(geneId gene, vector<pair<int, gsl_vector*> > userData);
-    void testReadFromStream(string filename, string region);
+    void buildPosMap(string filename);
+    void matchGenes();
+    bool testReadFromStream(string filename, string region);
     void test(string filename);
-    stringstream exec(const char* cmd);
+    string exec(const char* cmd);
     int variantCount;
     int subjectCount;
     int caseCount;
@@ -88,12 +91,12 @@ private:
     ifstream inputFile;
     
     //vector<string> vcfChrom;
-    vector<int> vcfPos;
     vector<geneId> info;
     map<string, vector<int> > posMap;
     map<string, gsl_matrix *> genes;
     map<string, gsl_vector *> geneMaf;
     map<string, string> region;
+    map<string, pair<int,int>> genePosMap;
 
     gsl_matrix* genotypeGslMatrix;
     gsl_matrix* covariates;

@@ -8,12 +8,9 @@
 
 #include "input.hpp"
 #include <fstream>
-#include <sstream>
+//#include <sstream>
+
 using namespace std;
-
-
-
-
 
 readInput::readInput(string dir, string tType, string inputVcfType, string userVcf, string region, string phenoFile, string covFile)
 {
@@ -31,11 +28,17 @@ readInput::readInput(string dir, string tType, string inputVcfType, string userV
     //Switching on test type to get proper input.
     if(testType == "wsbt")
     {
-        bool tst = false;
-        if(tst)
+        bool newMethod = true;
+        if(newMethod)
         {
-            //test(userVcf);
-            testReadFromStream(userVcf, "3:9000000-10000000");
+            readVcfInitialInfo(userVcf);
+            readCaseCount(userVcf);
+            buildPosMap(userVcf);
+            if (variantRegion == "-g")
+            {
+                buildGeneInfo("orderedRefFlat.txt");
+                matchGenes();
+            }
         }
         else
         {
@@ -69,7 +72,6 @@ readInput::readInput(string dir, string tType, string inputVcfType, string userV
 
         //Input genotype data.
         bcfInput(userVcf);
-        
     }
     else if (testType == "cast")
     {
@@ -87,8 +89,8 @@ readInput::readInput(string dir, string tType, string inputVcfType, string userV
         readCaseCount(userVcf);
         if(variantRegion == "-g")
         {
-            buildGeneInfo("refFlat.txt");
-            readGenes("refFlat.txt");
+            buildGeneInfo("orderedrefFlat.txt");
+            readGenes("orderedrefFlat.txt");
         }
         
 
@@ -135,7 +137,6 @@ readInput::readInput(string user, string back, string region, int count, int thr
     
     //Build our stats file and GT file for later parsing.
     string command = externals_loc + "bcftools stats -r " + region + " " + user + " > data" + to_string(thread_ID) + ".stats";
-    cout << command << endl;
     system(command.c_str());
 
     //Parsing background info
@@ -201,9 +202,8 @@ void readInput::readVcfInitialInfo(string filename)
     {
         statsFileName = filename.substr(filePos, filename.length() - vcfType.length());
     }
-    //cout << "statsFileName: " << statsFileName << endl;
+
     string summaryCommand = bcftools_loc + " stats " + filename + " > " + testDir + "/tmp/" + statsFileName + ".stats";
-    //cout << "summaryCommand: " << summaryCommand << endl;
     system(summaryCommand.c_str());
     
     if(!inputFile.is_open())
@@ -504,6 +504,7 @@ void readInput::mergeData(string user_filename)
 void readInput::bcfInput(string filename)
 {
     string line;
+    vector<int> vcfPos;
     string geneFile = "tmp/" + filename + ".genodata.txt";
     string command = externals_loc + "bcftools query -f '%CHROM,%POS[ %GT]\\n' " + filename + " > " + geneFile;
     //cout << "Parse command: " << command << endl;
@@ -767,12 +768,10 @@ void readInput::buildGeneInfo(string filename)
             if (j == 0)
             {
                 currentGene.geneName = token;
-                //geneName.push_back(token);
             }
             if (j == 1)
             {
                 currentGene.transcriptName = token;
-                //transcriptName.push_back(token);
             }
             if (j == 2)
             {
@@ -780,34 +779,28 @@ void readInput::buildGeneInfo(string filename)
                 if (token.length() > 3)
                 {
                     currentGene.geneChrom = token.substr(3);
-                    //geneChrom.push_back(token.substr(3));
                 }
                 //If coded as just the number.
                 else
                 {
                     currentGene.geneChrom = token;
-                    //geneChrom.push_back(token);
                 }
             }
             if (j == 4)
             {
                 currentGene.txStartPos = stoi(token);
-                //txStartPos.push_back(stoi(token));
             }
             if (j == 5)
             {
                 currentGene.txEndPos = stoi(token);
-                //txEndPos.push_back(stoi(token));
             }
             if (j == 6)
             {
                 currentGene.codingStartPos = stoi(token);
-                //codingStartPos.push_back(stoi(token));
             }
             if (j == 7)
             {
                 currentGene.codingEndPos = stoi(token);
-                //codingEndPos.push_back(stoi(token));
             }
             last = current + 1;
             current = line.find('\t', last);
@@ -907,6 +900,95 @@ void readInput::readGenes(string filename)
 
 }
 
+//Builds a map of variant positions to chromosome in user data.
+void readInput::buildPosMap(string filename)
+{
+    string line;
+    vector<int> vcfPos;
+    string posFile = "tmp/" + filename + ".posdata.txt";
+    string command = externals_loc + "bcftools query -f '%CHROM,%POS\\n' " + filename + " > " + posFile;
+    system(command.c_str());
+
+    string currentChrom;
+    inputFile.open(posFile);
+    for(int i = 0; getline(inputFile, line); i++)
+    {
+        int comma = line.find_first_of(',');
+        if (i == 0)
+        {
+            currentChrom = line.substr(0, comma);
+        }
+        if (currentChrom != line.substr(0, comma))
+        {
+            posMap.insert(pair<string, vector<int> >(currentChrom, vcfPos));
+            cout << vcfPos.size() << " variants in chromosome " << currentChrom << endl;
+            vcfPos.clear();
+            currentChrom = line.substr(0, comma);
+        }
+
+        vcfPos.push_back(stoi(line.substr(comma + 1)));
+        
+    }
+    posMap.insert(pair<string, vector<int> >(currentChrom, vcfPos));
+    cout << vcfPos.size() << " variants in chromosome " << currentChrom << endl;
+
+    inputFile.close();
+}
+
+
+void readInput::matchGenes()
+{
+    string line;
+    cout << endl << "Looking through " << info.size() << " gene entries." << endl;
+    for (int i = 0; i < info.size(); i++)
+    {
+        //Check if the chromosome of current gene is even in the data set.
+        if (posMap.find(info[i].geneChrom) == posMap.end())
+        {
+            continue;
+        }
+
+        //Iterate through all the variants in a chromosome to find gene matches.
+        for (int j = 0; j < posMap[info[i].geneChrom].size(); j++)
+        {
+            //Consider not searching the early positions multiple times. Could initiate j to the last seen useful position.
+            if (posMap[info[i].geneChrom][j] >= info[i].txStartPos && posMap[info[i].geneChrom][j] <= info[i].txEndPos)
+            {
+                //Try and enter the gene into the list of present genes.
+                string temp = info[i].geneChrom + ":" + to_string(info[i].txStartPos) + "-" + to_string(info[i].txEndPos);
+                pair<map<string, string>::iterator, bool> duplicate;
+                duplicate = region.insert(pair<string, string>(info[i].geneName, temp));
+                //This gene was a duplicate of another already entered in. Take the largest transcript region.
+                if(duplicate.second == false)
+                {
+                    string oldRegion = region[info[i].geneName];
+                    int oldStart = genePosMap[info[i].geneName].first;
+                    int oldEnd = genePosMap[info[i].geneName].second;
+                    int newWidth = info[i].txEndPos - info[i].txStartPos;
+                    if(newWidth > (oldEnd - oldStart))
+                    {
+                        region[info[i].geneName] = temp;
+                        genePosMap[info[i].geneName] = pair<int, int>(info[i].txStartPos, info[i].txEndPos);
+                    }
+                }
+                else
+                {
+                    genePosMap.insert(pair<string, pair<int, int>>(info[i].geneName, pair<int,int>(info[i].txStartPos,info[i].txEndPos)));
+                }
+            }
+            if (posMap[info[i].geneChrom][j] > info[i].txEndPos)
+            {
+                break;
+            }
+        }
+    }
+    for(map<string,string>::iterator it = region.begin(); it != region.end(); it++)
+    {
+        cout << "Matched variant(s) to gene " << it->first << " in region " << it->second << endl;
+    }
+}
+
+
 
 
 void readInput::geneWiseInput(string filename)
@@ -953,11 +1035,14 @@ void readInput::geneWiseInput(string filename)
                 }
             }
         }
+        //This shouldnt ever occur so it wastes time checking.
+        /*
         if(geneListPos == info.size())
         {
             cout << "Variant in input file does not fall within any known genes." << endl;
             return;
         }
+        */
         if(update)
         {
             //loadGene(currentGene, genodata);
@@ -1123,34 +1208,40 @@ void readInput::test(string filename)
 
 */
 
-void readInput::testReadFromStream(string filename, string region)
+/*
+
+bool readInput::testReadFromStream(string filename, string region)
 {
     string temp;
     stringstream in;
-    string command = externals_loc + "bcftools query -r " + region + " -f '%CHROM,%POS[ %GT]\\n' " + filename;
-    in = exec(command.c_str());
-    int varCount = 0;
-    while (getline(in, temp))
+    //string command = externals_loc + "bcftools query -r " + region + " -f '%CHROM,%POS[ %GT]\\n' " + filename;
+    string command = "bcftools query -r " + region + " -f '%CHROM\n' " + filename + " | head -c1 | wc -c";
+    temp = exec(command.c_str());
+    if (temp[0] == '1')
     {
-        varCount++;
-        cout << temp << endl;
+        return true;
     }
-    if (varCount != 0)
+    else
     {
+        return false;
     }
 }
+*/
 
+
+/*
 
 //Copy and pasted from stackexchange. (modified to use a string stream rather than string for speed)
 //https://stackoverflow.com/questions/478898/how-to-execute-a-command-and-get-output-of-command-within-c-using-posix
-stringstream readInput::exec(const char* cmd) {
-    char buffer[512];
-    stringstream result;
+string readInput::exec(const char* cmd) {
+    char buffer[64];
+    string result;
     shared_ptr<FILE> pipe(popen(cmd, "r"), pclose);
     if (!pipe) throw runtime_error("popen() failed!");
     while (!feof(pipe.get())) {
-        if (fgets(buffer, 512, pipe.get()) != nullptr)
-            result << buffer;
+        if (fgets(buffer, 64, pipe.get()) != nullptr)
+            result += buffer;
     }
     return result;
 }
+*/
