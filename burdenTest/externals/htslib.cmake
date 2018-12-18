@@ -22,7 +22,6 @@ ExternalProject_Get_Property(${HTSLIB_PROJECT} SOURCE_DIR)
 ExternalProject_Get_Property(${HTSLIB_PROJECT} BINARY_DIR)
 
 MESSAGE("BINARY_DIR: ${BINARY_DIR}")
-
 MESSAGE("SRC_DIR: ${SOURCE_DIR}")
 
 
