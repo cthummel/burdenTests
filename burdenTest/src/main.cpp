@@ -11,7 +11,7 @@
 #include <fstream>
 #include <string.h>
 #include <chrono>
-//#include <omp.h>
+#include <omp.h>
 #include "genericBurdenTest.cpp"
 #include "wsbt.cpp"
 #include "input.cpp"
@@ -25,9 +25,10 @@ int main(int argc, const char *argv[])
 {
     string currentDir, vcffilename, vcfType, phenofilename, covfilename, filename, testType, region;
     bool geneBased = false;
+    bool userBackgroundIncluded = false;
     auto startTime = chrono::high_resolution_clock::now();
     auto currentTime = startTime;
-    auto lasttime = startTime;
+    auto lasttime = currentTime;
 
     currentDir = argv[0];
     if (currentDir[0] == '.')
@@ -71,6 +72,10 @@ int main(int argc, const char *argv[])
                 }
                 i++;
             }
+        }
+        if (strcmp(argv[i], "--back") == 0 || strcmp(argv[i], "--b"))
+        {
+            userBackgroundIncluded = true;
         }
         if (strcmp(argv[i], "-pheno") == 0)
         {
@@ -136,7 +141,7 @@ int main(int argc, const char *argv[])
         {
             testType = argv[i];
         }
-        if (strcmp(argv[i], "-g") == 0)
+        if (strcmp(argv[i], "--g") == 0)
         {
             geneBased = true;
             region = argv[i];
@@ -164,24 +169,29 @@ int main(int argc, const char *argv[])
             map<string, gsl_matrix *> subsets = result.getGeneSubsets();
             map<string, string> regions = result.getRegions();
             size_t perm[subsets.size()];
-            vector<string> genes;
-            vector<double> pvalues;
-            vector<double> permpvalues;
-            vector<double> runTime;
+            vector<string> genes(regions.size());
+            vector<double> pvalues(regions.size());
+            vector<double> permpvalues(regions.size());
+            vector<double> runTime(regions.size());
+
             #pragma omp parallel for schedule(dynamic)
-            for (map<string, string>::iterator iter = regions.begin(); iter != regions.end(); iter++)
+            for (int i = 0; i < regions.size(); i++)
             {
-                //cout << "Running WSBT test on gene " << iter->first << endl;
-                //readInput dataCollector = readInput(vcffilename, "", iter->second, result.getCaseCount(), omp_get_thread_num());
-                readInput dataCollector = readInput(vcffilename, "", iter->second, result.getCaseCount(), 1);
+                //Thread safe method of iterating through the regions. Not elegant though.
+                map<string, string>::iterator iter = regions.begin();
+                advance(iter, i);
+                auto runStartTime = chrono::high_resolution_clock::now();
+
+                //Reads in data from region then runs test.
+                readInput dataCollector = readInput(userBackgroundIncluded, vcffilename, iter->second, result.getCaseCount(), omp_get_thread_num());
                 wsbt test = wsbt(dataCollector.getGslGenotype(), result.getCaseCount(), dataCollector.getMaf());
-                genes.push_back(iter->first);
-                pvalues.push_back(test.getPvalue());
-                permpvalues.push_back(test.getPermPvalue());
-                currentTime = std::chrono::high_resolution_clock::now();
-                //cout << "WSBT on " << iter->first << " took " << std::chrono::duration_cast<std::chrono::milliseconds>(currentTime - lasttime).count() / 60000.0 << " minutes." << endl;
-                runTime.push_back(std::chrono::duration_cast<std::chrono::milliseconds>(currentTime - lasttime).count() / 60000.0);
-                lasttime = currentTime;
+                genes[i] = iter->first;
+                pvalues[i] = test.getPvalue();
+                permpvalues[i] = test.getPermPvalue();
+
+                //Check test speed.
+                auto runCurrentTime = std::chrono::high_resolution_clock::now();
+                runTime[i] = std::chrono::duration_cast<std::chrono::milliseconds>(runCurrentTime - runStartTime).count() / 60000.0;
             }
             gsl_sort_index(perm, pvalues.data(), 1, pvalues.size());
             ofstream out;
@@ -189,8 +199,6 @@ int main(int argc, const char *argv[])
             for (int i = 0; i < pvalues.size(); i++)
             {
                 //perm contains the sorted order.
-                //cout << "Pvalue for gene " << genes[perm[i]] << " is " << pvalues[perm[i]] << ", " << permpvalues[perm[i]];
-                //cout << " with a test run time of " << runTime[perm[i]] << " minutes." << endl;
                 out << "Pvalue for gene " << genes[perm[i]] << " is " << pvalues[perm[i]] << ", " << permpvalues[perm[i]] << endl;
             }
             out.close();
@@ -198,10 +206,14 @@ int main(int argc, const char *argv[])
             int geneCount = 0;
             for (int i = 0; i < pvalues.size(); i++)
             {
-                if(!gsl_isnan(pvalues[i]))
+                if(pvalues[i] != 0)
                 {
                     fisherStat += -2 * log(pvalues[i]);
                     geneCount++;
+                }
+                else
+                {
+                    cout << "Pvalue for gene " << genes[perm[i]] << " excluded from fisher product test because pvalue = 0" << endl;
                 }
             }
             double fisherPvalue = gsl_cdf_chisq_P(fisherStat, 2 * geneCount);
@@ -218,6 +230,7 @@ int main(int argc, const char *argv[])
         //writeOutput output(vcffilename, testType, test.getWeights());
 
         auto endTime = std::chrono::high_resolution_clock::now();
+        
         cout << "Total Time: " << std::chrono::duration_cast<std::chrono::milliseconds>(endTime - startTime).count() / 60000.0 << " minutes." << endl;
     }
     else if (testType == "burden")

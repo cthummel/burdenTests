@@ -1,6 +1,33 @@
-cmake_minimum_required(VERSION 2.8)
+cmake_minimum_required(VERSION 2.8 FATAL_ERROR)
 
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
+
+
+
+if(APPLE)
+	set(OPENMP_LIBRARIES "/usr/local/Cellar/llvm/7.0.0/lib")
+	set(OPENMP_INCLUDES "/usr/local/Cellar/llvm/7.0.0/include")
+
+	if(CMAKE_C_COMPILER_ID MATCHES "Clang")
+        	set(OpenMP_C "${CMAKE_C_COMPILER}")
+        	set(OpenMP_C_FLAGS "-Xpreprocessor -fopenmp -Wno-unused-command-line-argument")
+        	set(OpenMP_C_LIB_NAMES "libomp" "libgomp" "libiomp7")
+        	set(OpenMP_libomp_LIBRARY ${OpenMP_C_LIB_NAMES})
+        	set(OpenMP_libgomp_LIBRARY ${OpenMP_C_LIB_NAMES})
+        	set(OpenMP_libiomp7_LIBRARY ${OpenMP_C_LIB_NAMES})
+    	endif()
+
+    	if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+      		set(OpenMP_CXX "${CMAKE_CXX_COMPILER}")
+      		set(OpenMP_CXX_FLAGS "-Xpreprocessor -fopenmp -Wno-unused-command-line-argument")
+      		set(OpenMP_CXX_LIB_NAMES "libomp" "libgomp" "libiomp7")
+      		set(OpenMP_libomp_LIBRARY ${OpenMP_CXX_LIB_NAMES})
+      		set(OpenMP_libgomp_LIBRARY ${OpenMP_CXX_LIB_NAMES})
+      		set(OpenMP_libiomp7_LIBRARY ${OpenMP_CXX_LIB_NAMES})
+    	endif()
+
+endif()
+
 
 find_package(OpenMP)
 if (OPENMP_FOUND)

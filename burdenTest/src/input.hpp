@@ -41,15 +41,16 @@ class readInput
 
   public:
     readInput(string dir, string testType, string vcfType, string vcfFile1, string region, string phenoFile, string covFile);
-    readInput(string userVcf, string background, string region, int cases, int thread);
+    readInput(bool mergeData, string userVcf, string region, int cases, int thread);
     
+    void readVcfInitialInfo(string filename, string region, int thread_ID);
     void readVcfInitialInfo(string filename);
     void readCaseCount(string filename);
     void readPhenotype(string phenoFile);
     void readMaf(string filename);
     void readMaf(string filename, string region, string outfile);
     void makePositionFile(string filename);
-    void mergeData(string filename);
+    void mergeData(string user, string background, string region, string outfile);
     void bcfInput(string filename);
     void bcfInput(string filename, string region, string outfile);
     void geneWiseInput(string filename);
@@ -87,10 +88,7 @@ private:
     string testDir;
     regex subjectCountMatch;
     regex variantCountMatch;
-
-    ifstream inputFile;
     
-    //vector<string> vcfChrom;
     vector<geneId> info;
     map<string, vector<int> > posMap;
     map<string, gsl_matrix *> genes;

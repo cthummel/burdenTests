@@ -1,7 +1,7 @@
 WorkspaceSettings.xcsettings
 burdenUnitTest.m
 *Cache.txt
-bin/
+bin/*
 xcuserdata/
 *~
 burdenTest/third/
@@ -10,3 +10,4 @@ burdenTest/externals/include
 burdenTest/externals/lib
 burdenTest/externals/libexec
 burdenTest/externals/share
+*.script

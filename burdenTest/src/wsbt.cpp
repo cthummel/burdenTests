@@ -63,6 +63,7 @@ wsbt::wsbt(gsl_matrix* totalGtype, int aCount, gsl_vector *inputMaf)
         }
         normpvalue = normpvalue * 2;
         
+        //Reporting output. 
         currentTime = chrono::high_resolution_clock::now();
         if(verbose || k + 1 == permutationCount)
         {
@@ -94,20 +95,27 @@ wsbt::wsbt(gsl_matrix* totalGtype, int aCount, gsl_vector *inputMaf)
                 gsl_matrix_swap_columns(totalGenotype, i, subjectPerm->data[i]);
             }
         }
-
-        //gsl_permute_matrix(subjectPerm, totalGenotype);
     }
     int extremeCount = 1;
     for(int i = 1; i < permutationCount; i++)
     {
-        if(gsl_vector_get(testStatistics, 0) > gsl_vector_get(testStatistics, i))
+        if(testStat > 0)
         {
-            extremeCount++;
+            if(testStat <= gsl_vector_get(testStatistics, i))
+            {
+                extremeCount++;
+            }
+        }
+        else
+        {
+            if(testStat >= gsl_vector_get(testStatistics, i))
+            {
+                extremeCount++;
+            }
         }
     }
     permpvalue = (1.0 * extremeCount) / (permutationCount + 1);
 
-    //cout << endl;
     gsl_rng_free(r);
     gsl_permutation_free(subjectPerm);
     gsl_vector_free(scores);
