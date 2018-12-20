@@ -234,7 +234,7 @@ void readInput::readVcfInitialInfo(string filename)
 void readInput::readCaseCount(string filename)
 {
     bool mergeMode = false;
-    if(mergeMode)
+    if(!mergeMode)
     {
         caseCount = subjectCount - 2504;
     }

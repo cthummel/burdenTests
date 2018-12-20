@@ -200,9 +200,9 @@ int main(int argc, const char *argv[])
             int geneCount = 0;
             for (int i = 0; i < pvalues.size(); i++)
             {
-                if(pvalues[i] != 0)
+                if(pvalues[perm[i]] != 0)
                 {
-                    fisherStat += -2 * log(pvalues[i]);
+                    fisherStat += -2 * log(pvalues[perm[i]]);
                     geneCount++;
                 }
                 else
