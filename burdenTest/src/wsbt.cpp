@@ -67,7 +67,9 @@ wsbt::wsbt(gsl_matrix* totalGtype, int aCount, gsl_vector *inputMaf)
         currentTime = chrono::high_resolution_clock::now();
         if(verbose || k + 1 == permutationCount)
         {
-            cout << "Permutation " << k + 1 << " took " << std::chrono::duration_cast<std::chrono::milliseconds>(currentTime - lastTime).count() / 1000.0 << " seconds." << endl;
+            cout << "Subject count: " << totalGtype->size2 << endl;
+            cout << "Variant count: " << totalGtype->size1 << endl;
+            cout << k + 1 << " permutations took " << std::chrono::duration_cast<std::chrono::milliseconds>(currentTime - startTime).count() / 1000.0 << " seconds." << endl;
             cout << "TestStatistic for permutation " << k + 1 << " is " << gsl_vector_get(testStatistics, k) << endl;
             cout << "TestStatisticMean for permutation " << k + 1 << " is " << testStatMean << endl;
             cout << "TestStatisticSigma for permutation " << k + 1 << " is " << testStatSigma << endl;

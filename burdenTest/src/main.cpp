@@ -207,10 +207,10 @@ int main(int argc, const char *argv[])
                 }
                 else
                 {
-                    cout << "Pvalue for gene " << genes[perm[i]] << " excluded from fisher product test because pvalue = 0" << endl;
+                    cout << "Pvalue for gene " << genes[perm[i]] << " excluded from fisher product test because pvalue = " << pvalues[perm[i]] << endl;
                 }
             }
-            double fisherPvalue = gsl_cdf_chisq_P(fisherStat, 2 * geneCount);
+            double fisherPvalue = gsl_cdf_chisq_Q(fisherStat, 2 * geneCount);
             cout << "Fisher product test statistic is " << fisherStat << " with pvalue " << fisherPvalue << endl;
         }
         else
@@ -278,7 +278,7 @@ int main(int argc, const char *argv[])
                 cout << "SKAT Took " << runTime[i] << " minutes." << endl;
                 cout << endl;
             }
-            
+
             gsl_sort_index(perm, pvalues.data(), 1, pvalues.size());
             ofstream outFile;
             string output = vcffilename + ".SKAT.results";

@@ -33,7 +33,7 @@ readInput::readInput(string dir, string tType, string inputVcfType, string userV
             readVcfInitialInfo(userVcf);
             readCaseCount(userVcf);
             buildPosMap(userVcf);
-            if (variantRegion == "-g")
+            if (variantRegion == "--g")
             {
                 buildGeneInfo("orderedRefFlat.txt");
                 matchGenes();
@@ -46,7 +46,7 @@ readInput::readInput(string dir, string tType, string inputVcfType, string userV
             readMaf(userVcf);
             bcfInput(userVcf);
             readCaseCount(userVcf);
-            if (variantRegion == "-g")
+            if (variantRegion == "--g")
             {
                 buildGeneInfo("orderedRefFlat.txt");
                 readGenes("orderedRefFlat.txt");
@@ -86,7 +86,7 @@ readInput::readInput(string dir, string tType, string inputVcfType, string userV
         readMaf(userVcf);
         bcfInput(userVcf);
         readCaseCount(userVcf);
-        if(variantRegion == "-g")
+        if(variantRegion == "--g")
         {
             buildGeneInfo("orderedrefFlat.txt");
             readGenes("orderedrefFlat.txt");
@@ -186,50 +186,25 @@ void readInput::readVcfInitialInfo(string filename, string region, int thread_ID
         }
     }
     in.close();
-
-    cout << "Subject count: " << subjectCount << endl;
-    cout << "Variant count: " << variantCount << endl;
 }
 
 
 void readInput::readVcfInitialInfo(string filename)
 {
     string line;
-    string statsFileName = "";
     smatch match;
     ifstream in;
+    subjectCountMatch = regex("number of samples:\\s(\\d*)");
+    variantCountMatch = regex("number of records:\\s(\\d*)");
     subjectCount = 0;
     variantCount = 0;
-    
-    /*
-    //So we can remove the directory that has the file and just keep the filename itself.
-    int filePos;
-    for(int i = filename.length(); i >= 0; i--)
-    {
-        if (filename[i] == '/')
-        {
-            filePos = i + 1;
-            break;
-        }
-    }
 
-    //Remove the filetype from filename.
-    if(filename.substr(filename.length() - 7) == ".vcf.gz")
-    {
-        statsFileName = filename.substr(filePos, filename.length() - 7);
-    }
-    else if(filename.substr(filename.length() - 4) == ".vcf")
-    {
-        statsFileName = filename.substr(filePos, filename.length() - vcfType.length());
-    }
-    */
-
-    string summaryCommand = externals_loc + "bcftools stats " + filename + " > /tmp/" + statsFileName + ".stats";
+    string summaryCommand = externals_loc + "bcftools stats " + filename + " > " + filename + ".stats";
     system(summaryCommand.c_str());
     
     if(!in.is_open())
     {
-        in.open("/tmp/" + statsFileName + ".stats");
+        in.open(filename + ".stats");
         for(int j = 0; getline(in, line); j++)
         {
             if (subjectCount == 0)
