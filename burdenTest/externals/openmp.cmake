@@ -31,3 +31,6 @@ add_custom_command(
 MESSAGE("OPENMP_DIR: ${OPENMP_DIR}")
 MESSAGE("OPENMP_BINARY_DIR: ${BINARY_DIR}")
 MESSAGE("OPENMP_SRC_DIR: ${SOURCE_DIR}")
+
+SET(OPENMP_LIB ${CMAKE_SOURCE_DIR}/externals/lib/libomp.a ${CMAKE_SOURCE_DIR}/externals/lib/libiomp5.a ${CMAKE_SOURCE_DIR}/externals/lib/libgomp5.a CACHE INTERNAL "OPENMP Library")
+SET(OPENMP_INCLUDE ${CMAKE_SOURCE_DIR}/externals/include CACHE INTERNAL "OPENMP Include")

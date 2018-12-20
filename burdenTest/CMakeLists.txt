@@ -3,10 +3,17 @@ cmake_minimum_required(VERSION 2.8 FATAL_ERROR)
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
 
 
-
+find_package(OpenMP)
+if (OPENMP_FOUND)
+    set (CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${OpenMP_C_FLAGS}")
+    set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 ${OpenMP_CXX_FLAGS}")
+    set (CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} ${OpenMP_EXE_LINKER_FLAGS}")
+elseif (OPENMP_NOTFOUND)
+    
+endif()
 if(APPLE)
-	set(OPENMP_LIBRARIES "/usr/local/Cellar/llvm/7.0.0/lib")
-	set(OPENMP_INCLUDES "/usr/local/Cellar/llvm/7.0.0/include")
+	#set(OPENMP_LIBRARIES "/usr/local/Cellar/llvm/7.0.0/lib")
+	#set(OPENMP_INCLUDES "/usr/local/Cellar/llvm/7.0.0/include")
 
 	if(CMAKE_C_COMPILER_ID MATCHES "Clang")
         	set(OpenMP_C "${CMAKE_C_COMPILER}")
@@ -26,16 +33,6 @@ if(APPLE)
       		set(OpenMP_libiomp5_LIBRARY ${OpenMP_CXX_LIB_NAMES})
     	endif()
 
-endif()
-
-
-find_package(OpenMP)
-if (OPENMP_FOUND)
-    set (CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${OpenMP_C_FLAGS}")
-    set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 ${OpenMP_CXX_FLAGS}")
-    set (CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} ${OpenMP_EXE_LINKER_FLAGS}")
-elseif (OPENMP_NOTFOUND)
-    
 endif()
 
 
