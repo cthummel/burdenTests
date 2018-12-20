@@ -7,6 +7,7 @@
 //
 
 #include <fstream>
+#include <chrono>
 #include <gsl/gsl_statistics.h>
 #include <gsl/gsl_linalg.h>
 #include <gsl/gsl_multifit.h>

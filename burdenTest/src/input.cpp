@@ -23,8 +23,6 @@ readInput::readInput(string dir, string tType, string inputVcfType, string userV
     testType = tType;
     testDir = dir;
     
-    subjectCountMatch = regex("number of samples:\\s(\\d*)");
-    variantCountMatch = regex("number of records:\\s(\\d*)");
     
     //Switching on test type to get proper input.
     if(testType == "wsbt")
@@ -202,8 +200,8 @@ void readInput::readVcfInitialInfo(string filename)
     ifstream in;
     subjectCount = 0;
     variantCount = 0;
-    regex caseMatch("(\\t(\\d[^\\s]+))+");
     
+    /*
     //So we can remove the directory that has the file and just keep the filename itself.
     int filePos;
     for(int i = filename.length(); i >= 0; i--)
@@ -224,13 +222,14 @@ void readInput::readVcfInitialInfo(string filename)
     {
         statsFileName = filename.substr(filePos, filename.length() - vcfType.length());
     }
+    */
 
-    string summaryCommand = bcftools_loc + " stats " + filename + " > " + testDir + "/tmp/" + statsFileName + ".stats";
+    string summaryCommand = externals_loc + "bcftools stats " + filename + " > /tmp/" + statsFileName + ".stats";
     system(summaryCommand.c_str());
     
     if(!in.is_open())
     {
-        in.open(testDir + "/tmp/" + statsFileName + ".stats");
+        in.open("/tmp/" + statsFileName + ".stats");
         for(int j = 0; getline(in, line); j++)
         {
             if (subjectCount == 0)
