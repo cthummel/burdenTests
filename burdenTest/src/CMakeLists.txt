@@ -27,6 +27,7 @@ SET(CORE_LIB burden_test_core CACHE STRING "THE CORE LIBRARY")
 TARGET_LINK_LIBRARIES(test 
 	   ${CORE_LIB}
 	   ${GSL_LIB}
+	   ${OPENMP_LIB}
 )
 
 add_dependencies(test  ${BURDEN_TEST_EXTERNAL_PROJECT})

@@ -148,11 +148,6 @@ int main(int argc, const char *argv[])
         }
     }
 
-    //cout << "correct filename: " << vcffilename << "\n"; result;
-    if (vcffilename != "" && vcfType != "")
-    {
-    }
-
     //Run input on the given test and save results in Input
     readInput result(currentDir, testType, vcfType, vcffilename, region, phenofilename, covfilename);
 
@@ -166,9 +161,8 @@ int main(int argc, const char *argv[])
     {
         if (geneBased)
         {
-            map<string, gsl_matrix *> subsets = result.getGeneSubsets();
             map<string, string> regions = result.getRegions();
-            size_t perm[subsets.size()];
+            size_t perm[regions.size()];
             vector<string> genes(regions.size());
             vector<double> pvalues(regions.size());
             vector<double> permpvalues(regions.size());
@@ -251,37 +245,48 @@ int main(int argc, const char *argv[])
     else if (testType == "skat")
     {
         currentTime = std::chrono::high_resolution_clock::now();
-        //cout << "Before SKAT Test." << endl;
         lasttime = currentTime;
         if (geneBased)
         {
-            map<string, gsl_matrix *> subsets = result.getGeneSubsets();
-            vector<double> pvalues;
-            vector<double> testStats;
-            vector<double> rvTestStats;
-            vector<double> runTime;
-            for (map<string, gsl_matrix *>::iterator iter = subsets.begin(); iter != subsets.end(); iter++)
+            map<string, string> regions = result.getRegions();
+            size_t perm[regions.size()];
+            vector<string> genes(regions.size());
+            vector<double> pvalues(regions.size());
+            vector<double> testStats(regions.size());
+            vector<double> rvTestStats(regions.size());
+            vector<double> runTime(regions.size());
+            
+            #pragma omp parallel for schedule(dynamic)
+            for (int i = 0; i < regions.size(); i++)
             {
+                //Setup
+                map<string, string>::iterator iter = regions.begin();
+                advance(iter, i);
                 cout << "Running SKAT test on gene " << iter->first << endl;
-                skat *test = new skat(iter->second, result.getMaf(iter->first), result.getCovariates(), result.getPheno());
-                pvalues.push_back(test->getPvalue());
-                testStats.push_back(test->getQ());
-                rvTestStats.push_back(test->getRvQ());
-                currentTime = std::chrono::high_resolution_clock::now();
-                runTime.push_back(std::chrono::duration_cast<std::chrono::milliseconds>(currentTime - lasttime).count() / 60000.0);
-                cout << "SKAT Took " << std::chrono::duration_cast<std::chrono::milliseconds>(currentTime - lasttime).count() / 60000.0 << " minutes." << endl;
+                //Input
+                readInput dataCollector = readInput(userBackgroundIncluded, vcffilename, iter->second, result.getCaseCount(), omp_get_thread_num());
+                //Run Test
+                auto runStartTime = std::chrono::high_resolution_clock::now();
+                skat test = skat(dataCollector.getGslGenotype(), dataCollector.getMaf(), result.getCovariates(), result.getPheno());
+                auto runCurrentTime = std::chrono::high_resolution_clock::now();
+                //Output and cleanup.
+                genes[i] = iter->first;
+                pvalues[i] = test.getPvalue();
+                testStats[i] = test.getQ();
+                rvTestStats[i] = test.getRvQ();
+                runTime[i] = (std::chrono::duration_cast<std::chrono::milliseconds>(runCurrentTime - runStartTime).count() / 60000.0);
+                cout << "SKAT Took " << runTime[i] << " minutes." << endl;
                 cout << endl;
-                lasttime = currentTime;
             }
+            
+            gsl_sort_index(perm, pvalues.data(), 1, pvalues.size());
             ofstream outFile;
             string output = vcffilename + ".SKAT.results";
             outFile.open(output);
-            int i = 0;
-            for (map<string, gsl_matrix *>::iterator iter = subsets.begin(); iter != subsets.end(); i++, iter++)
+            for (int i = 0; i < genes.size() ; i++)
             {
-                outFile << "Gene: " << iter->first << "\tpvalue:" << pvalues[i] << "\tQ:" << testStats[i] << "\truntime:" << runTime[i] << " minutes." << endl;
-                //cout << "Gene: " << iter->first << "\tpvalue:" << pvalues[i] << "\tQ:" << testStats[i] << "\truntime:" << runTime[i] << " minutes." << endl;
-                cout << "Gene: " << iter->first << "\tQ:" << testStats[i] << "\tpvalue:" << pvalues[i] << "\trvQ:" << rvTestStats[i] << endl;
+                outFile << "Gene: " << genes[perm[i]] << "\tpvalue:" << pvalues[perm[i]] << "\tQ:" << testStats[perm[i]] << "\truntime:" << runTime[perm[i]] << " minutes." << endl;
+                cout << "Gene: " << genes[perm[i]] << "\tQ:" << testStats[perm[i]] << "\tpvalue:" << pvalues[perm[i]] << "\trvQ:" << rvTestStats[perm[i]] << endl;
             }
             
         }
