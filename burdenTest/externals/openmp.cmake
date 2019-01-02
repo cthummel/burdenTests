@@ -6,7 +6,7 @@ ExternalProject_Add(${OPENMP_PROJECT}
         GIT_REPOSITORY https://github.com/llvm-mirror/openmp.git
         GIT_TAG master
         CONFIGURE_COMMAND  
-        BUILD_COMMAND  cmake -B${OPENMP_DIR}/src/openmp_project/build -H${OPENMP_DIR}/src/openmp_project && make 
+        BUILD_COMMAND  cmake -B${OPENMP_DIR}/src/openmp_project/build -H${OPENMP_DIR}/src/openmp_project && make omp
         INSTALL_COMMAND 
         UPDATE_COMMAND ""
         BUILD_IN_SOURCE 0
@@ -32,5 +32,5 @@ MESSAGE("OPENMP_DIR: ${OPENMP_DIR}")
 MESSAGE("OPENMP_BINARY_DIR: ${BINARY_DIR}")
 MESSAGE("OPENMP_SRC_DIR: ${SOURCE_DIR}")
 
-SET(OPENMP_LIB ${CMAKE_SOURCE_DIR}/externals/lib/libomp.a ${CMAKE_SOURCE_DIR}/externals/lib/libiomp5.a ${CMAKE_SOURCE_DIR}/externals/lib/libgomp5.a CACHE INTERNAL "OPENMP Library")
-SET(OPENMP_INCLUDE ${CMAKE_SOURCE_DIR}/externals/include CACHE INTERNAL "OPENMP Include")
+SET(OPENMP_LIB ${BINARY_DIR}/runtime/src/libgomp.dylib ${BINARY_DIR}/runtime/src/libomp.dylib ${BINARY_DIR}/runtime/src/libiomp5.dylib CACHE INTERNAL "OPENMP Library")
+SET(OPENMP_INCLUDE ${BINARY_DIR}/runtime/src/ CACHE INTERNAL "OPENMP Include")

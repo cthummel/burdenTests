@@ -43,6 +43,7 @@ int main(int argc, const char *argv[])
     //Check for proper argument formatting and filetypes.
     for (int i = 1; i < argc; i++)
     {
+        //File parsing.
         if (strcmp(argv[i], "-vcf") == 0)
         {
             vcfType = argv[i];
@@ -73,10 +74,6 @@ int main(int argc, const char *argv[])
                 i++;
             }
         }
-        if (strcmp(argv[i], "--back") == 0 || strcmp(argv[i], "--b"))
-        {
-            userBackgroundIncluded = true;
-        }
         if (strcmp(argv[i], "-pheno") == 0)
         {
             if (argc > i)
@@ -105,6 +102,11 @@ int main(int argc, const char *argv[])
                 i++;
             }
         }
+        //File option parsing.
+        if (strcmp(argv[i], "--back") == 0 || strcmp(argv[i], "--b"))
+        {
+            userBackgroundIncluded = true;
+        }
         if (strcmp(argv[i], "-r") == 0 || strcmp(argv[i], "-region") == 0)
         {
             if (strcmp(argv[i + 1], "all") == 0 || strcmp(argv[i + 1], "gene") == 0 || strcmp(argv[i + 1], "exact") == 0)
@@ -117,6 +119,7 @@ int main(int argc, const char *argv[])
                 cout << "arguments error: incorrect region specified after indicator." << endl;
             }
         }
+        //Test type parsing.
         if (strcmp(argv[i], "wsbt") == 0)
         {
             testType = argv[i];
@@ -141,11 +144,19 @@ int main(int argc, const char *argv[])
         {
             testType = argv[i];
         }
+
+        //Test Parameter parsing.
         if (strcmp(argv[i], "--g") == 0)
         {
             geneBased = true;
             region = argv[i];
         }
+        if (strcmp(argv[i], "--T") == 0)
+        {
+            omp_set_num_threads(stoi(argv[i+1]));
+            i++;
+        }
+
     }
 
     //Run input on the given test and save results in Input
@@ -220,12 +231,13 @@ int main(int argc, const char *argv[])
             cout << "WSBT Took " << std::chrono::duration_cast<std::chrono::milliseconds>(currentTime - lasttime).count() / 60000.0 << " minutes." << endl;
             lasttime = currentTime;
         }
-        //File will be a vcf by this point whether it was zipped before or not.
-        //writeOutput output(vcffilename, testType, test.getWeights());
-
         auto endTime = std::chrono::high_resolution_clock::now();
-        
         cout << "Total Time: " << std::chrono::duration_cast<std::chrono::milliseconds>(endTime - startTime).count() / 60000.0 << " minutes." << endl;
+
+        //Now manage output of results for user.
+
+
+        
     }
     else if (testType == "burden")
     {

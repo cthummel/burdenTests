@@ -142,7 +142,9 @@ readInput::readInput(bool userBackgroundIncluded, string user, string region, in
     }
     else
     {
+        //Need to construct the name of the file that has the background data for the current chromosome.
         string backgroundFilename = region.substr(0, region.find_first_of(':'));
+        
 
         readVcfInitialInfo(backgroundFilename, region, thread_ID);
         genotypeGslMatrix = gsl_matrix_alloc(variantCount, subjectCount + count);
