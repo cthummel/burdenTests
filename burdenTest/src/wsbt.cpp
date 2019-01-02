@@ -25,6 +25,7 @@ wsbt::wsbt(gsl_matrix* totalGtype, int aCount, gsl_vector *inputMaf)
     scores = gsl_vector_alloc(totalGenotype->size2);
     weights = gsl_vector_alloc(totalGenotype->size1);
     initialWeights = gsl_vector_alloc(totalGenotype->size1);
+    changedGenotype = gsl_matrix_alloc(totalGenotype->size1, affectedCount);
     
     gsl_rng *r = gsl_rng_alloc(gsl_rng_default);
     gsl_permutation *subjectPerm = gsl_permutation_calloc(totalSubjects);
@@ -35,6 +36,7 @@ wsbt::wsbt(gsl_matrix* totalGtype, int aCount, gsl_vector *inputMaf)
     auto lastTime = startTime;
 
     //First run through data.
+    gsl_matrix_set_all(changedGenotype, 1);
     double testStat;
     setWeights();
     setScores();
@@ -86,6 +88,22 @@ wsbt::wsbt(gsl_matrix* totalGtype, int aCount, gsl_vector *inputMaf)
             //Shuffles affected status.
             for (int i = 0; i < affectedCount; i++)
             {
+                //Check what needs to be updated for the new round since if we dont need to update much we can save a lot of time.
+                for(int k = 0; k < totalGenotype->size1; k++)
+                {
+                    for(int j = 0; j < affectedCount; j++)
+                    {
+                        if(gsl_matrix_get(totalGenotype, k, j) == gsl_matrix_get(totalGenotype, k, subjectPerm->data[i]))
+                        {
+                            gsl_matrix_set(changedGenotype, k, j, 0);
+                        }
+                        else
+                        {
+                            gsl_matrix_set(changedGenotype, k, j, 1);
+                        }
+                    }
+                }
+                
                 gsl_matrix_swap_columns(totalGenotype, i, subjectPerm->data[i]);
             }
         }
@@ -130,12 +148,23 @@ void wsbt::setWeights()
     //Variants are in row(i) with subject in column(j).
     for (int i = 0; i < totalGenotype->size1; i++)
     {
+        bool recalc = false;
         double mutantAllelesU = 0;
         double indivudualsU = 0;
         double totalVariant = 0;
-
-        for (int j = 0; j < totalGenotype->size2; j++)
+        for(int j = 0; j < affectedCount; j++)
         {
+            if(gsl_matrix_get(changedGenotype, i, j) == 1)
+            {
+                recalc = true;
+                break;
+            }
+        }
+        if(recalc)
+        {
+            for (int j = 0; j < totalGenotype->size2; j++)
+            {
+            /*
             if (j < affectedCount && gsl_matrix_get(totalGenotype, i, j) != -1)
             {
                 totalVariant++;
@@ -145,14 +174,25 @@ void wsbt::setWeights()
                 mutantAllelesU += gsl_matrix_get(totalGenotype, i, j);
                 indivudualsU++;
             }
-        }
-        totalVariant += indivudualsU;
-        double upper = mutantAllelesU + 1.0;
-        double lower = (2.0 * indivudualsU) + 2.0;
-        double unaffectedRatio = upper / lower;
-        double nancheck = sqrt(totalVariant * unaffectedRatio * (1.0 - unaffectedRatio));
+            */
+                if (j < affectedCount && gsl_matrix_get(totalGenotype, i, j) > 0)
+                {
+                    totalVariant++;
+                }
+                if (j >= affectedCount && gsl_matrix_get(totalGenotype, i, j) > 0)
+                {
+                    mutantAllelesU += gsl_matrix_get(totalGenotype, i, j);
+                    indivudualsU++;
+                }
+            }
+            totalVariant += indivudualsU;
+            double upper = mutantAllelesU + 1.0;
+            double lower = (2.0 * indivudualsU) + 2.0;
+            double unaffectedRatio = upper / lower;
+            double nancheck = sqrt(totalVariant * unaffectedRatio * (1.0 - unaffectedRatio));
 
-        gsl_vector_set(weights, i, nancheck);
+            gsl_vector_set(weights, i, nancheck);
+        }
     }
 }
 

@@ -23,9 +23,9 @@ using namespace std;
 
 int main(int argc, const char *argv[])
 {
-    string currentDir, vcffilename, vcfType, phenofilename, covfilename, filename, testType, region;
+    string currentDir, vcffilename, vcfType, backfilename, phenofilename, covfilename, filename, testType, region;
     bool geneBased = false;
-    bool userBackgroundIncluded = false;
+    bool userBackgroundIncluded = true;
     auto startTime = chrono::high_resolution_clock::now();
     auto currentTime = startTime;
     auto lasttime = currentTime;
@@ -105,7 +105,12 @@ int main(int argc, const char *argv[])
         //File option parsing.
         if (strcmp(argv[i], "--back") == 0 || strcmp(argv[i], "--b"))
         {
-            userBackgroundIncluded = true;
+            userBackgroundIncluded = false;
+            if(argc > i + 1)
+            {
+                backfilename = argv[i+1];
+                i++;
+            }
         }
         if (strcmp(argv[i], "-r") == 0 || strcmp(argv[i], "-region") == 0)
         {
@@ -237,7 +242,7 @@ int main(int argc, const char *argv[])
         //Now manage output of results for user.
 
 
-        
+
     }
     else if (testType == "burden")
     {

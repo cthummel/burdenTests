@@ -45,10 +45,12 @@ private:
     bool verbose = false;
     
     gsl_matrix* totalGenotype;
+    gsl_matrix* changedGenotype;
     gsl_vector* scores;
     gsl_vector* testStatistics;
     gsl_vector* weights;
     gsl_vector* initialWeights;
+
 };
 
 #endif /* wsbt_hpp */
