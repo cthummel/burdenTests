@@ -103,7 +103,7 @@ int main(int argc, const char *argv[])
             }
         }
         //File option parsing.
-        if (strcmp(argv[i], "--back") == 0 || strcmp(argv[i], "--b"))
+        if (strcmp(argv[i], "--back") == 0 || strcmp(argv[i], "--b") == 0)
         {
             userBackgroundIncluded = false;
             if(argc > i + 1)
@@ -111,6 +111,11 @@ int main(int argc, const char *argv[])
                 backfilename = argv[i+1];
                 i++;
             }
+            else
+            {
+                cout << "--back <backgroundFileName>" << endl;
+            }
+            //continue;
         }
         if (strcmp(argv[i], "-r") == 0 || strcmp(argv[i], "-region") == 0)
         {
@@ -193,7 +198,7 @@ int main(int argc, const char *argv[])
                 auto runStartTime = chrono::high_resolution_clock::now();
 
                 //Reads in data from region then runs test.
-                readInput dataCollector = readInput(userBackgroundIncluded, vcffilename, iter->second, result.getCaseCount(), omp_get_thread_num());
+                readInput dataCollector = readInput(userBackgroundIncluded, vcffilename, backfilename, iter->second, result.getCaseCount(), omp_get_thread_num());
                 wsbt test = wsbt(dataCollector.getGslGenotype(), result.getCaseCount(), dataCollector.getMaf());
                 genes[i] = iter->first;
                 pvalues[i] = test.getPvalue();
@@ -281,7 +286,7 @@ int main(int argc, const char *argv[])
                 advance(iter, i);
                 cout << "Running SKAT test on gene " << iter->first << endl;
                 //Input
-                readInput dataCollector = readInput(userBackgroundIncluded, vcffilename, iter->second, result.getCaseCount(), omp_get_thread_num());
+                readInput dataCollector = readInput(userBackgroundIncluded, vcffilename, backfilename, iter->second, result.getCaseCount(), omp_get_thread_num());
                 //Run Test
                 auto runStartTime = std::chrono::high_resolution_clock::now();
                 skat test = skat(dataCollector.getGslGenotype(), dataCollector.getMaf(), result.getCovariates(), result.getPheno());

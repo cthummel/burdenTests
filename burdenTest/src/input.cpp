@@ -125,7 +125,7 @@ readInput::readInput(string dir, string tType, string inputVcfType, string userV
 
 //This is used to read in the data set for each gene when we need them.
 //Only works on pre-merged vcf files where user has attached their data set to 1000Genomes.
-readInput::readInput(bool userBackgroundIncluded, string user, string region, int count, int thread_ID)
+readInput::readInput(bool userBackgroundIncluded, string user, string backFile, string region, int count, int thread_ID)
 {
     subjectCount = 0;
     variantCount = 0;
@@ -137,19 +137,16 @@ readInput::readInput(bool userBackgroundIncluded, string user, string region, in
         genotypeGslMatrix = gsl_matrix_alloc(variantCount, subjectCount);
         maf = gsl_vector_alloc(variantCount);
         //Parsing geno data.
-        bcfInput(user, region, "data" + to_string(thread_ID) + ".txt");
+        bcfInput(user, "", region, "data" + to_string(thread_ID) + ".txt");
         readMaf(user, region, "maf" + to_string(thread_ID) + ".txt");
     }
     else
     {
-        //Need to construct the name of the file that has the background data for the current chromosome.
-        string backgroundFilename = region.substr(0, region.find_first_of(':'));
-        
-
-        readVcfInitialInfo(backgroundFilename, region, thread_ID);
+        readVcfInitialInfo(backFile, region, thread_ID);
         genotypeGslMatrix = gsl_matrix_alloc(variantCount, subjectCount + count);
         maf = gsl_vector_alloc(variantCount);
-        mergeData(user, backgroundFilename, region, "merge" + to_string(thread_ID) + ".txt");
+        bcfInput(user, backFile, region, "merge" + to_string(thread_ID) + ".txt");
+        //mergeData(user, backFile, region, "merge" + to_string(thread_ID) + ".txt");
     }
 
     
@@ -157,6 +154,8 @@ readInput::readInput(bool userBackgroundIncluded, string user, string region, in
 
 void readInput::readVcfInitialInfo(string filename, string region, int thread_ID)
 {
+    subjectCount = 0;
+    variantCount = 0;
     string line;
     ifstream in;
     smatch match;
@@ -201,12 +200,12 @@ void readInput::readVcfInitialInfo(string filename)
     subjectCount = 0;
     variantCount = 0;
 
-    string summaryCommand = externals_loc + "bcftools stats " + filename + " > " + filename + ".stats";
+    string summaryCommand = externals_loc + "bcftools stats " + filename + " > tmp/" + filename.substr(0, filename.find('.')) + ".stats";
     system(summaryCommand.c_str());
     
     if(!in.is_open())
     {
-        in.open(filename + ".stats");
+        in.open("tmp/" + filename.substr(0, filename.find('.')) + ".stats");
         for(int j = 0; getline(in, line); j++)
         {
             if (subjectCount == 0)
@@ -235,8 +234,7 @@ void readInput::readVcfInitialInfo(string filename)
 //Needs fixing.
 void readInput::readCaseCount(string filename)
 {
-    bool mergeMode = false;
-    if(!mergeMode)
+    if(subjectCount > 2504)
     {
         caseCount = subjectCount - 2504;
     }
@@ -403,19 +401,27 @@ void readInput::readMaf(string filename, string region, string outfile)
 //Maybe dont need this function to be separate and can just bake into bcfInput.
 void readInput::mergeData(string user, string back, string region, string outfile)
 {
-    string mergeCommand = externals_loc + "bcftools merge -r " + region + " " + user + " " + back + " | " +
-                          externals_loc + "bcftools query -f '%CHROM,%POS[ %GT]\\n' > " + outfile;
-    system(mergeCommand.c_str());
+    /*
+    string userCommand = externals_loc + "bcftools query -f '%POS[ %GT]\\n' " + user + " > user" + outfile;
+    string backCommand = externals_loc + "bcftools query -f '%POS[ %GT]\\n' " + back + " > back" + outfile;
+    system(userCommand.c_str());
+    system(backCommand.c_str());
 
     ifstream in;
     string line;
-    in.open(outfile);
+    vector<int> positions;
+
+    //Read in background data
+    in.open("back" + outfile);
     for(int i = 0; getline(in, line); i++)
     {
+        int pos = stoi(line.substr(0, line.find(' ')));
+        positions.push_back(pos);
         string::iterator it = line.begin();
+        advance(it, line.find(' '));
         bool missingData = false;
         int missingCount = 0;
-        for(int j = 0; it != line.end(); j++)
+        for(int j = caseCount; it != line.end(); j++)
         {
             //Skip space.
             it++;
@@ -468,13 +474,11 @@ void readInput::mergeData(string user, string back, string region, string outfil
             }  
             gsl_matrix_set(genotypeGslMatrix, i, j, left + right);
         }
-
-        //Fix missing data points by imputing their value with the mean of the geno data for the variant
         if(missingData && testType != "wsbt")
         {
             int alleleCount = 0;
             int denominator = 0;
-            for(int j = 0; j < subjectCount; j++)
+            for(int j = caseCount; j < genotypeGslMatrix->size2; j++)
             {
                 //Getting counts of non-missing alleles
                 if (gsl_matrix_get(genotypeGslMatrix, i, j) >= 0)
@@ -485,7 +489,7 @@ void readInput::mergeData(string user, string back, string region, string outfil
             }
             double mean = (1.0 * alleleCount) / denominator;
             int fixed = 0;
-            for(int j = 0; j < subjectCount; j++)
+            for(int j = caseCount; j < genotypeGslMatrix->size2; j++)
             {
                 if (gsl_matrix_get(genotypeGslMatrix, i, j) < 0)
                 {
@@ -497,10 +501,79 @@ void readInput::mergeData(string user, string back, string region, string outfil
                     }
                 }
             }
+        }      
+    }
+
+    int index = 0;
+
+    in.open("user" + outfile);
+    for(int i = 0; getline(in, line); i++)
+    {
+        int currentVariant = stoi(line.substr(0, line.find(' ')));
+        while(currentVariant != positions[index])
+        {
+            index++;
         }
-        
+        string::iterator it = line.begin();
+        advance(it, line.find(' '));
+        bool missingData = false;
+        int missingCount = 0;
+        for(int j = 0; it != line.end(); j++)
+        {
+            //Skip space.
+            it++;
+            char leftAllele = *it++;
+            char phase = *it++;
+            char rightAllele = *it++;
+            int left = 0;
+            int right = 0;
+            if(leftAllele == '.')
+            {
+                missingData = true;
+                missingCount++;
+                if(testType == "wsbt")
+                {
+                    gsl_matrix_set(genotypeGslMatrix, index, j, -1);
+                }
+                if (testType == "skat")
+                {
+                    gsl_matrix_set(genotypeGslMatrix, index, j, -1);
+                    //gsl_matrix_set(genotypeGslMatrix, i, j, 2 * gsl_vector_get(maf, i));
+                }
+            }
+            //Not set up to handle multiallelic sites.
+            else if(leftAllele != '0')
+            {
+                left = 1;
+            }
+            if(rightAllele == '.')
+            {
+                //If we have already taken care of the missing data we dont need to again.
+                if (leftAllele != '.')
+                {
+                    missingData = true;
+                    missingCount++;
+                    if (testType == "wsbt")
+                    {
+                        gsl_matrix_set(genotypeGslMatrix, index, j, -1);
+                    }
+                    if (testType == "skat")
+                    {
+                        gsl_matrix_set(genotypeGslMatrix, index, j, -1);
+                        //gsl_matrix_set(genotypeGslMatrix, i, j, 2 * gsl_vector_get(maf, i));
+                    }
+                }
+                continue;
+            }
+            else if (rightAllele != '0')
+            {
+                right = 1;
+            }  
+            gsl_matrix_set(genotypeGslMatrix, index, j, left + right);
+        }      
     }
     in.close();
+    */
 }
 
 //Reading in genotype data from a bcf should be much faster.
@@ -509,7 +582,7 @@ void readInput::bcfInput(string filename)
     ifstream in;
     string line;
     vector<int> vcfPos;
-    string geneFile = "tmp/" + filename + ".genodata.txt";
+    string geneFile = "tmp/" + filename.substr(0, filename.find('.')) + ".genodata.txt";
     string command = externals_loc + "bcftools query -f '%CHROM,%POS[ %GT]\\n' " + filename + " > " + geneFile;
     //cout << "Parse command: " << command << endl;
     system(command.c_str());
@@ -594,35 +667,7 @@ void readInput::bcfInput(string filename)
         }
 
         //Fix missing data points by imputing their value with the mean of the geno data for the variant
-        if(missingData && testType != "wsbt")
-        {
-            int alleleCount = 0;
-            int denominator = 0;
-            for(int j = 0; j < subjectCount; j++)
-            {
-                //Getting counts of non-missing alleles
-                if (gsl_matrix_get(genotypeGslMatrix, i, j) >= 0)
-                {
-                    alleleCount += gsl_matrix_get(genotypeGslMatrix, i, j);
-                    denominator++;
-                }
-            }
-            double mean = (1.0 * alleleCount) / denominator;
-            //cout << mean << " ";
-            int fixed = 0;
-            for(int j = 0; j < subjectCount; j++)
-            {
-                if (gsl_matrix_get(genotypeGslMatrix, i, j) < 0)
-                {
-                    gsl_matrix_set(genotypeGslMatrix, i, j, mean);
-                    fixed++;
-                    if (fixed == missingCount)
-                    {
-                        break;
-                    }
-                }
-            }
-        }
+        
         
     }
     posMap.insert(pair<string, vector<int> >(currentChrom, vcfPos));
@@ -631,12 +676,21 @@ void readInput::bcfInput(string filename)
 }
 
 //Gene version of input.
-void readInput::bcfInput(string filename, string region, string outfile)
+void readInput::bcfInput(string filename, string back, string region, string outfile)
 {
     ifstream in;
     string line;
-    string command = externals_loc + "bcftools query -r " + region + " -f '[ %GT]\\n' " + filename + " > " + outfile;
-    system(command.c_str());
+    if(back != "")
+    {
+        string mergeCommand = externals_loc + "bcftools merge -r " + region + " " + filename + " " + back + " | " 
+                            + externals_loc + "bcftools query -f '[ %GT]\\n' - > " + outfile;
+        system(mergeCommand.c_str());
+    }
+    else
+    {
+        string command = externals_loc + "bcftools query -r " + region + " -f '[ %GT]\\n' " + filename + " > " + outfile;
+        system(command.c_str());
+    }
 
     string currentChrom;
     in.open(outfile);
@@ -888,7 +942,7 @@ void readInput::buildPosMap(string filename)
     ifstream in;
     string line;
     vector<int> vcfPos;
-    string posFile = "tmp/" + filename + ".posdata.txt";
+    string posFile = "tmp/" + filename.substr(0, filename.find('.')) + ".posdata.txt";
     string command = externals_loc + "bcftools query -f '%CHROM,%POS\\n' " + filename + " > " + posFile;
     system(command.c_str());
 
