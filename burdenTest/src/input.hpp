@@ -53,7 +53,6 @@ class readInput
     void mergeData(string user, string background, string region, string outfile);
     void bcfInput(string filename);
     void bcfInput(string filename, string back, string region, string outfile);
-    void geneWiseInput(string filename);
     void readGenes(string filename);
     
     
@@ -73,6 +72,7 @@ private:
     void loadGene(geneId gene, vector<pair<int, gsl_vector*> > userData);
     void buildPosMap(string filename);
     void matchGenes();
+    void variantMatchGene();
     bool testReadFromStream(string filename, string region);
     void test(string filename);
     string exec(const char* cmd);
