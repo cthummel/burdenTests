@@ -27,34 +27,27 @@ readInput::readInput(string dir, string tType, string inputVcfType, string userV
     //Switching on test type to get proper input.
     if(testType == "wsbt")
     {
-        bool newMethod = true;
-        if(newMethod)
+        readVcfInitialInfo(userVcf);
+        readCaseCount(userVcf);
+        buildPosMap(userVcf);
+        if (variantRegion == "--g")
         {
-            readVcfInitialInfo(userVcf);
-            readCaseCount(userVcf);
-            buildPosMap(userVcf);
-            if (variantRegion == "--g")
-            {
-                buildGeneInfo("orderedRefFlat.txt");
-                matchGenes();
-                //variantMatchGene();
-            }
+            buildGeneInfo("orderedRefFlat.txt");
+            matchGenes();
+            //variantMatchGene();
         }
-        else
+        /*
+        readVcfInitialInfo(userVcf);
+        genotypeGslMatrix = gsl_matrix_alloc(variantCount, subjectCount);
+        readMaf(userVcf);
+        bcfInput(userVcf);
+        readCaseCount(userVcf);
+        if (variantRegion == "--g")
         {
-            readVcfInitialInfo(userVcf);
-            genotypeGslMatrix = gsl_matrix_alloc(variantCount, subjectCount);
-            readMaf(userVcf);
-            bcfInput(userVcf);
-            readCaseCount(userVcf);
-            if (variantRegion == "--g")
-            {
-                buildGeneInfo("orderedRefFlat.txt");
-                readGenes("orderedRefFlat.txt");
-            }
+            buildGeneInfo("orderedRefFlat.txt");
+            readGenes("orderedRefFlat.txt");
         }
-
-        //mergeData(userVcf);
+        */
     }
     else if(testType == "burden")
     {
@@ -126,12 +119,13 @@ readInput::readInput(string dir, string tType, string inputVcfType, string userV
 
 //This is used to read in the data set for each gene when we need them.
 //Only works on pre-merged vcf files where user has attached their data set to 1000Genomes.
-readInput::readInput(bool userBackgroundIncluded, string user, string backFile, string region, int count, int thread_ID)
+readInput::readInput(bool userBackgroundIncluded, string user, string back, string region, int count, int thread_ID)
 {
-    subjectCount = 0;
-    variantCount = 0;
     caseCount = count;
-    
+    preMerged = userBackgroundIncluded;
+    userFile = user;
+    backFile = back;
+
     if(userBackgroundIncluded)
     {
         readVcfInitialInfo(user, region, thread_ID);
@@ -144,13 +138,10 @@ readInput::readInput(bool userBackgroundIncluded, string user, string backFile, 
     else
     {
         readVcfInitialInfo(backFile, region, thread_ID);
-        genotypeGslMatrix = gsl_matrix_alloc(variantCount, subjectCount + count);
+        genotypeGslMatrix = gsl_matrix_alloc(variantCount, subjectCount);
         maf = gsl_vector_alloc(variantCount);
         bcfInput(user, backFile, region, "merge" + to_string(thread_ID) + ".txt");
-        //mergeData(user, backFile, region, "merge" + to_string(thread_ID) + ".txt");
     }
-
-    
 }
 
 void readInput::readVcfInitialInfo(string filename, string region, int thread_ID)
@@ -158,17 +149,28 @@ void readInput::readVcfInitialInfo(string filename, string region, int thread_ID
     subjectCount = 0;
     variantCount = 0;
     string line;
+    string statsFile = "tmp/data" + to_string(thread_ID) + ".stats";
     ifstream in;
     smatch match;
     subjectCountMatch = regex("number of samples:\\s(\\d*)");
     variantCountMatch = regex("number of records:\\s(\\d*)");
     
     //Build our stats file and GT file for later parsing.
-    string command = externals_loc + "bcftools stats -r " + region + " " + filename + " > tmp/data" + to_string(thread_ID) + ".stats";
-    system(command.c_str());
+    if(preMerged)
+    {
+        string command = externals_loc + "bcftools stats -r " + region + " " + filename + " > " + statsFile;
+        system(command.c_str());
+    }
+    else
+    {
+        string command = externals_loc + "bcftools merge -r " + region + " " + userFile + " " + backFile +  " | " 
+                       + externals_loc + "bcftools stats - > " + statsFile;
+        system(command.c_str());
+    }
+    
 
     //Parsing background info
-    in.open("data" + to_string(thread_ID) + ".stats");
+    in.open(statsFile);
     for (int j = 0; getline(in, line); j++)
     {
         if (subjectCount == 0)
@@ -694,7 +696,7 @@ void readInput::bcfInput(string filename, string back, string region, string out
     }
 
     string currentChrom;
-    in.open(outfile);
+    in.open("tmp/" + outfile);
     for(int i = 0; getline(in, line); i++)
     {
         string::iterator it = line.begin();
@@ -1076,28 +1078,6 @@ void readInput::variantMatchGene()
         cout << "Matched variant(s) to gene " << it->first << " in region " << it->second << endl;
     }
 }
-
-
-
-/*
-
-bool readInput::testReadFromStream(string filename, string region)
-{
-    string temp;
-    stringstream in;
-    //string command = externals_loc + "bcftools query -r " + region + " -f '%CHROM,%POS[ %GT]\\n' " + filename;
-    string command = "bcftools query -r " + region + " -f '%CHROM\n' " + filename + " | head -c1 | wc -c";
-    temp = exec(command.c_str());
-    if (temp[0] == '1')
-    {
-        return true;
-    }
-    else
-    {
-        return false;
-    }
-}
-*/
 
 
 /*

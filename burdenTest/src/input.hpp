@@ -79,11 +79,12 @@ private:
     int variantCount;
     int subjectCount;
     int caseCount;
+    bool preMerged;
+    string userFile;
+    string backFile;
     string variantRegion;
     string testType;
     string vcfType;
-    string bcftools_loc = "../../externals/bin/bcftools";
-    string bgzip_loc = "../../externals/bin/bgzip";
     string externals_loc = "../../externals/bin/";
     string testDir;
     regex subjectCountMatch;
