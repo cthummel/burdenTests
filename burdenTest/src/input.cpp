@@ -164,7 +164,7 @@ void readInput::readVcfInitialInfo(string filename, string region, int thread_ID
     variantCountMatch = regex("number of records:\\s(\\d*)");
     
     //Build our stats file and GT file for later parsing.
-    string command = externals_loc + "bcftools stats -r " + region + " " + filename + " > data" + to_string(thread_ID) + ".stats";
+    string command = externals_loc + "bcftools stats -r " + region + " " + filename + " > tmp/data" + to_string(thread_ID) + ".stats";
     system(command.c_str());
 
     //Parsing background info
@@ -361,7 +361,7 @@ void readInput::readMaf(string filename, string region, string outfile)
     if(!in.is_open())
     {
         string line;
-        string command = externals_loc + "bcftools query -r " + region + " -f '%AF\\n' " + filename + " > " + outfile;
+        string command = externals_loc + "bcftools query -r " + region + " -f '%AF\\n' " + filename + " > tmp/" + outfile;
         system(command.c_str());
         in.open(outfile);
         for(int i = 0; getline(in, line); i++)
@@ -684,12 +684,12 @@ void readInput::bcfInput(string filename, string back, string region, string out
     if(back != "")
     {
         string mergeCommand = externals_loc + "bcftools merge -r " + region + " " + filename + " " + back + " | " 
-                            + externals_loc + "bcftools query -f '[ %GT]\\n' - > " + outfile;
+                            + externals_loc + "bcftools query -f '[ %GT]\\n' - > tmp/" + outfile;
         system(mergeCommand.c_str());
     }
     else
     {
-        string command = externals_loc + "bcftools query -r " + region + " -f '[ %GT]\\n' " + filename + " > " + outfile;
+        string command = externals_loc + "bcftools query -r " + region + " -f '[ %GT]\\n' " + filename + " > tmp/" + outfile;
         system(command.c_str());
     }
 
