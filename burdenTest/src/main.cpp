@@ -199,7 +199,7 @@ int main(int argc, const char *argv[])
 
                 //Reads in data from region then runs test.
                 readInput dataCollector = readInput(userBackgroundIncluded, vcffilename, backfilename, iter->second, result.getCaseCount(), omp_get_thread_num());
-                wsbt test = wsbt(dataCollector.getGslGenotype(), result.getCaseCount(), dataCollector.getMaf());
+                wsbt test = wsbt(dataCollector.getGslGenotype(), result.getCaseCount(), iter->first);
                 genes[i] = iter->first;
                 pvalues[i] = test.getPvalue();
                 permpvalues[i] = test.getPermPvalue();
@@ -236,7 +236,7 @@ int main(int argc, const char *argv[])
         }
         else
         {
-            wsbt test = wsbt(result.getGslGenotype(), result.getCaseCount(), result.getMaf());
+            wsbt test = wsbt(result.getGslGenotype(), result.getCaseCount(), "All");
             currentTime = std::chrono::high_resolution_clock::now();
             cout << "WSBT Took " << std::chrono::duration_cast<std::chrono::milliseconds>(currentTime - lasttime).count() / 60000.0 << " minutes." << endl;
             lasttime = currentTime;

@@ -10,7 +10,7 @@
 
 using namespace std;
 
-wsbt::wsbt(gsl_matrix* totalGtype, int aCount, gsl_vector *inputMaf)
+wsbt::wsbt(gsl_matrix* totalGtype, int aCount, string gene)
 {
     const int permutationCount = 100;
     unsigned long int totalSubjects = totalGtype->size2;
@@ -69,6 +69,7 @@ wsbt::wsbt(gsl_matrix* totalGtype, int aCount, gsl_vector *inputMaf)
         currentTime = chrono::high_resolution_clock::now();
         if(verbose || k + 1 == permutationCount)
         {
+            cout << "Gene name: " << gene << endl;
             cout << "Subject count: " << totalGtype->size2 << endl;
             cout << "Variant count: " << totalGtype->size1 << endl;
             cout << k + 1 << " permutations took " << std::chrono::duration_cast<std::chrono::milliseconds>(currentTime - startTime).count() / 1000.0 << " seconds." << endl;

@@ -28,7 +28,7 @@ using namespace std;
 class wsbt
 {
 public:
-    wsbt(gsl_matrix* totalGenotype, int affectedCount, gsl_vector* maf);
+    wsbt(gsl_matrix* totalGenotype, int affectedCount, string gene);
     
     double getPvalue(){return normpvalue;}
     double getPermPvalue(){return permpvalue;}
