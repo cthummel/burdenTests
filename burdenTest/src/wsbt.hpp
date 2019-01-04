@@ -38,7 +38,8 @@ private:
     void setWeights();
     void setScores();
     double testStatistic();
-    
+    void recalculate();
+
     double normpvalue;
     double permpvalue;
     int affectedCount;

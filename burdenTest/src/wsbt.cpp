@@ -36,10 +36,13 @@ wsbt::wsbt(gsl_matrix* totalGtype, int aCount, string gene)
     auto lastTime = startTime;
 
     //First run through data.
+    gsl_vector_set_all(weights, 0);
+    gsl_vector_set_all(scores, 0);
     gsl_matrix_set_all(changedGenotype, 1);
     double testStat;
-    setWeights();
-    setScores();
+    //setWeights();
+    //setScores();
+    recalculate();
     testStat = testStatistic();
     gsl_vector_memcpy(initialWeights, weights);
     gsl_ran_shuffle(r, subjectPerm->data, totalSubjects, sizeof(size_t));
@@ -51,8 +54,9 @@ wsbt::wsbt(gsl_matrix* totalGtype, int aCount, string gene)
     //Permutations to get the mean and standard deviation of the test statistic.
     for(int k = 0; k < permutationCount; k++)
     {
-        setWeights();
-        setScores();
+        //setWeights();
+        //setScores();
+        recalculate();
         gsl_vector_set(testStatistics, k, testStatistic());
         
         double testStatMean = gsl_stats_mean(testStatistics->data, 1, k+1);
@@ -84,28 +88,29 @@ wsbt::wsbt(gsl_matrix* totalGtype, int aCount, string gene)
         
         //Permutes the minimum required columns of the genotype matrix for the next permutation.
         gsl_ran_shuffle(r, subjectPerm->data, totalSubjects, sizeof(size_t));
+        //Check what needs to be updated for the new round since if we dont need to update much we can save a lot of time.
+        for (int k = 0; k < totalGenotype->size1; k++)
+        {
+            for (int j = 0; j < affectedCount; j++)
+            {
+                //Check if current affected is the same as the new affected for variant k.
+                if (gsl_matrix_get(totalGenotype, k, j) == gsl_matrix_get(totalGenotype, k, subjectPerm->data[j]))
+                {
+                    gsl_matrix_set(changedGenotype, k, j, 0);
+                }
+                else
+                {
+                    gsl_matrix_set(changedGenotype, k, j, 1);
+                }
+            }
+        }
         if(affectedCount < totalSubjects / 2)
         {
             //Shuffles affected status.
             for (int i = 0; i < affectedCount; i++)
             {
-                //Check what needs to be updated for the new round since if we dont need to update much we can save a lot of time.
-                for(int k = 0; k < totalGenotype->size1; k++)
-                {
-                    for(int j = 0; j < affectedCount; j++)
-                    {
-                        if(gsl_matrix_get(totalGenotype, k, j) == gsl_matrix_get(totalGenotype, k, subjectPerm->data[i]))
-                        {
-                            gsl_matrix_set(changedGenotype, k, j, 0);
-                        }
-                        else
-                        {
-                            gsl_matrix_set(changedGenotype, k, j, 1);
-                        }
-                    }
-                }
-                
                 gsl_matrix_swap_columns(totalGenotype, i, subjectPerm->data[i]);
+                gsl_vector_swap_elements(scores, i, subjectPerm->data[i]);
             }
         }
         else
@@ -117,6 +122,7 @@ wsbt::wsbt(gsl_matrix* totalGtype, int aCount, string gene)
             }
         }
     }
+    
     int extremeCount = 1;
     for(int i = 1; i < permutationCount; i++)
     {
@@ -136,6 +142,7 @@ wsbt::wsbt(gsl_matrix* totalGtype, int aCount, string gene)
         }
     }
     permpvalue = (1.0 * extremeCount) / (permutationCount + 1);
+    
 
     gsl_rng_free(r);
     gsl_permutation_free(subjectPerm);
@@ -313,4 +320,65 @@ double wsbt::testStatistic()
     gsl_permutation_free(perm);
     gsl_vector_free(rank);
     return testStat;
+}
+
+void wsbt::recalculate()
+{
+    for(int i = 0; i < changedGenotype->size1; i++)
+    {
+        for(int j = 0; j < affectedCount; j++)
+        {
+            //Found a weight to recalculate.
+            if(gsl_matrix_get(changedGenotype, i, j) == 1)
+            {
+                //First we remove the old weight's effect on all of the scores.
+                if(gsl_vector_get(weights, i) != 0)
+                {
+                    for (int k = 0; k < scores->size; k++)
+                    {
+                        if (gsl_matrix_get(totalGenotype, i, k) > 0)
+                        {
+                            double oldWeightedScoreComponent = gsl_matrix_get(totalGenotype, i, k) / gsl_vector_get(weights, i);
+                            gsl_vector_set(scores, k, gsl_vector_get(scores, k) - oldWeightedScoreComponent);
+                        }
+                    }
+                }
+
+                //Next we recalculate the weight for the variant.
+                int totalVariant = 0;
+                int mutantAllelesU = 0;
+                int indivudualsU = 0;
+                for (int k = 0; k < totalGenotype->size2; k++)
+                {
+                    if (k < affectedCount && gsl_matrix_get(totalGenotype, i, k) > 0)
+                    {
+                        totalVariant++;
+                    }
+                    if (k >= affectedCount && gsl_matrix_get(totalGenotype, i, k) > 0)
+                    {
+                        mutantAllelesU += gsl_matrix_get(totalGenotype, i, k);
+                        indivudualsU++;
+                    }
+                }
+                totalVariant += indivudualsU;
+                double upper = mutantAllelesU + 1.0;
+                double lower = (2.0 * indivudualsU) + 2.0;
+                double unaffectedRatio = upper / lower;
+                double nancheck = sqrt(totalVariant * unaffectedRatio * (1.0 - unaffectedRatio));
+                gsl_vector_set(weights, i, nancheck);
+
+                //Finally we update all scores using the new weight.
+                for(int k = 0; k < scores->size; k++)
+                {
+                    if(gsl_matrix_get(totalGenotype, i, k) > 0)
+                    {
+                        double newWeightedScoreComponent = gsl_matrix_get(totalGenotype, i, k) / gsl_vector_get(weights, i);
+                        gsl_vector_set(scores, k, gsl_vector_get(scores, k) + newWeightedScoreComponent);
+                    }
+                }
+                //Only need to recalculate once per variant.
+                break;
+            }
+        }
+    }
 }
