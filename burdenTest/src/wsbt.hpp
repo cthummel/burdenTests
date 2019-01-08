@@ -29,6 +29,7 @@ class wsbt
 {
 public:
     wsbt(gsl_matrix* totalGenotype, int affectedCount, string gene);
+    ~wsbt();
     
     double getPvalue(){return normpvalue;}
     double getPermPvalue(){return permpvalue;}

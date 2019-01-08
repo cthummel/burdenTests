@@ -142,13 +142,18 @@ wsbt::wsbt(gsl_matrix* totalGtype, int aCount, string gene)
         }
     }
     permpvalue = (1.0 * extremeCount) / (permutationCount + 1);
-    
-
     gsl_rng_free(r);
     gsl_permutation_free(subjectPerm);
+}
+
+wsbt::~wsbt()
+{
     gsl_vector_free(scores);
     gsl_vector_free(weights);
+    gsl_vector_free(initialWeights);
     gsl_vector_free(testStatistics);
+    gsl_matrix_free(totalGenotype);
+    gsl_matrix_free(changedGenotype);
 }
 
 void wsbt::setWeights()
