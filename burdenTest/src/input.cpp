@@ -823,6 +823,7 @@ void readInput::buildGeneInfo(string filename)
                 else
                 {
                     currentGene.geneChrom = token;
+                    //cout << token << " ";
                 }
             }
             if (j == 4)
@@ -1033,23 +1034,29 @@ void readInput::variantMatchGene()
     cout << endl << "Looking through " << info.size() << " gene entries." << endl;
     for(map<string, vector<int>>::iterator it = posMap.begin(); it != posMap.end(); it++)
     {
-        cout << it->first << endl;
+        cout << it->first << " ";
         int geneIndex = 0;
+        while (info[geneIndex].geneChrom != it->first)
+        {
+            geneIndex++;
+        }
+        cout << geneIndex << " " << info[geneIndex].geneChrom << endl;
         for(int i = 0; i < it->second.size(); i++)
         {
-            while(info[geneIndex].geneChrom != it->first)
-            {
-                geneIndex++;
-            }
             while(info[geneIndex].txStartPos > it->second[i])
             {
+                if(geneIndex + 1 == info.size())
+                {
+                    break;
+                }
                 geneIndex++;
             }
-
+            
             //Add gene.
             if(info[geneIndex].txStartPos <= it->second[i] && info[geneIndex].txEndPos >= it->second[i])
             {
                 cout << "Found gene: " << info[geneIndex].geneName << endl;
+                /*
                 string temp = info[geneIndex].geneChrom + ":" + to_string(info[geneIndex].txStartPos) + "-" + to_string(info[geneIndex].txEndPos);
                 pair<map<string, string>::iterator, bool> duplicate;
                 duplicate = region.insert(pair<string, string>(info[geneIndex].geneName, temp));
@@ -1069,6 +1076,35 @@ void readInput::variantMatchGene()
                 {
                     genePosMap.insert(pair<string, pair<int, int>>(info[geneIndex].geneName, pair<int,int>(info[geneIndex].txStartPos,info[geneIndex].txEndPos)));
                 }
+                */
+                while (info[geneIndex].txStartPos <= it->second[i] && info[geneIndex].txEndPos >= it->second[i])
+                {
+                    if (i + 1 == it->second.size())
+                    {
+                        break;
+                    }
+                    i++;
+                }
+                string temp = info[geneIndex].geneChrom + ":" + to_string(info[geneIndex].txStartPos) + "-" + to_string(info[geneIndex].txEndPos);
+                pair<map<string, string>::iterator, bool> duplicate;
+                duplicate = region.insert(pair<string, string>(info[geneIndex].geneName, temp));
+                if (duplicate.second == false)
+                {
+                    string oldRegion = region[info[geneIndex].geneName];
+                    int oldStart = genePosMap[info[geneIndex].geneName].first;
+                    int oldEnd = genePosMap[info[geneIndex].geneName].second;
+                    int newWidth = info[geneIndex].txEndPos - info[geneIndex].txStartPos;
+                    if(newWidth > (oldEnd - oldStart))
+                    {
+                        region[info[geneIndex].geneName] = temp;
+                        genePosMap[info[geneIndex].geneName] = pair<int, int>(info[geneIndex].txStartPos, info[geneIndex].txEndPos);
+                    }
+                }
+                else
+                {
+                    genePosMap.insert(pair<string, pair<int, int>>(info[geneIndex].geneName, pair<int,int>(info[geneIndex].txStartPos,info[geneIndex].txEndPos)));
+                }
+
                 geneIndex++;
             }
         }

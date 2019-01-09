@@ -119,6 +119,7 @@ wsbt::wsbt(gsl_matrix* totalGtype, int aCount, string gene)
             for (int i = affectedCount; i < totalSubjects; i++)
             {
                 gsl_matrix_swap_columns(totalGenotype, i, subjectPerm->data[i]);
+                gsl_vector_swap_elements(scores, i, subjectPerm->data[i]);
             }
         }
     }
@@ -156,6 +157,7 @@ wsbt::~wsbt()
     gsl_matrix_free(changedGenotype);
 }
 
+/*
 void wsbt::setWeights()
 {
     //Variants are in row(i) with subject in column(j).
@@ -177,17 +179,17 @@ void wsbt::setWeights()
         {
             for (int j = 0; j < totalGenotype->size2; j++)
             {
-            /*
-            if (j < affectedCount && gsl_matrix_get(totalGenotype, i, j) != -1)
-            {
-                totalVariant++;
-            }
-            if (j >= affectedCount && gsl_matrix_get(totalGenotype, i, j) != -1)
-            {
-                mutantAllelesU += gsl_matrix_get(totalGenotype, i, j);
-                indivudualsU++;
-            }
-            */
+            //
+            //if (j < affectedCount && gsl_matrix_get(totalGenotype, i, j) != -1)
+            //{
+            //    totalVariant++;
+            //}
+            //if (j >= affectedCount && gsl_matrix_get(totalGenotype, i, j) != -1)
+            //{
+            //    mutantAllelesU += gsl_matrix_get(totalGenotype, i, j);
+            //    indivudualsU++;
+            //}
+            
                 if (j < affectedCount && gsl_matrix_get(totalGenotype, i, j) > 0)
                 {
                     totalVariant++;
@@ -230,6 +232,7 @@ void wsbt::setScores()
         gsl_vector_set(scores, j, tempscore);
     }
 }
+*/
 
 double wsbt::testStatistic()
 {
@@ -237,7 +240,7 @@ double wsbt::testStatistic()
     double testStat = 0;
     double currentRank = 1;
     double totalTiedSubjects = 0;
-    gsl_permutation * perm = gsl_permutation_calloc(totalGenotype->tda);
+    gsl_permutation * perm = gsl_permutation_calloc(totalGenotype->size2);
     gsl_vector * rank = gsl_vector_alloc(totalGenotype->size2);
     gsl_sort_vector_index(perm, scores);
 
@@ -305,7 +308,7 @@ double wsbt::testStatistic()
         cout << "Affected subjects have individual ranks: ";
     }
     
-    for(int j = 0; j < totalGenotype->tda; j++)
+    for(int j = 0; j < totalGenotype->size2; j++)
     {
         //Checks if the element at rank(j) was an affected subject and if so adds its rank to the test stat.
         if(gsl_permutation_get(perm, j) < affectedCount)
