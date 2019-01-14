@@ -199,11 +199,11 @@ int main(int argc, const char *argv[])
 
                 //Reads in data from region then runs test.
                 readInput dataCollector = readInput(userBackgroundIncluded, vcffilename, backfilename, iter->second, result.getCaseCount(), omp_get_thread_num());
-                wsbt test = wsbt(dataCollector.getGslGenotype(), result.getCaseCount(), iter->first);
+                //wsbt test = wsbt(dataCollector.getGslGenotype(), result.getCaseCount(), iter->first);
                 genes[i] = iter->first;
-                pvalues[i] = test.getPvalue();
-                permpvalues[i] = test.getPermPvalue();
-
+                //pvalues[i] = test.getPvalue();
+                //permpvalues[i] = test.getPermPvalue();
+                cout << "Gene: " << iter->first << ", " << dataCollector.getGslGenotype()->size2 << "\\n";
                 //Check test speed.
                 auto runCurrentTime = std::chrono::high_resolution_clock::now();
                 runTime[i] = std::chrono::duration_cast<std::chrono::milliseconds>(runCurrentTime - runStartTime).count() / 60000.0;
