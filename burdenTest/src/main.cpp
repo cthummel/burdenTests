@@ -21,6 +21,14 @@
 
 using namespace std;
 
+void handler(const char * reason, const char * file, int line, int gsl_errno)
+{
+    if (errno == GSL_EINVAL)
+    {
+        cout << "We out of bounds lads" << endl;
+    }
+}
+
 int main(int argc, const char *argv[])
 {
     string currentDir, vcffilename, vcfType, backfilename, phenofilename, covfilename, filename, testType, region;
@@ -188,7 +196,8 @@ int main(int argc, const char *argv[])
             vector<double> pvalues(regions.size());
             vector<double> permpvalues(regions.size());
             vector<double> runTime(regions.size());
-
+            gsl_set_error_handler_off();
+            //gsl_set_error_handler(&handler);
             #pragma omp parallel for schedule(dynamic)
             for (int i = 0; i < regions.size(); i++)
             {
@@ -199,11 +208,20 @@ int main(int argc, const char *argv[])
 
                 //Reads in data from region then runs test.
                 readInput dataCollector = readInput(userBackgroundIncluded, vcffilename, backfilename, iter->second, result.getCaseCount(), omp_get_thread_num());
-                //wsbt test = wsbt(dataCollector.getGslGenotype(), result.getCaseCount(), iter->first);
-                genes[i] = iter->first;
-                //pvalues[i] = test.getPvalue();
-                //permpvalues[i] = test.getPermPvalue();
-                cout << "Gene: " << iter->first << ", " << dataCollector.getGslGenotype()->size2 << "\\n";
+                try
+                {
+                    wsbt test = wsbt(dataCollector.getGslGenotype(), result.getCaseCount(), iter->first);
+                    genes[i] = iter->first;
+                    pvalues[i] = test.getPvalue();
+                    permpvalues[i] = test.getPermPvalue();
+                }
+                catch(...)
+                {
+                    cout << "Caught an error in wsbt on gene " << iter->first << " which runs in region " << iter->second << endl;
+                    
+                }
+                
+                
                 //Check test speed.
                 auto runCurrentTime = std::chrono::high_resolution_clock::now();
                 runTime[i] = std::chrono::duration_cast<std::chrono::milliseconds>(runCurrentTime - runStartTime).count() / 60000.0;

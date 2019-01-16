@@ -13,7 +13,6 @@ using namespace std;
 wsbt::wsbt(gsl_matrix* totalGtype, int aCount, string gene)
 {
     const int permutationCount = 100;
-    unsigned long int totalSubjects = totalGtype->size2;
     bool verbose = false;
     
     ofstream outfile;
@@ -27,8 +26,8 @@ wsbt::wsbt(gsl_matrix* totalGtype, int aCount, string gene)
     initialWeights = gsl_vector_alloc(totalGenotype->size1);
     changedGenotype = gsl_matrix_alloc(totalGenotype->size1, affectedCount);
     
-    gsl_rng *r = gsl_rng_alloc(gsl_rng_default);
-    gsl_permutation *subjectPerm = gsl_permutation_calloc(totalSubjects);
+    r = gsl_rng_alloc(gsl_rng_default);
+    subjectPerm = gsl_permutation_calloc(totalGenotype->size2);
     
     //Timing
     auto startTime = chrono::high_resolution_clock::now();
@@ -40,22 +39,14 @@ wsbt::wsbt(gsl_matrix* totalGtype, int aCount, string gene)
     gsl_vector_set_all(scores, 0);
     gsl_matrix_set_all(changedGenotype, 1);
     double testStat;
-    //setWeights();
-    //setScores();
     recalculate();
     testStat = testStatistic();
-    gsl_vector_memcpy(initialWeights, weights);
-    gsl_ran_shuffle(r, subjectPerm->data, totalSubjects, sizeof(size_t));
-    for (int i = 0; i < affectedCount; i++)
-    {
-        gsl_matrix_swap_columns(totalGenotype, i, subjectPerm->data[i]);
-    }
+    shuffleMatrix();
+    //gsl_vector_memcpy(initialWeights, weights);
 
     //Permutations to get the mean and standard deviation of the test statistic.
     for(int k = 0; k < permutationCount; k++)
     {
-        //setWeights();
-        //setScores();
         recalculate();
         gsl_vector_set(testStatistics, k, testStatistic());
         
@@ -77,7 +68,7 @@ wsbt::wsbt(gsl_matrix* totalGtype, int aCount, string gene)
             cout << "Subject count: " << totalGtype->size2 << endl;
             cout << "Variant count: " << totalGtype->size1 << endl;
             cout << k + 1 << " permutations took " << std::chrono::duration_cast<std::chrono::milliseconds>(currentTime - startTime).count() / 1000.0 << " seconds." << endl;
-            cout << "TestStatistic for permutation " << k + 1 << " is " << gsl_vector_get(testStatistics, k) << endl;
+            cout << "TestStatistic is " << testStat << endl;
             cout << "TestStatisticMean for permutation " << k + 1 << " is " << testStatMean << endl;
             cout << "TestStatisticSigma for permutation " << k + 1 << " is " << testStatSigma << endl;
             cout << "Zscore for permutation " << k + 1 << " is " << zscore << endl;
@@ -85,46 +76,11 @@ wsbt::wsbt(gsl_matrix* totalGtype, int aCount, string gene)
         }
         lastTime = currentTime;
         
-        
-        //Permutes the minimum required columns of the genotype matrix for the next permutation.
-        gsl_ran_shuffle(r, subjectPerm->data, totalSubjects, sizeof(size_t));
-        //Check what needs to be updated for the new round since if we dont need to update much we can save a lot of time.
-        for (int k = 0; k < totalGenotype->size1; k++)
-        {
-            for (int j = 0; j < affectedCount; j++)
-            {
-                //Check if current affected is the same as the new affected for variant k.
-                if (gsl_matrix_get(totalGenotype, k, j) == gsl_matrix_get(totalGenotype, k, subjectPerm->data[j]))
-                {
-                    gsl_matrix_set(changedGenotype, k, j, 0);
-                }
-                else
-                {
-                    gsl_matrix_set(changedGenotype, k, j, 1);
-                }
-            }
-        }
-        if(affectedCount < totalSubjects / 2)
-        {
-            //Shuffles affected status.
-            for (int i = 0; i < affectedCount; i++)
-            {
-                gsl_matrix_swap_columns(totalGenotype, i, subjectPerm->data[i]);
-                gsl_vector_swap_elements(scores, i, subjectPerm->data[i]);
-            }
-        }
-        else
-        {
-            //Shuffles unaffected status.
-            for (int i = affectedCount; i < totalSubjects; i++)
-            {
-                gsl_matrix_swap_columns(totalGenotype, i, subjectPerm->data[i]);
-                gsl_vector_swap_elements(scores, i, subjectPerm->data[i]);
-            }
-        }
+        //Shuffle for next permutation.
+        shuffleMatrix();
     }
     
-    int extremeCount = 1;
+    double extremeCount = 1;
     for(int i = 1; i < permutationCount; i++)
     {
         if(testStat > 0)
@@ -142,7 +98,7 @@ wsbt::wsbt(gsl_matrix* totalGtype, int aCount, string gene)
             }
         }
     }
-    permpvalue = (1.0 * extremeCount) / (permutationCount + 1);
+    permpvalue = extremeCount / (permutationCount + 1);
     gsl_rng_free(r);
     gsl_permutation_free(subjectPerm);
 }
@@ -157,82 +113,6 @@ wsbt::~wsbt()
     gsl_matrix_free(changedGenotype);
 }
 
-/*
-void wsbt::setWeights()
-{
-    //Variants are in row(i) with subject in column(j).
-    for (int i = 0; i < totalGenotype->size1; i++)
-    {
-        bool recalc = false;
-        double mutantAllelesU = 0;
-        double indivudualsU = 0;
-        double totalVariant = 0;
-        for(int j = 0; j < affectedCount; j++)
-        {
-            if(gsl_matrix_get(changedGenotype, i, j) == 1)
-            {
-                recalc = true;
-                break;
-            }
-        }
-        if(recalc)
-        {
-            for (int j = 0; j < totalGenotype->size2; j++)
-            {
-            //
-            //if (j < affectedCount && gsl_matrix_get(totalGenotype, i, j) != -1)
-            //{
-            //    totalVariant++;
-            //}
-            //if (j >= affectedCount && gsl_matrix_get(totalGenotype, i, j) != -1)
-            //{
-            //    mutantAllelesU += gsl_matrix_get(totalGenotype, i, j);
-            //    indivudualsU++;
-            //}
-            
-                if (j < affectedCount && gsl_matrix_get(totalGenotype, i, j) > 0)
-                {
-                    totalVariant++;
-                }
-                if (j >= affectedCount && gsl_matrix_get(totalGenotype, i, j) > 0)
-                {
-                    mutantAllelesU += gsl_matrix_get(totalGenotype, i, j);
-                    indivudualsU++;
-                }
-            }
-            totalVariant += indivudualsU;
-            double upper = mutantAllelesU + 1.0;
-            double lower = (2.0 * indivudualsU) + 2.0;
-            double unaffectedRatio = upper / lower;
-            double nancheck = sqrt(totalVariant * unaffectedRatio * (1.0 - unaffectedRatio));
-
-            gsl_vector_set(weights, i, nancheck);
-        }
-    }
-}
-
-void wsbt::setScores()
-{
-    for(int j = 0; j < totalGenotype->size2; j++)
-    {
-        double tempscore = 0.0;
-        for(int i = 0; i < totalGenotype->size1; i++)
-        {
-            double genoData = gsl_matrix_get(totalGenotype, i, j);
-            
-            if(genoData == -1)
-            {
-                //This means the genotype in the file was ./.
-            }
-            else if (genoData > 0)
-            {
-                tempscore = tempscore + (genoData / gsl_vector_get(weights, i));
-            }
-        }
-        gsl_vector_set(scores, j, tempscore);
-    }
-}
-*/
 
 double wsbt::testStatistic()
 {
@@ -389,4 +269,48 @@ void wsbt::recalculate()
             }
         }
     }
+
+    
 }
+
+void wsbt::shuffleMatrix()
+{
+    //Permutes the minimum required columns of the genotype matrix for the next permutation.
+    gsl_ran_shuffle(r, subjectPerm->data, totalGenotype->size2, sizeof(size_t));
+    //Check what needs to be updated for the new round since if we dont need to update much we can save a lot of time.
+    for (int i = 0; i < totalGenotype->size1; i++)
+    {
+        for (int j = 0; j < affectedCount; j++)
+        {
+            //Check if current affected is the same as the new affected for variant k.
+            if (gsl_matrix_get(totalGenotype, i, j) == gsl_matrix_get(totalGenotype, i, subjectPerm->data[j]))
+            {
+                gsl_matrix_set(changedGenotype, i, j, 0);
+            }
+            else
+            {
+                gsl_matrix_set(changedGenotype, i, j, 1);
+            }
+        }
+    }
+    if (affectedCount < totalGenotype->size2 / 2)
+    {
+        //Shuffles affected status.
+        for (int j = 0; j < affectedCount; j++)
+        {
+            gsl_matrix_swap_columns(totalGenotype, j, subjectPerm->data[j]);
+            gsl_vector_swap_elements(scores, j, subjectPerm->data[j]);
+        }
+    }
+    else
+    {
+        //Shuffles unaffected status.
+        for (int j = affectedCount; j < totalGenotype->size2; j++)
+        {
+            gsl_matrix_swap_columns(totalGenotype, j, subjectPerm->data[j]);
+            gsl_vector_swap_elements(scores, j, subjectPerm->data[j]);
+        }
+    }
+}
+
+

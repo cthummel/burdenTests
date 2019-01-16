@@ -22,7 +22,7 @@
 #include <gsl/gsl_sort_vector.h>
 #include <gsl/gsl_permute_matrix.h>
 #include <gsl/gsl_permutation.h>
-
+#include <gsl/gsl_errno.h>
 using namespace std;
 
 class wsbt
@@ -36,15 +36,18 @@ public:
     gsl_vector* getWeights(){return initialWeights;}
     
 private:
-    void setWeights();
-    void setScores();
-    double testStatistic();
     void recalculate();
+    double testStatistic();
+    void shuffleMatrix();
 
     double normpvalue;
     double permpvalue;
     int affectedCount;
+    int totalSubjects;
     bool verbose = false;
+
+    gsl_rng *r;
+    gsl_permutation *subjectPerm;
     
     gsl_matrix* totalGenotype;
     gsl_matrix* changedGenotype;
