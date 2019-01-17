@@ -62,6 +62,7 @@ wsbt::wsbt(gsl_matrix* totalGtype, int aCount, string gene)
         
         //Reporting output. 
         currentTime = chrono::high_resolution_clock::now();
+        
         if(verbose || k + 1 == permutationCount)
         {
             cout << "Gene name: " << gene << endl;
@@ -79,7 +80,6 @@ wsbt::wsbt(gsl_matrix* totalGtype, int aCount, string gene)
         //Shuffle for next permutation.
         shuffleMatrix();
     }
-    
     double extremeCount = 1;
     for(int i = 1; i < permutationCount; i++)
     {
@@ -103,13 +103,13 @@ wsbt::wsbt(gsl_matrix* totalGtype, int aCount, string gene)
     gsl_permutation_free(subjectPerm);
 }
 
+//Only deletes gsl objects directly related to this instance of wsbt.
 wsbt::~wsbt()
 {
     gsl_vector_free(scores);
     gsl_vector_free(weights);
     gsl_vector_free(initialWeights);
     gsl_vector_free(testStatistics);
-    gsl_matrix_free(totalGenotype);
     gsl_matrix_free(changedGenotype);
 }
 

@@ -15,19 +15,49 @@ using namespace std;
 //Sets up initial test paramters from user information.
 readInput::readInput(string dir, string tType, string inputVcfType, string userVcf, string region, string phenoFile, string covFile)
 {
-    variantCount = 0;
-    subjectCount = 0;
     caseCount = 0;
     variantRegion = region;
     vcfType = inputVcfType;
     testType = tType;
     testDir = dir;
-    
-    
-    //Switching on test type to get proper input.
-    if(testType == "wsbt")
+
+    /*
+    if (phenoFile.empty())
     {
-        readVcfInitialInfo(userVcf);
+        gsl_vector_set_zero(pheno);
+        for (int i = 0; i < caseCount; i++)
+        {
+            gsl_vector_set(pheno, i, 1);
+        }
+    }
+    else
+    {
+        readPhenotype(phenoFile);
+    }
+
+    if (covFile.empty())
+    {
+        covariates = gsl_matrix_alloc(subjectCount, 1);
+        gsl_matrix_set_all(covariates, 1);
+    }
+    else
+    {
+    }
+    */
+
+    //Switching on test type to get proper input.
+    if (testType == "wsbt")
+    {
+        try
+        {
+            readVcfInitialInfo(userVcf);
+        }
+        catch (const std::invalid_argument &e) //Should just be a invalid_argument
+        {
+            cout << e.what();
+            return;
+        }
+
         readCaseCount(userVcf);
         buildPosMap(userVcf);
         if (variantRegion == "--g")
@@ -36,30 +66,18 @@ readInput::readInput(string dir, string tType, string inputVcfType, string userV
             matchGenes();
             //variantMatchGene();
         }
-        /*
-        readVcfInitialInfo(userVcf);
-        genotypeGslMatrix = gsl_matrix_alloc(variantCount, subjectCount);
-        readMaf(userVcf);
-        bcfInput(userVcf);
-        readCaseCount(userVcf);
-        if (variantRegion == "--g")
-        {
-            buildGeneInfo("orderedRefFlat.txt");
-            readGenes("orderedRefFlat.txt");
-        }
-        */
     }
-    else if(testType == "burden")
+    else if (testType == "burden")
     {
         //Get basic info from VCF
         readVcfInitialInfo(userVcf);
-        
+
         //Initilizing genotype data structures.
         genotypeGslMatrix = gsl_matrix_calloc(variantCount, subjectCount);
-        
+
         //Initilizing maf data structure.
         maf = gsl_vector_alloc(variantCount);
-        
+
         //Parse the maf
         readMaf(userVcf);
 
@@ -68,7 +86,6 @@ readInput::readInput(string dir, string tType, string inputVcfType, string userV
     }
     else if (testType == "cast")
     {
-        
     }
     else if (testType == "skat")
     {
@@ -80,41 +97,15 @@ readInput::readInput(string dir, string tType, string inputVcfType, string userV
         readMaf(userVcf);
         bcfInput(userVcf);
         readCaseCount(userVcf);
-        if(variantRegion == "--g")
+        if (variantRegion == "--g")
         {
             buildGeneInfo("orderedrefFlat.txt");
-            readGenes("orderedrefFlat.txt");
-        }
-        
-
-        if(phenoFile == "")
-        {
-            gsl_vector_set_zero(pheno);
-            for(int i = 0; i < caseCount; i++)
-            {
-                gsl_vector_set(pheno, i, 1);
-            }
-        }
-        else
-        {
-            readPhenotype(phenoFile);
-        }
-        
-        if(covFile == "")
-        {
-            covariates = gsl_matrix_alloc(subjectCount, 1);
-            gsl_matrix_set_all(covariates, 1);
-        }
-        else
-        {
-
+            matchGenes();
         }
     }
     else if (testType == "skato")
     {
-        
     }
-    
 }
 
 //This is used to read in the data set for each gene when we need them.
@@ -125,8 +116,12 @@ readInput::readInput(bool userBackgroundIncluded, string user, string back, stri
     preMerged = userBackgroundIncluded;
     userFile = user;
     backFile = back;
+    genotypeGslMatrix = nullptr;
+    maf = nullptr;
+    covariates = nullptr;
+    pheno = nullptr;
 
-    if(userBackgroundIncluded)
+    if (userBackgroundIncluded)
     {
         readVcfInitialInfo(user, region, thread_ID);
         genotypeGslMatrix = gsl_matrix_alloc(variantCount, subjectCount);
@@ -144,10 +139,19 @@ readInput::readInput(bool userBackgroundIncluded, string user, string back, stri
     }
 }
 
+readInput::~readInput()
+{
+    //As a readInput object goes out of scope it should delete the gsl objects.
+    gsl_matrix_free(genotypeGslMatrix);
+    gsl_matrix_free(covariates);
+    gsl_vector_free(maf);
+    gsl_vector_free(pheno);
+}
+
 void readInput::readVcfInitialInfo(string filename, string region, int thread_ID)
 {
-    subjectCount = 0;
-    variantCount = 0;
+    subjectCount = -1;
+    variantCount = -1;
     string line;
     string statsFile = "tmp/data" + to_string(thread_ID) + ".stats";
     ifstream in;
@@ -173,7 +177,7 @@ void readInput::readVcfInitialInfo(string filename, string region, int thread_ID
     in.open(statsFile);
     for (int j = 0; getline(in, line); j++)
     {
-        if (subjectCount == 0)
+        if (subjectCount < 0)
         {
             if (regex_search(line, match, subjectCountMatch))
             {
@@ -184,12 +188,29 @@ void readInput::readVcfInitialInfo(string filename, string region, int thread_ID
         {
             variantCount = stoi(match[1]);
         }
-        if (variantCount != 0 && subjectCount != 0)
+        if (variantCount > -1 && subjectCount > -1)
         {
             break;
         }
     }
     in.close();
+
+    if(variantCount < 1 || subjectCount < 1)
+    {
+        if(variantCount < 1 && subjectCount > 0)
+        {
+            throw std::invalid_argument("Unable to find any variants in region " + region + ". ----Skipping----");
+        }
+        else if (subjectCount < 1 && variantCount > 0)
+        {
+            throw std::invalid_argument("Unable to find any subjects in region " + region + ". ----Skipping----");
+        }
+        else
+        {
+            throw std::invalid_argument("Unable to find any subjects or variants in region " + region + ". ----Skipping----");
+        }
+    }
+    
 }
 
 
@@ -672,96 +693,6 @@ void readInput::buildGeneInfo(string filename)
     in.close();
 }
 
-//Only run after reading in combined data set.
-//Generates a gsl_matrix_view for the variants in a given gene and saves it in a dictionary with the gene name as key.
-void readInput::readGenes(string filename)
-{
-    string line;
-    string currentGene = info[0].geneName;
-    vector<gsl_vector *> tempVariant;
-    map<string, string> transcript;
-    vector<double> tempMaf;
-    cout << endl << "Looking through " << info.size() << " gene entries." << endl;
-    //Subsets the user data so variants match with known genes.
-    //Could improve speed by making sure we dont re-search over the same chromosome when looking for user variant matches.
-    for (int i = 0; i < info.size(); i++)
-    {
-        //Once we have a new gene, gather all variants and then reset.
-        //if (currentGene != info[i].geneName || i + 1 == info.size())
-        //{
-            if (tempVariant.size() == 0)
-            {
-                //Gene chromosome matched some variants chromosome in user data set but positions didnt match.
-            }
-            else
-            {
-                gsl_matrix *genotypeSubset = gsl_matrix_alloc((int)tempVariant.size(), subjectCount);
-                gsl_vector *mafSubset = gsl_vector_alloc((int)tempMaf.size());
-                for (int j = 0; j < tempVariant.size(); j++)
-                {
-                    gsl_matrix_set_row(genotypeSubset, j, tempVariant[j]);
-                    gsl_vector_set(mafSubset, j, tempMaf[j]);
-                }
-                pair<map<string, gsl_matrix *>::iterator, bool> duplicate;
-                duplicate = genes.insert(pair<string, gsl_matrix *>(currentGene, genotypeSubset));
-                //If we have already found the gene in a different transcript ID.
-                //This is where we select the gene description with the most variants.
-                if (duplicate.second == false)
-                {
-                    //If the new gene is bigger than the old one.
-                    if (genes[currentGene]->size1 < genotypeSubset->size1)
-                    {
-                        genes[currentGene] = genotypeSubset;
-                        geneMaf[currentGene] = mafSubset;
-                        transcript[currentGene] = info[i-1].transcriptName;
-                        string temp = info[i-1].geneChrom + ":" + to_string(info[i-1].txStartPos) + "-" + to_string(info[i-1].txEndPos);
-                        region[currentGene] = temp;
-                    }
-                }
-                else
-                {
-                    geneMaf.insert(pair<string, gsl_vector *>(currentGene, mafSubset));
-                    transcript.insert(pair<string, string>(currentGene, info[i-1].transcriptName));
-                    string temp = info[i-1].geneChrom + ":" + to_string(info[i-1].txStartPos) + "-" + to_string(info[i-1].txEndPos);
-                    region.insert(pair<string, string>(currentGene, temp));
-                }
-            }
-            //Set up for next gene.
-            currentGene = info[i].geneName;
-            tempVariant.clear();
-            tempMaf.clear();
-        //}
-        //Check if the chromosome of current gene is even in the data set.
-        if (posMap.find(info[i].geneChrom) == posMap.end())
-        {
-            continue;
-        }
-
-        //Iterate through all the variants in a chromosome to find a match.
-        for (int j = 0; j < posMap[info[i].geneChrom].size(); j++)
-        {
-            //Consider not searching the early positions multiple times. Could initiate j to the last seen useful position.
-            if (posMap[info[i].geneChrom][j] >= info[i].txStartPos && posMap[info[i].geneChrom][j] <= info[i].txEndPos)
-            {
-                gsl_vector *tempGenoData = gsl_vector_alloc(subjectCount);
-                gsl_matrix_get_row(tempGenoData, genotypeGslMatrix, j);
-                tempVariant.push_back(tempGenoData);
-                tempMaf.push_back(gsl_vector_get(maf, j));
-            }
-            if (posMap[info[i].geneChrom][j] > info[i].txEndPos)
-            {
-                break;
-            }
-        }
-    }
-    map<string, gsl_matrix*>::iterator it;
-    for (it = genes.begin(); it != genes.end(); it++)
-    {
-        cout << "Matched " << it->second->size1 << " variant(s) to " << it->first << " at transcript ID " << transcript[it->first] << " with region " << region[it->first] << endl;
-    }
-
-}
-
 //Builds a map of variant positions to chromosome in user data.
 void readInput::buildPosMap(string filename)
 {
@@ -819,17 +750,17 @@ void readInput::matchGenes()
                 //Try and enter the gene into the list of present genes.
                 string temp = info[i].geneChrom + ":" + to_string(info[i].txStartPos) + "-" + to_string(info[i].txEndPos);
                 pair<map<string, string>::iterator, bool> duplicate;
-                duplicate = region.insert(pair<string, string>(info[i].geneName, temp));
+                duplicate = regions.insert(pair<string, string>(info[i].geneName, temp));
                 //This gene was a duplicate of another already entered in. Take the largest transcript region.
                 if(duplicate.second == false)
                 {
-                    string oldRegion = region[info[i].geneName];
+                    string oldRegion = regions[info[i].geneName];
                     int oldStart = genePosMap[info[i].geneName].first;
                     int oldEnd = genePosMap[info[i].geneName].second;
                     int newWidth = info[i].txEndPos - info[i].txStartPos;
                     if(newWidth > (oldEnd - oldStart))
                     {
-                        region[info[i].geneName] = temp;
+                        regions[info[i].geneName] = temp;
                         genePosMap[info[i].geneName] = pair<int, int>(info[i].txStartPos, info[i].txEndPos);
                     }
                 }
@@ -844,10 +775,13 @@ void readInput::matchGenes()
             }
         }
     }
-    for(map<string,string>::iterator it = region.begin(); it != region.end(); it++)
+    /*
+    for(map<string,string>::iterator it = regions.begin(); it != regions.end(); it++)
     {
         cout << "Matched variant(s) to gene " << it->first << " in region " << it->second << endl;
     }
+    */
+    cout << "Matched variant(s) to " << regions.size() << " unique genes." << endl;
 }
 
 void readInput::variantMatchGene()
@@ -909,16 +843,16 @@ void readInput::variantMatchGene()
                 }
                 string temp = info[geneIndex].geneChrom + ":" + to_string(info[geneIndex].txStartPos) + "-" + to_string(info[geneIndex].txEndPos);
                 pair<map<string, string>::iterator, bool> duplicate;
-                duplicate = region.insert(pair<string, string>(info[geneIndex].geneName, temp));
+                duplicate = regions.insert(pair<string, string>(info[geneIndex].geneName, temp));
                 if (duplicate.second == false)
                 {
-                    string oldRegion = region[info[geneIndex].geneName];
+                    string oldRegion = regions[info[geneIndex].geneName];
                     int oldStart = genePosMap[info[geneIndex].geneName].first;
                     int oldEnd = genePosMap[info[geneIndex].geneName].second;
                     int newWidth = info[geneIndex].txEndPos - info[geneIndex].txStartPos;
                     if(newWidth > (oldEnd - oldStart))
                     {
-                        region[info[geneIndex].geneName] = temp;
+                        regions[info[geneIndex].geneName] = temp;
                         genePosMap[info[geneIndex].geneName] = pair<int, int>(info[geneIndex].txStartPos, info[geneIndex].txEndPos);
                     }
                 }
@@ -931,7 +865,7 @@ void readInput::variantMatchGene()
             }
         }
     }
-    for(map<string,string>::iterator it = region.begin(); it != region.end(); it++)
+    for(map<string,string>::iterator it = regions.begin(); it != regions.end(); it++)
     {
         cout << "Matched variant(s) to gene " << it->first << " in region " << it->second << endl;
     }

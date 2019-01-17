@@ -198,8 +198,16 @@ int main(int argc, const char *argv[])
             vector<double> runTime(regions.size());
             gsl_set_error_handler_off();
             //gsl_set_error_handler(&handler);
+            int index = 0;
+            for(map<string, string>::iterator iter = regions.begin(); iter != regions.end(); iter++, index++)
+            {
+                if(iter->first[0] == 'P')
+                {
+                    break;
+                }
+            }
             #pragma omp parallel for schedule(dynamic)
-            for (int i = 0; i < regions.size(); i++)
+            for (int i = index; i < regions.size(); i++)
             {
                 //Thread safe method of iterating through the regions. Not elegant though.
                 map<string, string>::iterator iter = regions.begin();
@@ -218,7 +226,6 @@ int main(int argc, const char *argv[])
                 catch(...)
                 {
                     cout << "Caught an error in wsbt on gene " << iter->first << " which runs in region " << iter->second << endl;
-                    
                 }
                 
                 

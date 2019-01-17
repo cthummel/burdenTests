@@ -42,6 +42,8 @@ class readInput
   public:
     readInput(string dir, string testType, string vcfType, string vcfFile1, string region, string phenoFile, string covFile);
     readInput(bool mergeData, string userVcf, string backFilename, string region, int cases, int thread);
+
+    ~readInput();
     
     void readVcfInitialInfo(string filename, string region, int thread_ID);
     void readVcfInitialInfo(string filename);
@@ -60,10 +62,8 @@ class readInput
     gsl_matrix* getGslGenotype(){return genotypeGslMatrix;}
     gsl_matrix* getCovariates(){return covariates;}
     gsl_vector* getMaf(){return maf;}
-    gsl_vector* getMaf(string geneName){return geneMaf[geneName];}
     gsl_vector* getPheno(){return pheno;}
-    map<string, gsl_matrix*> getGeneSubsets(){return genes;}
-    map<string, string> getRegions(){return region;}
+    map<string, string> getRegions(){return regions;}
     
 
 private:
@@ -92,9 +92,7 @@ private:
     
     vector<geneId> info;
     map<string, vector<int> > posMap;
-    map<string, gsl_matrix *> genes;
-    map<string, gsl_vector *> geneMaf;
-    map<string, string> region;
+    map<string, string> regions;
     map<string, pair<int,int>> genePosMap;
 
     gsl_matrix* genotypeGslMatrix;
