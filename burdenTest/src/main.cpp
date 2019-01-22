@@ -199,6 +199,7 @@ int main(int argc, const char *argv[])
             gsl_set_error_handler_off();
             //gsl_set_error_handler(&handler);
             int index = 0;
+            /*
             for(map<string, string>::iterator iter = regions.begin(); iter != regions.end(); iter++, index++)
             {
                 if(iter->first[0] == 'P')
@@ -206,6 +207,7 @@ int main(int argc, const char *argv[])
                     break;
                 }
             }
+            */
             #pragma omp parallel for schedule(dynamic)
             for (int i = index; i < regions.size(); i++)
             {
