@@ -12,6 +12,12 @@ using namespace std;
 
 wsbt::wsbt(gsl_matrix* totalGtype, int aCount, string gene)
 {
+    if(totalGtype->size1 == 0)
+    {
+        permpvalue = -1;
+        normpvalue = -1;
+        return;
+    }
     const int permutationCount = 100;
     bool verbose = false;
     

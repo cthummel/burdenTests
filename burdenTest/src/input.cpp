@@ -48,16 +48,7 @@ readInput::readInput(string dir, string tType, string inputVcfType, string userV
     //Switching on test type to get proper input.
     if (testType == "wsbt")
     {
-        try
-        {
-            readVcfInitialInfo(userVcf);
-        }
-        catch (const std::invalid_argument &e) //Should just be a invalid_argument
-        {
-            cout << e.what();
-            return;
-        }
-
+        readVcfInitialInfo(userVcf);
         readCaseCount(userVcf);
         buildPosMap(userVcf);
         if (variantRegion == "--g")
@@ -123,7 +114,16 @@ readInput::readInput(bool userBackgroundIncluded, string user, string back, stri
 
     if (userBackgroundIncluded)
     {
-        readVcfInitialInfo(user, region, thread_ID);
+        try
+        {
+            readVcfInitialInfo(user, region, thread_ID);
+        }
+        catch (const std::invalid_argument e)
+        {
+            cout << e.what();
+            return;
+        }
+        
         genotypeGslMatrix = gsl_matrix_alloc(variantCount, subjectCount);
         maf = gsl_vector_alloc(variantCount);
         //Parsing geno data.
@@ -199,15 +199,15 @@ void readInput::readVcfInitialInfo(string filename, string region, int thread_ID
     {
         if(variantCount < 1 && subjectCount > 0)
         {
-            throw std::invalid_argument("Unable to find any variants in region " + region + ". ----Skipping----");
+            //throw std::invalid_argument("Unable to find any variants in region " + region + ". ----Skipping----");
         }
         else if (subjectCount < 1 && variantCount > 0)
         {
-            throw std::invalid_argument("Unable to find any subjects in region " + region + ". ----Skipping----");
+            //throw std::invalid_argument("Unable to find any subjects in region " + region + ". ----Skipping----");
         }
         else
         {
-            throw std::invalid_argument("Unable to find any subjects or variants in region " + region + ". ----Skipping----");
+            //throw std::invalid_argument("Unable to find any subjects or variants in region " + region + ". ----Skipping----");
         }
     }
     
@@ -668,14 +668,17 @@ void readInput::buildGeneInfo(string filename)
                     currentGene.geneChrom = token;
                     //cout << token << " ";
                 }
+                currentGene.region = currentGene.geneChrom + ":";
             }
             if (j == 4)
             {
                 currentGene.txStartPos = stoi(token);
+                currentGene.region += token + "-";
             }
             if (j == 5)
             {
                 currentGene.txEndPos = stoi(token);
+                currentGene.region += token;
             }
             if (j == 6)
             {
@@ -782,6 +785,14 @@ void readInput::matchGenes()
     }
     */
     cout << "Matched variant(s) to " << regions.size() << " unique genes." << endl;
+}
+
+void readInput::findNonEmptyGenes()
+{
+    for(int i = 0; i < info.size(); i++)
+    {
+        //info[i].region;
+    }
 }
 
 void readInput::variantMatchGene()

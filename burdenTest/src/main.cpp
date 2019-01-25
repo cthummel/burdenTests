@@ -191,15 +191,29 @@ int main(int argc, const char *argv[])
         if (geneBased)
         {
             map<string, string> regions = result.getRegions();
+            vector<geneId> *geneInfo = result.getGenes();
+            
             size_t perm[regions.size()];
             vector<string> genes(regions.size());
             vector<double> pvalues(regions.size());
             vector<double> permpvalues(regions.size());
             vector<double> runTime(regions.size());
+            /*
+            size_t perm[geneInfo->size()];
+            vector<string> genes(geneInfo->size());
+            vector<double> pvalues(geneInfo->size());
+            vector<double> permpvalues(geneInfo->size());
+            vector<double> runTime(geneInfo->size());
+            */
+
+
+            
+
+
             gsl_set_error_handler_off();
             //gsl_set_error_handler(&handler);
             int index = 0;
-            /*
+            
             for(map<string, string>::iterator iter = regions.begin(); iter != regions.end(); iter++, index++)
             {
                 if(iter->first[0] == 'P')
@@ -207,30 +221,42 @@ int main(int argc, const char *argv[])
                     break;
                 }
             }
-            */
+            
             #pragma omp parallel for schedule(dynamic)
+            //for (int i = index; i < geneInfo->size(); i++)
             for (int i = index; i < regions.size(); i++)
             {
-                //Thread safe method of iterating through the regions. Not elegant though.
+                //Thread safe method of iterating to the correct gene. Not elegant though.
                 map<string, string>::iterator iter = regions.begin();
                 advance(iter, i);
                 auto runStartTime = chrono::high_resolution_clock::now();
 
-                //Reads in data from region then runs test.
+                //Reads in genotype data from region.
                 readInput dataCollector = readInput(userBackgroundIncluded, vcffilename, backfilename, iter->second, result.getCaseCount(), omp_get_thread_num());
+                //readInput dataCollector = readInput(userBackgroundIncluded, vcffilename, backfilename, geneInfo->at(i).region, result.getCaseCount(), omp_get_thread_num());
+                //Run the test.
                 try
                 {
-                    wsbt test = wsbt(dataCollector.getGslGenotype(), result.getCaseCount(), iter->first);
-                    genes[i] = iter->first;
-                    pvalues[i] = test.getPvalue();
-                    permpvalues[i] = test.getPermPvalue();
+                    
+                    if (dataCollector.getGslGenotype()->size1 == 0 || dataCollector.getGslGenotype()->size2 != 2504 + result.getCaseCount())
+                    {
+                        
+                    }
+                    else
+                    {
+                        wsbt test = wsbt(dataCollector.getGslGenotype(), result.getCaseCount(), iter->first);
+                        genes[i] = iter->first;
+                        //wsbt test = wsbt(dataCollector.getGslGenotype(), result.getCaseCount(), geneInfo->at(i).geneName);
+                        //genes[i] = geneInfo->at(i).geneName;
+                        pvalues[i] = test.getPvalue();
+                        permpvalues[i] = test.getPermPvalue();
+                    }
                 }
                 catch(...)
                 {
-                    cout << "Caught an error in wsbt on gene " << iter->first << " which runs in region " << iter->second << endl;
+                    cout << "Caught an error in wsbt on gene " << geneInfo->at(i).geneName << " which runs in region " << geneInfo->at(i).region << endl;
                 }
-                
-                
+
                 //Check test speed.
                 auto runCurrentTime = std::chrono::high_resolution_clock::now();
                 runTime[i] = std::chrono::duration_cast<std::chrono::milliseconds>(runCurrentTime - runStartTime).count() / 60000.0;
@@ -308,11 +334,11 @@ int main(int argc, const char *argv[])
             #pragma omp parallel for schedule(dynamic)
             for (int i = 0; i < regions.size(); i++)
             {
-                //Setup
+                //Iterate to run the correct gene.
                 map<string, string>::iterator iter = regions.begin();
                 advance(iter, i);
                 cout << "Running SKAT test on gene " << iter->first << endl;
-                //Input
+                //Read in genotpe data from file for this gene.
                 readInput dataCollector = readInput(userBackgroundIncluded, vcffilename, backfilename, iter->second, result.getCaseCount(), omp_get_thread_num());
                 //Run Test
                 auto runStartTime = std::chrono::high_resolution_clock::now();

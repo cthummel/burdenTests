@@ -17,11 +17,13 @@
 #include <regex>
 #include <map>
 #include <gsl/gsl_matrix.h>
+#include "geneInfo.cpp"
 
 using namespace std;
 
 class readInput
 {
+    /*
     struct geneId
     {
         string geneName;        //Column 1
@@ -35,9 +37,9 @@ class readInput
         int exonCount;          //Column 9
         gsl_vector_int *exonStarts; //Column 10
         gsl_vector_int *exonEnds;   //Column 11
-        gsl_matrix *genoData;
-        gsl_vector *maf;
+        string region;
     };
+    */
 
   public:
     readInput(string dir, string testType, string vcfType, string vcfFile1, string region, string phenoFile, string covFile);
@@ -64,6 +66,7 @@ class readInput
     gsl_vector* getMaf(){return maf;}
     gsl_vector* getPheno(){return pheno;}
     map<string, string> getRegions(){return regions;}
+    vector<geneId> * getGenes(){return &info;}
     
 
 private:
@@ -73,6 +76,7 @@ private:
     void buildPosMap(string filename);
     void matchGenes();
     void variantMatchGene();
+    void findNonEmptyGenes();
     bool testReadFromStream(string filename, string region);
     void test(string filename);
     string exec(const char* cmd);
