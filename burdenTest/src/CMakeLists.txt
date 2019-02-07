@@ -21,6 +21,7 @@ ADD_LIBRARY(burden_test_core STATIC
 			     geneInfo.cpp
 			    # skato.cpp
 			     genericBurdenTest.cpp
+			     dataCollector.cpp
 )
 
 SET(CORE_LIB burden_test_core CACHE STRING "THE CORE LIBRARY")

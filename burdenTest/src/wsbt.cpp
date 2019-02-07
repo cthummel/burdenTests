@@ -10,31 +10,26 @@
 
 using namespace std;
 
-wsbt::wsbt(gsl_matrix* totalGtype, int aCount, string gene)
+wsbt::wsbt(gsl_matrix *totalGtype, int aCount, string gene)
 {
-    if(totalGtype->size1 == 0)
-    {
-        permpvalue = -1;
-        normpvalue = -1;
-        return;
-    }
     const int permutationCount = 100;
     bool verbose = false;
-    
+    bool dynamic_permutations = false;
+
     ofstream outfile;
     affectedCount = aCount;
     normpvalue = 0;
     totalGenotype = totalGtype;
-    
+
     testStatistics = gsl_vector_alloc(permutationCount);
     scores = gsl_vector_alloc(totalGenotype->size2);
     weights = gsl_vector_alloc(totalGenotype->size1);
     initialWeights = gsl_vector_alloc(totalGenotype->size1);
     changedGenotype = gsl_matrix_alloc(totalGenotype->size1, affectedCount);
-    
+
     r = gsl_rng_alloc(gsl_rng_default);
     subjectPerm = gsl_permutation_calloc(totalGenotype->size2);
-    
+
     //Timing
     auto startTime = chrono::high_resolution_clock::now();
     auto currentTime = startTime;
@@ -50,42 +45,96 @@ wsbt::wsbt(gsl_matrix* totalGtype, int aCount, string gene)
     shuffleMatrix();
     //gsl_vector_memcpy(initialWeights, weights);
 
-    //Permutations to get the mean and standard deviation of the test statistic.
-    for(int k = 0; k < permutationCount; k++)
+    if (dynamic_permutations)
     {
-        recalculate();
-        gsl_vector_set(testStatistics, k, testStatistic());
-        
-        double testStatMean = gsl_stats_mean(testStatistics->data, 1, k+1);
-        double testStatSigma = gsl_stats_sd(testStatistics->data, 1, k+1);
-        double zscore = (testStat - testStatMean) / testStatSigma;
-        normpvalue = gsl_cdf_ugaussian_P(zscore);
-        if (normpvalue > .5)
+        int permCount = 0;
+        bool notConverged = true;
+        vector<double> testStats;
+        while(notConverged)
         {
-            normpvalue = 1 - normpvalue;
+            recalculate();
+            testStats.push_back(testStatistic());
+
+            double testStatMean = gsl_stats_mean(testStats.data(), 1, permCount + 1);
+            double testStatSigma = gsl_stats_sd(testStats.data(), 1, permCount + 1);
+            double zscore = (testStat - testStatMean) / testStatSigma;
+            normpvalue = gsl_cdf_ugaussian_P(zscore);
+            if (normpvalue > .5)
+            {
+                normpvalue = 1 - normpvalue;
+            }
+            normpvalue = normpvalue * 2;
+
+            if(testStats.size() > 50)
+            {
+                
+            }
+
+
+            //Reporting output.
+            currentTime = chrono::high_resolution_clock::now();
+
+            if (verbose || !notConverged)
+            {
+                cout << "Gene name: " << gene << endl;
+                cout << "Subject count: " << totalGtype->size2 << endl;
+                cout << "Variant count: " << totalGtype->size1 << endl;
+                cout << permCount + 1 << " permutations took " << std::chrono::duration_cast<std::chrono::milliseconds>(currentTime - startTime).count() / 1000.0 << " seconds." << endl;
+                cout << "TestStatistic is " << testStat << endl;
+                cout << "TestStatisticMean for permutation " << permCount + 1 << " is " << testStatMean << endl;
+                cout << "TestStatisticSigma for permutation " << permCount + 1 << " is " << testStatSigma << endl;
+                cout << "Zscore for permutation " << permCount + 1 << " is " << zscore << endl;
+                cout << "Pvalue for permutation " << permCount + 1 << " is " << normpvalue << endl << endl;
+                break;
+            }
+            lastTime = currentTime;
+
+            //Shuffle for next permutation.
+            shuffleMatrix();
+            ++permCount;
         }
-        normpvalue = normpvalue * 2;
-        
-        //Reporting output. 
-        currentTime = chrono::high_resolution_clock::now();
-        
-        if(verbose || k + 1 == permutationCount)
-        {
-            cout << "Gene name: " << gene << endl;
-            cout << "Subject count: " << totalGtype->size2 << endl;
-            cout << "Variant count: " << totalGtype->size1 << endl;
-            cout << k + 1 << " permutations took " << std::chrono::duration_cast<std::chrono::milliseconds>(currentTime - startTime).count() / 1000.0 << " seconds." << endl;
-            cout << "TestStatistic is " << testStat << endl;
-            cout << "TestStatisticMean for permutation " << k + 1 << " is " << testStatMean << endl;
-            cout << "TestStatisticSigma for permutation " << k + 1 << " is " << testStatSigma << endl;
-            cout << "Zscore for permutation " << k + 1 << " is " << zscore << endl;
-            cout << "Pvalue for permutation " << k + 1 << " is " << normpvalue << endl << endl;
-        }
-        lastTime = currentTime;
-        
-        //Shuffle for next permutation.
-        shuffleMatrix();
     }
+    else
+    {
+        //Permutations to get the mean and standard deviation of the test statistic.
+        for (int k = 0; k < permutationCount; k++)
+        {
+            recalculate();
+            gsl_vector_set(testStatistics, k, testStatistic());
+
+            double testStatMean = gsl_stats_mean(testStatistics->data, 1, k + 1);
+            double testStatSigma = gsl_stats_sd(testStatistics->data, 1, k + 1);
+            double zscore = (testStat - testStatMean) / testStatSigma;
+            normpvalue = gsl_cdf_ugaussian_P(zscore);
+            if (normpvalue > .5)
+            {
+                normpvalue = 1 - normpvalue;
+            }
+            normpvalue = normpvalue * 2;
+
+            //Reporting output.
+            currentTime = chrono::high_resolution_clock::now();
+
+            if (verbose || k + 1 == permutationCount)
+            {
+                cout << "Gene name: " << gene << endl;
+                cout << "Subject count: " << totalGtype->size2 << endl;
+                cout << "Variant count: " << totalGtype->size1 << endl;
+                cout << k + 1 << " permutations took " << std::chrono::duration_cast<std::chrono::milliseconds>(currentTime - startTime).count() / 1000.0 << " seconds." << endl;
+                cout << "TestStatistic is " << testStat << endl;
+                cout << "TestStatisticMean for permutation " << k + 1 << " is " << testStatMean << endl;
+                cout << "TestStatisticSigma for permutation " << k + 1 << " is " << testStatSigma << endl;
+                cout << "Zscore for permutation " << k + 1 << " is " << zscore << endl;
+                cout << "Pvalue for permutation " << k + 1 << " is " << normpvalue << endl
+                     << endl;
+            }
+            lastTime = currentTime;
+
+            //Shuffle for next permutation.
+            shuffleMatrix();
+        }
+    }
+
     double extremeCount = 1;
     for(int i = 1; i < permutationCount; i++)
     {
@@ -105,13 +154,13 @@ wsbt::wsbt(gsl_matrix* totalGtype, int aCount, string gene)
         }
     }
     permpvalue = extremeCount / (permutationCount + 1);
-    gsl_rng_free(r);
-    gsl_permutation_free(subjectPerm);
 }
 
 //Only deletes gsl objects directly related to this instance of wsbt.
 wsbt::~wsbt()
 {
+    gsl_rng_free(r);
+    gsl_permutation_free(subjectPerm);
     gsl_vector_free(scores);
     gsl_vector_free(weights);
     gsl_vector_free(initialWeights);
@@ -226,7 +275,7 @@ void wsbt::recalculate()
             if(gsl_matrix_get(changedGenotype, i, j) == 1)
             {
                 //First we remove the old weight's effect on all of the scores.
-                if(gsl_vector_get(weights, i) != 0)
+                if(gsl_vector_get(weights, i) != 0)   //Just want to skip the following loop in the first weight calculation.
                 {
                     for (int k = 0; k < scores->size; k++)
                     {

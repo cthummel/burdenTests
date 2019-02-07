@@ -23,66 +23,32 @@ using namespace std;
 
 class readInput
 {
-    /*
-    struct geneId
-    {
-        string geneName;        //Column 1
-        string transcriptName;  //Column 2
-        string geneChrom;       //Column 3
-        bool strand;            //Column 4
-        int txStartPos;         //Column 5
-        int txEndPos;           //Column 6
-        int codingStartPos;     //Column 7
-        int codingEndPos;       //Column 8
-        int exonCount;          //Column 9
-        gsl_vector_int *exonStarts; //Column 10
-        gsl_vector_int *exonEnds;   //Column 11
-        string region;
-    };
-    */
-
   public:
     readInput(string dir, string testType, string vcfType, string vcfFile1, string region, string phenoFile, string covFile);
-    readInput(bool mergeData, string userVcf, string backFilename, string region, int cases, int thread);
-
     ~readInput();
     
-    void readVcfInitialInfo(string filename, string region, int thread_ID);
-    void readVcfInitialInfo(string filename);
-    void readCaseCount(string filename);
-    void readPhenotype(string phenoFile);
-    void readMaf(string filename);
-    void readMaf(string filename, string region, string outfile);
-    void makePositionFile(string filename);
-    void mergeData(string user, string background, string region, string outfile);
-    void bcfInput(string filename);
-    void bcfInput(string filename, string back, string region, string outfile);
-    void readGenes(string filename);
-    
-    
     int getCaseCount(){return caseCount;}
-    gsl_matrix* getGslGenotype(){return genotypeGslMatrix;}
     gsl_matrix* getCovariates(){return covariates;}
-    gsl_vector* getMaf(){return maf;}
     gsl_vector* getPheno(){return pheno;}
     map<string, string> getRegions(){return regions;}
     vector<geneId> * getGenes(){return &info;}
     
 
 private:
-    void parseGenes(string chromosome, vector<string> *geneName);
+    void readVcfInitialInfo(string filename, string region, int thread_ID);
+    void readVcfInitialInfo(string filename);
+    void readCaseCount(string filename);
+    void readPhenotype(string phenoFile);
+    void readCovariates(string covFile);
+    void makePositionFile(string filename);
+    void readGenes(string filename);
     void buildGeneInfo(string filename);
-    void loadGene(geneId gene, vector<pair<int, gsl_vector*> > userData);
     void buildPosMap(string filename);
     void matchGenes();
-    void variantMatchGene();
-    void findNonEmptyGenes();
-    bool testReadFromStream(string filename, string region);
-    void test(string filename);
-    string exec(const char* cmd);
-    int variantCount;
-    int subjectCount;
-    int caseCount;
+
+    int variantCount = 0;
+    int subjectCount = 0;
+    int caseCount = 0;
     bool preMerged;
     string userFile;
     string backFile;
@@ -99,10 +65,8 @@ private:
     map<string, string> regions;
     map<string, pair<int,int>> genePosMap;
 
-    gsl_matrix* genotypeGslMatrix;
-    gsl_matrix* covariates;
-    gsl_vector* maf;
-    gsl_vector* pheno;
+    gsl_matrix* covariates = nullptr;
+    gsl_vector* pheno = nullptr;
 };
 
 #endif /* input_hpp */

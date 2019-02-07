@@ -27,7 +27,7 @@ skat::skat(gsl_matrix *geno, gsl_vector *maf, gsl_matrix *covariates, gsl_vector
         cout << "Affected individuals do not have genotype data for current set of variants." << endl;
         return;
     }
-    if (maf->size == 2)
+    if (geno->size1 < 2)
     {
         cout << "skipping small gene to not get stuck." << endl;
         pvalue = -1;
@@ -38,7 +38,8 @@ skat::skat(gsl_matrix *geno, gsl_vector *maf, gsl_matrix *covariates, gsl_vector
     //Initialize variables.
     subjectCount = (int)geno->size2;
     variantCount = (int)geno->size1;
-    cout << "Variant Count: " << endl;
+    cout << "Subject Count: " << subjectCount << endl;
+    cout << "Variant Count: " << variantCount << endl;
     X_Count = (int)covariates->size2;
     /*
     for (int i = 0; i < phenotype->size; i++)
@@ -93,7 +94,7 @@ skat::skat(gsl_matrix *geno, gsl_vector *maf, gsl_matrix *covariates, gsl_vector
     lastTime = currentTime;
 
     ofstream outfile;
-    outfile.open("skateigenvalues.txt");
+    outfile.open("../../data/skateigenvalues.txt");
     for (int i = 0; i < eigenvalues->size; i++)
     {
         outfile << gsl_vector_get(eigenvalues, i) << endl;
@@ -106,9 +107,9 @@ skat::skat(gsl_matrix *geno, gsl_vector *maf, gsl_matrix *covariates, gsl_vector
     cout << "Got a pvalue of: " << pvalue << endl;
     
     //Cleanup after test.
-    //gsl_vector_free(eigenvalues);
-    //gsl_matrix_free(weightMatrix);
-    //gsl_matrix_free(kernel);
+    gsl_vector_free(eigenvalues);
+    gsl_matrix_free(weightMatrix);
+    gsl_matrix_free(kernel);
 }
 
 //Creates the mxm matrix of weights.
@@ -177,6 +178,7 @@ void skat::setTestStatistic()
     //Test Statistic
     //Q = (y - u) * K * (y - u)'
     // 1xn nxn nx1 -> 1xn nx1 -> 1x1 = Q
+    cout << "Pheno size: " << pheno->size << endl;
     res = gsl_vector_alloc(subjectCount);
     double uhat = gsl_stats_mean(pheno->data, 1, pheno->size);
     for (int i = 0; i < subjectCount; i++)
@@ -334,6 +336,7 @@ void skat::qDistribution()
     //Cleanup
     gsl_matrix_free(Xtilde);
     gsl_matrix_free(V);
+    gsl_matrix_free(P0);
 }
 
 void skat::setPvalue()

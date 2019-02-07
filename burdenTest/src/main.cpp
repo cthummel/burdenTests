@@ -9,6 +9,7 @@
 //
 #include <iostream>
 #include <fstream>
+#include <vector>
 #include <string.h>
 #include <chrono>
 #include <omp.h>
@@ -18,6 +19,7 @@
 #include "output.cpp"
 //#include "cast.cpp"
 #include "skat.cpp"
+#include "dataCollector.cpp"
 
 using namespace std;
 
@@ -31,7 +33,17 @@ void handler(const char * reason, const char * file, int line, int gsl_errno)
 
 int main(int argc, const char *argv[])
 {
-    string currentDir, vcffilename, vcfType, backfilename, phenofilename, covfilename, filename, testType, region;
+    string currentDir = "";
+    string vcffilename = "";
+    string vcfType = "";
+    string backfilename = "";
+    string phenofilename = "";
+    string covfilename = "";
+    string filename = "";
+    string testType = ""; 
+    string region = "";
+    string regionFile = "";
+    vector<string> geneList;
     bool geneBased = false;
     bool userBackgroundIncluded = true;
     auto startTime = chrono::high_resolution_clock::now();
@@ -125,17 +137,43 @@ int main(int argc, const char *argv[])
             }
             //continue;
         }
-        if (strcmp(argv[i], "-r") == 0 || strcmp(argv[i], "-region") == 0)
+        if (strcmp(argv[i], "--r") == 0 || strcmp(argv[i], "--region") == 0)
         {
-            if (strcmp(argv[i + 1], "all") == 0 || strcmp(argv[i + 1], "gene") == 0 || strcmp(argv[i + 1], "exact") == 0)
+            if(i + 1 < argc)
             {
-                region = argv[i + 1];
+                while(argv[i + 1][0] != '-')
+                {
+                    geneList.push_back(argv[i + 1]);
+                    i++;
+                }
+            }
+            continue;
+        }
+        if(strcmp(argv[i], "--R") == 0)
+        {
+            if(i + 1 < argc)
+            {
+                ifstream in(argv[i + 1]);
+                string line;
+                while(getline(in, line))
+                {
+                    if(line.find(':') != string::npos && line.find('-') != string::npos)
+                    {
+                        geneList.push_back(line);
+                    }
+                    //Manage genelist of names.
+                    else
+                    {
+                        cout << "Regions in file " << argv[i + 1] << " should be coded as chromosome:start-stop" << endl;
+                    }   
+                }
                 i++;
             }
             else
             {
-                cout << "arguments error: incorrect region specified after indicator." << endl;
+                cout << "--R <RegionFileName.txt>" << endl;
             }
+            continue;
         }
         //Test type parsing.
         if (strcmp(argv[i], "wsbt") == 0)
@@ -178,85 +216,47 @@ int main(int argc, const char *argv[])
     }
 
     //Run input on the given test and save results in Input
-    readInput result(currentDir, testType, vcfType, vcffilename, region, phenofilename, covfilename);
-
-    currentTime = std::chrono::high_resolution_clock::now();
-    cout << endl;
-    cout << "After Input. Took " << std::chrono::duration_cast<std::chrono::milliseconds>(currentTime - startTime).count() / 1000.0 << " seconds." << endl;
-    cout << endl;
-    lasttime = currentTime;
+    
 
     if (testType == "wsbt")
     {
-        if (geneBased)
+        if(geneList.size() > 0)
         {
-            map<string, string> regions = result.getRegions();
-            vector<geneId> *geneInfo = result.getGenes();
-            
-            size_t perm[regions.size()];
-            vector<string> genes(regions.size());
-            vector<double> pvalues(regions.size());
-            vector<double> permpvalues(regions.size());
-            vector<double> runTime(regions.size());
-            /*
-            size_t perm[geneInfo->size()];
-            vector<string> genes(geneInfo->size());
-            vector<double> pvalues(geneInfo->size());
-            vector<double> permpvalues(geneInfo->size());
-            vector<double> runTime(geneInfo->size());
-            */
-
-
-            
-
-
-            gsl_set_error_handler_off();
-            //gsl_set_error_handler(&handler);
+            size_t perm[geneList.size()];
+            vector<string> genes(geneList.size());
+            vector<double> pvalues(geneList.size());
+            vector<double> permpvalues(geneList.size());
+            vector<double> runTime(geneList.size());
             int index = 0;
-            
-            for(map<string, string>::iterator iter = regions.begin(); iter != regions.end(); iter++, index++)
-            {
-                if(iter->first[0] == 'P')
-                {
-                    break;
-                }
-            }
-            
+            int skipped = 0;
             #pragma omp parallel for schedule(dynamic)
-            //for (int i = index; i < geneInfo->size(); i++)
-            for (int i = index; i < regions.size(); i++)
+            for (int i = index; i < geneList.size(); i++)
             {
                 //Thread safe method of iterating to the correct gene. Not elegant though.
-                map<string, string>::iterator iter = regions.begin();
+                vector<string>::iterator iter = geneList.begin();
                 advance(iter, i);
                 auto runStartTime = chrono::high_resolution_clock::now();
 
                 //Reads in genotype data from region.
-                readInput dataCollector = readInput(userBackgroundIncluded, vcffilename, backfilename, iter->second, result.getCaseCount(), omp_get_thread_num());
-                //readInput dataCollector = readInput(userBackgroundIncluded, vcffilename, backfilename, geneInfo->at(i).region, result.getCaseCount(), omp_get_thread_num());
+                dataCollector geneInput = dataCollector(userBackgroundIncluded, vcffilename, backfilename, *iter, testType, omp_get_thread_num());
                 //Run the test.
-                try
+                if(geneInput.getGslGenotype() == nullptr)
                 {
+                    cout << "Gene in region " << *iter << " has no variants in data sets. --Skipping--" << endl;
                     
-                    if (dataCollector.getGslGenotype()->size1 == 0 || dataCollector.getGslGenotype()->size2 != 2504 + result.getCaseCount())
-                    {
-                        
-                    }
-                    else
-                    {
-                        wsbt test = wsbt(dataCollector.getGslGenotype(), result.getCaseCount(), iter->first);
-                        genes[i] = iter->first;
-                        //wsbt test = wsbt(dataCollector.getGslGenotype(), result.getCaseCount(), geneInfo->at(i).geneName);
-                        //genes[i] = geneInfo->at(i).geneName;
-                        pvalues[i] = test.getPvalue();
-                        permpvalues[i] = test.getPermPvalue();
-                    }
+                    genes[i] = *iter;
+                    pvalues[i] = -1;
+                    permpvalues[i] = -1;
+                    skipped++; 
                 }
-                catch(...)
+                else
                 {
-                    cout << "Caught an error in wsbt on gene " << geneInfo->at(i).geneName << " which runs in region " << geneInfo->at(i).region << endl;
+                    wsbt test = wsbt(geneInput.getGslGenotype(), geneInput.getGslGenotype()->size2 - 2504, *iter);
+                    genes[i] = *iter;
+                    pvalues[i] = test.getPvalue();
+                    permpvalues[i] = test.getPermPvalue();
                 }
-
+                
                 //Check test speed.
                 auto runCurrentTime = std::chrono::high_resolution_clock::now();
                 runTime[i] = std::chrono::duration_cast<std::chrono::milliseconds>(runCurrentTime - runStartTime).count() / 60000.0;
@@ -274,7 +274,7 @@ int main(int argc, const char *argv[])
             int geneCount = 0;
             for (int i = 0; i < pvalues.size(); i++)
             {
-                if(pvalues[perm[i]] != 0)
+                if (pvalues[perm[i]] > 0)
                 {
                     fisherStat += -2 * log(pvalues[perm[i]]);
                     geneCount++;
@@ -282,28 +282,128 @@ int main(int argc, const char *argv[])
                 else
                 {
                     cout << "Pvalue for gene " << genes[perm[i]] << " excluded from fisher product test because pvalue = " << pvalues[perm[i]] << endl;
+                    if(pvalues[perm[i]] == 0)
+                    {
+                        skipped++;
+                    }
                 }
             }
             double fisherPvalue = gsl_cdf_chisq_Q(fisherStat, 2 * geneCount);
-            cout << "Fisher product test statistic is " << fisherStat << " with pvalue " << fisherPvalue << endl;
+            cout << "Fisher product test statistic for " << geneList.size() - skipped << " gene(s) is " << fisherStat << " with pvalue " << fisherPvalue << endl;
+        }
+        else if (geneBased)
+        {
+            readInput result = readInput(currentDir, testType, vcfType, vcffilename, region, phenofilename, covfilename);
+            currentTime = std::chrono::high_resolution_clock::now();
+            cout << endl;
+            cout << "After Input. Took " << std::chrono::duration_cast<std::chrono::milliseconds>(currentTime - startTime).count() / 1000.0 << " seconds." << endl;
+            cout << endl;
+            lasttime = currentTime;
+
+            map<string, string> regions = result.getRegions();
+           // vector<geneId> *geneInfo = result.getGenes();
+
+            size_t perm[regions.size()];
+            vector<string> genes(regions.size());
+            vector<double> pvalues(regions.size());
+            vector<double> permpvalues(regions.size());
+
+            gsl_set_error_handler_off();
+            //gsl_set_error_handler(&handler);
+            int index = 0;
+            int skipped = 0;
+
+            /*
+            for(map<string, string>::iterator iter = regions.begin(); iter != regions.end(); iter++, index++)
+            {
+                if(iter->first[0] == 'P')
+                {
+                    break;
+                }
+            }
+            */
+
+            #pragma omp parallel for schedule(dynamic)
+            for (int i = index; i < regions.size(); i++)
+            {
+                //Thread safe method of iterating to the correct gene. Not elegant though.
+                map<string, string>::iterator iter = regions.begin();
+                advance(iter, i);
+
+                //Reads in genotype data from region.
+                dataCollector geneInput = dataCollector(userBackgroundIncluded, vcffilename, backfilename, iter->second, testType, omp_get_thread_num());
+                //Run the test.
+                wsbt test = wsbt(geneInput.getGslGenotype(), result.getCaseCount(), iter->first);
+                genes[i] = iter->first;
+                pvalues[i] = test.getPvalue();
+                permpvalues[i] = test.getPermPvalue();
+            }
+            gsl_sort_index(perm, pvalues.data(), 1, pvalues.size());
+            ofstream out("wsbtResults.txt");
+            for (int i = 0; i < pvalues.size(); i++)
+            {
+                //perm contains the sorted order.
+                out << "Pvalue for gene " << genes[perm[i]] << " is " << pvalues[perm[i]] << ", " << permpvalues[perm[i]] << endl;
+            }
+            out.close();
+            if(out.is_open())
+            {
+                cout << "we aint done yet." << endl;
+            }
+            double fisherStat = 0;
+            int geneCount = 0;
+            for (int i = 0; i < pvalues.size(); i++)
+            {
+                if (pvalues[perm[i]] > 0)
+                {
+                    fisherStat += -2 * log(pvalues[perm[i]]);
+                    geneCount++;
+                }
+                else
+                {
+                    cout << "Pvalue for gene " << genes[perm[i]] << " excluded from fisher product test because pvalue = " << pvalues[perm[i]] << endl;
+                    if(pvalues[perm[i]] == 0)
+                    {
+                        skipped++;
+                    }
+                }
+            }
+            double fisherPvalue = gsl_cdf_chisq_Q(fisherStat, 2 * geneCount);
+            cout << "Fisher product test statistic on " << pvalues.size() - skipped <<  " genes is " << fisherStat << " with pvalue " << fisherPvalue << endl;
         }
         else
         {
+            /*
+            readInput result(currentDir, testType, vcfType, vcffilename, region, phenofilename, covfilename);
+
+            currentTime = std::chrono::high_resolution_clock::now();
+            cout << endl;
+            cout << "After Input. Took " << std::chrono::duration_cast<std::chrono::milliseconds>(currentTime - startTime).count() / 1000.0 << " seconds." << endl;
+            cout << endl;
+            lasttime = currentTime;
+
             wsbt test = wsbt(result.getGslGenotype(), result.getCaseCount(), "All");
             currentTime = std::chrono::high_resolution_clock::now();
             cout << "WSBT Took " << std::chrono::duration_cast<std::chrono::milliseconds>(currentTime - lasttime).count() / 60000.0 << " minutes." << endl;
             lasttime = currentTime;
+            */
         }
         auto endTime = std::chrono::high_resolution_clock::now();
         cout << "Total Time: " << std::chrono::duration_cast<std::chrono::milliseconds>(endTime - startTime).count() / 60000.0 << " minutes." << endl;
 
         //Now manage output of results for user.
-
-
-
     }
     else if (testType == "burden")
     {
+        /*
+        readInput result(currentDir, testType, vcfType, vcffilename, region, phenofilename, covfilename);
+
+        currentTime = std::chrono::high_resolution_clock::now();
+        cout << endl;
+        cout << "After Input. Took " << std::chrono::duration_cast<std::chrono::milliseconds>(currentTime - startTime).count() / 1000.0 << " seconds." << endl;
+        cout << endl;
+        lasttime = currentTime;
+
         gsl_vector *pheno = gsl_vector_alloc(result.getMaf()->size);
         genericBurdenTest test = genericBurdenTest(result.getGslGenotype(), result.getMaf(), pheno);
         cout << "Variant weights: ";
@@ -312,6 +412,7 @@ int main(int argc, const char *argv[])
             cout << gsl_vector_get(test.getWeights(), i) << " ";
         }
         cout << endl;
+        */
     }
     else if (testType == "cast")
     {
@@ -319,6 +420,14 @@ int main(int argc, const char *argv[])
     }
     else if (testType == "skat")
     {
+        readInput result(currentDir, testType, vcfType, vcffilename, region, phenofilename, covfilename);
+
+        currentTime = std::chrono::high_resolution_clock::now();
+        cout << endl;
+        cout << "After Input. Took " << std::chrono::duration_cast<std::chrono::milliseconds>(currentTime - startTime).count() / 1000.0 << " seconds." << endl;
+        cout << endl;
+        lasttime = currentTime;
+
         currentTime = std::chrono::high_resolution_clock::now();
         lasttime = currentTime;
         if (geneBased)
@@ -339,10 +448,10 @@ int main(int argc, const char *argv[])
                 advance(iter, i);
                 cout << "Running SKAT test on gene " << iter->first << endl;
                 //Read in genotpe data from file for this gene.
-                readInput dataCollector = readInput(userBackgroundIncluded, vcffilename, backfilename, iter->second, result.getCaseCount(), omp_get_thread_num());
+                dataCollector geneInput = dataCollector(userBackgroundIncluded, vcffilename, backfilename, iter->second, testType, omp_get_thread_num());
                 //Run Test
                 auto runStartTime = std::chrono::high_resolution_clock::now();
-                skat test = skat(dataCollector.getGslGenotype(), dataCollector.getMaf(), result.getCovariates(), result.getPheno());
+                skat test = skat(geneInput.getGslGenotype(), geneInput.getMaf(), result.getCovariates(), result.getPheno());
                 auto runCurrentTime = std::chrono::high_resolution_clock::now();
                 //Output and cleanup.
                 genes[i] = iter->first;
@@ -367,11 +476,13 @@ int main(int argc, const char *argv[])
         }
         else
         {
+            /*
             //Covariates and Phenotype not yet implemented. We will have to decide how thats done.
             skat test = skat(result.getGslGenotype(), result.getMaf(), result.getCovariates(), result.getPheno());
             currentTime = std::chrono::high_resolution_clock::now();
             cout << "SKAT Took " << std::chrono::duration_cast<std::chrono::milliseconds>(currentTime - lasttime).count() / 60000.0 << " minutes." << endl;
             lasttime = currentTime;
+            */
         }
         auto endTime = std::chrono::high_resolution_clock::now();
         cout << "Total Time: " << std::chrono::duration_cast<std::chrono::milliseconds>(endTime - startTime).count() / 60000.0 << " minutes." << endl;
