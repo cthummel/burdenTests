@@ -12,7 +12,7 @@ using namespace std;
 
 wsbt::wsbt(gsl_matrix *totalGtype, int aCount, string gene)
 {
-    const int permutationCount = 100;
+    const int permutationCount = 1000;
     bool verbose = false;
     bool dynamic_permutations = false;
 

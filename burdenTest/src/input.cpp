@@ -33,13 +33,6 @@ readInput::readInput(string dir, string tType, string inputVcfType, string userV
             buildGeneInfo("orderedRefFlat.txt");
             matchGenes();
         }
-        /*
-        if(variantRegion.substr(variantRegion.length() - 4) == ".txt")
-        {
-            readVcfInitialInfo(userVcf);
-            readCaseCount(userVcf);
-        }
-        */
     }
     else if (testType == "skat")
     {
@@ -370,7 +363,6 @@ void readInput::buildPosMap(string filename)
         }
 
         vcfPos.push_back(stoi(line.substr(comma + 1)));
-        
     }
     posMap.insert(pair<string, vector<int> >(currentChrom, vcfPos));
     cout << vcfPos.size() << " variants in chromosome " << currentChrom << endl;
@@ -429,6 +421,9 @@ void readInput::matchGenes()
     {
         cout << "Matched variant(s) to gene " << it->first << " in region " << it->second << endl;
     }
+    
+    //Dont need the posMap anymore.
+    posMap = map<string, vector<int>>();
 }
 
 

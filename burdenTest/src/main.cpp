@@ -216,8 +216,6 @@ int main(int argc, const char *argv[])
     }
 
     //Run input on the given test and save results in Input
-    
-
     if (testType == "wsbt")
     {
         if(geneList.size() > 0)
@@ -339,11 +337,12 @@ int main(int argc, const char *argv[])
                 permpvalues[i] = test.getPermPvalue();
             }
             gsl_sort_index(perm, pvalues.data(), 1, pvalues.size());
-            ofstream out("wsbtResults.txt");
+            ofstream out("wsbtResults.csv");
+            out << "Gene,Pvalue,Perm-Pvalue" << endl;
             for (int i = 0; i < pvalues.size(); i++)
             {
                 //perm contains the sorted order.
-                out << "Pvalue for gene " << genes[perm[i]] << " is " << pvalues[perm[i]] << ", " << permpvalues[perm[i]] << endl;
+                out << genes[perm[i]] << "," << pvalues[perm[i]] << "," << permpvalues[perm[i]] << endl;
             }
             out.close();
             if(out.is_open())
