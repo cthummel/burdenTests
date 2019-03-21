@@ -49,12 +49,12 @@ private:
     gsl_rng *r;
     gsl_permutation *subjectPerm;
     
-    gsl_matrix* totalGenotype;
-    gsl_matrix* changedGenotype;
-    gsl_vector* scores;
-    gsl_vector* testStatistics;
-    gsl_vector* weights;
-    gsl_vector* initialWeights;
+    gsl_matrix* totalGenotype = nullptr;
+    gsl_matrix* changedGenotype = nullptr;
+    gsl_vector* scores = nullptr;
+    gsl_vector* testStatistics = nullptr;
+    gsl_vector* weights = nullptr;
+    gsl_vector* initialWeights = nullptr;
 
 };
 
