@@ -16,6 +16,7 @@ class dataCollector
 {
     public:
       dataCollector(bool mergeData, string userVcf, string backFilename, string region, string test_type, int thread);
+      //dataCollector(int variantCount, int subjectCount, string genoData, string mafFile, string phenoFile, string covFile);
       ~dataCollector();
 
       gsl_matrix* getGslGenotype(){return genotypeGslMatrix;}

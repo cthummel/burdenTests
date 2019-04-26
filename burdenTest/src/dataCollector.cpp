@@ -142,7 +142,7 @@ void dataCollector::readMaf(string filename, string region, string outfile)
     else
     {
         command = externals_loc + "bcftools merge -r " + region + " " + userFile + " " + backFile +  " | " 
-                + externals_loc + "bcftools stats - > " + outfile;
+                + externals_loc + "bcftools query -r " + region + " -f '%AF\\n' " + userFile + " > " + outfile;
     }
     system(command.c_str());
     in.open(outfile);

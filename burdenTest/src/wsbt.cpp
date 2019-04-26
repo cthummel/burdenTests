@@ -52,6 +52,7 @@ wsbt::wsbt(gsl_matrix *totalGtype, int aCount, string gene)
         vector<double> testStats;
         while(notConverged)
         {
+            //gsl_movstat_workspace *window = gsl_movstat_alloc(50);
             recalculate();
             testStats.push_back(testStatistic());
 

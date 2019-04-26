@@ -423,7 +423,7 @@ void readInput::matchGenes()
     }
     
     //Dont need the posMap anymore.
-    posMap = map<string, vector<int>>();
+    posMap.clear();
 }
 
 

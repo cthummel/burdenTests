@@ -54,15 +54,15 @@ private:
     bool checkVariants(gsl_matrix *genotype, gsl_vector *phenotype);
 
     
-    gsl_matrix *genoMatrix;
-    gsl_matrix *weightMatrix;
-    gsl_matrix *kernel;
-    gsl_matrix *rvKernel;
-    gsl_matrix *X;
-    gsl_vector *pheno;
-    gsl_vector *coeff;
-    gsl_vector *res;
-    gsl_vector *eigenvalues;
+    gsl_matrix *genoMatrix = nullptr;
+    gsl_matrix *weightMatrix = nullptr;
+    gsl_matrix *kernel = nullptr;
+    gsl_matrix *rvKernel = nullptr;
+    gsl_matrix *X = nullptr;
+    gsl_vector *pheno = nullptr;
+    gsl_vector *coeff = nullptr;
+    gsl_vector *res = nullptr;
+    gsl_vector *eigenvalues = nullptr;
 };
 
 

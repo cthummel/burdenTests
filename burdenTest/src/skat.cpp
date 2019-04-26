@@ -117,12 +117,10 @@ void skat::setWeights(gsl_vector *maf)
 {
     cout << "Total number of entries in maf: " << maf->size << endl;
     ofstream outfile;
-    outfile.open("skatweights.txt");
+    outfile.open("tmp/skatweights.txt");
     for (int i = 0; i < maf->size; i++)
     {
         double tempWeight = gsl_ran_beta_pdf(gsl_vector_get(maf, i), 1, 25);
-        //gsl_matrix_set(weightMatrix, i, i, tempWeight * tempWeight);
-        //outfile << i << " " << tempWeight * tempWeight << endl;
         gsl_matrix_set(weightMatrix, i, i, tempWeight);
         outfile << i << " " << tempWeight << endl;
     }
@@ -133,14 +131,14 @@ void skat::setWeights(gsl_vector *maf)
 //sxv vxv vxs -> sxv vxs -> sxs is kernel's final dimensions.
 void skat::makeKernel(string kernel_type)
 {
+    gsl_matrix *tempWeight = gsl_matrix_calloc(variantCount, variantCount);
+    for (int i = 0; i < variantCount; i++)
+    {
+        gsl_matrix_set(tempWeight, i, i, gsl_matrix_get(weightMatrix, i, i));
+    }
+
     if (kernel_type == "linear")
     {
-        gsl_matrix *tempWeight = gsl_matrix_alloc(variantCount, variantCount);
-        for(int i = 0; i < variantCount; i++)
-        {
-            gsl_matrix_set(tempWeight, i, i, gsl_matrix_get(weightMatrix, i, i));
-        }
-        
         rvKernel = gsl_matrix_alloc(variantCount, subjectCount);
         gsl_blas_dgemm(CblasNoTrans, CblasNoTrans, 1, tempWeight, genoMatrix, 0, rvKernel);
 
@@ -189,7 +187,6 @@ void skat::setTestStatistic()
     gsl_blas_dgemv(CblasNoTrans, 1.0, rvKernel, res, 0.0, tempstat);
     gsl_blas_ddot(tempstat, tempstat, &rvStat);
 
-    //double uhat = gsl_stats_mean(pheno->data, 1, pheno->size);
     gsl_vector *diff = gsl_vector_alloc(subjectCount);
     for (int i = 0; i < subjectCount; i++)
     {

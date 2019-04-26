@@ -1,9 +1,5 @@
-#INCLUDE_DIRECTORIES(
-#	${GSL_INCLUDE}
-#	#Other third party functions here
-#)
-
 SET(MAIN_SRC main.cpp)
+SET(DRIVER_SRC iobioDriver.cpp)
 
 INCLUDE_DIRECTORIES(
 	${PROJECT_SOURCE_DIR}
@@ -11,6 +7,7 @@ INCLUDE_DIRECTORIES(
 )
 
 ADD_EXECUTABLE(test ${MAIN_SRC})
+ADD_EXECUTABLE(driver ${DRIVER_SRC})
 
 ADD_LIBRARY(burden_test_core STATIC
 			     wsbt.cpp
@@ -31,8 +28,13 @@ TARGET_LINK_LIBRARIES(test
 	   ${GSL_LIB}
 	   ${OPENMP_LIB}
 )
+TARGET_LINK_LIBRARIES(driver
+	   ${CORE_LIB}
+	   ${GSL_LIB}
+)
 
 add_dependencies(test  ${BURDEN_TEST_EXTERNAL_PROJECT})
+add_dependencies(driver  ${BURDEN_TEST_EXTERNAL_PROJECT})
 
 
 
