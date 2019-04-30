@@ -30,10 +30,10 @@ class dataCollector
     int variantCount = 0;
     int subjectCount = 0;
     bool preMerged = false;
-    string userFile;
-    string backFile;
-    string variantRegion;
-    string testType;
+    string userFile = "";
+    string backFile = "";
+    string variantRegion = "";
+    string testType = "";
     string externals_loc = "../../externals/bin/";
     regex subjectCountMatch;
     regex variantCountMatch;

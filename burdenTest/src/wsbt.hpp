@@ -47,8 +47,8 @@ private:
     int totalSubjects;
     bool verbose = false;
 
-    gsl_rng *r;
-    gsl_permutation *subjectPerm;
+    gsl_rng *r = nullptr;
+    gsl_permutation *subjectPerm = nullptr;
     
     gsl_matrix* totalGenotype = nullptr;
     gsl_matrix* changedGenotype = nullptr;
