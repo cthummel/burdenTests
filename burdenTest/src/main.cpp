@@ -79,7 +79,7 @@ int main(int argc, const char *argv[])
                 i++;
             }
         }
-        if (strcmp(argv[i], "-gzvcf") == 0)
+        if (strcmp(argv[i], "--d") == 0)
         {
             vcfType = argv[i];
             if (argc > i)
@@ -123,7 +123,7 @@ int main(int argc, const char *argv[])
             }
         }
         //File option parsing.
-        if (strcmp(argv[i], "--back") == 0 || strcmp(argv[i], "--b") == 0)
+        if (strcmp(argv[i], "--b") == 0 || strcmp(argv[i], "--back") == 0)
         {
             userBackgroundIncluded = false;
             if(argc > i + 1)
@@ -144,8 +144,20 @@ int main(int argc, const char *argv[])
                 while(argv[i + 1][0] != '-')
                 {
                     geneList.push_back(argv[i + 1]);
-                    i++;
+                    if(i + 2 < argc)
+                    {
+                        i++;
+                    }
+                    else
+                    {
+                        break;
+                    }
                 }
+            }
+            else
+            {
+                cout << "Did not provide a genetic region following the region comand." << endl;
+                return 1;
             }
             continue;
         }
@@ -200,7 +212,6 @@ int main(int argc, const char *argv[])
         {
             testType = argv[i];
         }
-
         //Test Parameter parsing.
         if (strcmp(argv[i], "--g") == 0)
         {
@@ -209,8 +220,11 @@ int main(int argc, const char *argv[])
         }
         if (strcmp(argv[i], "--T") == 0)
         {
-            omp_set_num_threads(stoi(argv[i+1]));
-            i++;
+            if(argc > i)
+            {
+                omp_set_num_threads(stoi(argv[i+1]));
+                i++;
+            }
         }
 
     }
@@ -220,6 +234,8 @@ int main(int argc, const char *argv[])
     {
         if(geneList.size() > 0)
         {
+            cout << "---Running WSBT in region mode---" << endl;
+
             size_t perm[geneList.size()];
             vector<string> genes(geneList.size());
             vector<double> pvalues(geneList.size());

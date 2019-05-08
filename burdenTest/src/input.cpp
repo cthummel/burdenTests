@@ -17,7 +17,6 @@ readInput::readInput(string dir, string tType, string inputVcfType, string userV
 {
     caseCount = 0;
     variantRegion = region;
-    vcfType = inputVcfType;
     testType = tType;
     testDir = dir;
     
