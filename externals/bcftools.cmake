@@ -5,7 +5,8 @@ SET(BCFTOOLS_DIR ${CMAKE_BINARY_DIR}/externals/bcftools CACHE INTERNAL "bcftools
 ExternalProject_Add(${BCFTOOLS_PROJECT}
         GIT_REPOSITORY https://github.com/samtools/bcftools.git
         GIT_TAG master
-        CONFIGURE_COMMAND autoreconf && ./configure --with-htslib=${HTSLIB_INCLUDE} --enable-libgsl --prefix=${CMAKE_SOURCE_DIR}/externals
+        #CONFIGURE_COMMAND autoreconf && ./configure --with-htslib=${HTSLIB_INCLUDE} --enable-libgsl --prefix=${CMAKE_SOURCE_DIR}/externals
+	CONFIGURE_COMMAND autoreconf && ./configure --with-htslib=${HTSLIB_INCLUDE} --prefix=${CMAKE_SOURCE_DIR}/externals
         BUILD_COMMAND make
         INSTALL_COMMAND make install
         UPDATE_COMMAND ""
