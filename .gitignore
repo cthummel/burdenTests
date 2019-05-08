@@ -4,10 +4,10 @@ burdenUnitTest.m
 bin/*
 xcuserdata/
 *~
-burdenTest/third/
-burdenTest/externals/bin
-burdenTest/externals/include
-burdenTest/externals/lib
-burdenTest/externals/libexec
-burdenTest/externals/share
+third/
+externals/bin
+externals/include
+externals/lib
+externals/libexec
+externals/share
 *.script
