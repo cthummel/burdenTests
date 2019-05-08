@@ -1,0 +1,29 @@
+SET_PROPERTY(DIRECTORY PROPERTY "EP_BASE" ${ep_base})
+
+SET(GSL_PROJECT gsl_project CACHE INTERNAL "gsl_project name")
+SET(GSL_DIR ${CMAKE_BINARY_DIR}/externals/gsl CACHE INTERNAL "gsl project directory")
+ExternalProject_Add(${GSL_PROJECT}
+	GIT_REPOSITORY https://github.com/ampl/gsl.git
+	GIT_TAG master
+	CONFIGURE_COMMAND ./configure --prefix=${CMAKE_SOURCE_DIR}/externals
+	BUILD_COMMAND make
+	INSTALL_COMMAND make install
+	UPDATE_COMMAND ""
+	BUILD_IN_SOURCE 1
+	PREFIX ${GSL_DIR}
+	CMAKE_CACHE_ARGS
+		-DCMAKE_C_COMPILER:STRING=${CMAKE_C_COMPILER}
+		-DCMAKE_CXX_COMPILER:STRING=${CMAKE_CXX_COMPILER}
+
+
+)
+
+ExternalProject_Get_Property(${GSL_PROJECT} SOURCE_DIR)
+ExternalProject_Get_Property(${GSL_PROJECT} BINARY_DIR)
+
+MESSAGE("BINARY_DIR: ${BINARY_DIR}")
+MESSAGE("SRC_DIR: ${SOURCE_DIR}")
+MESSAGE("CMAKE_SRC_DIR: ${CMAKE_SOURCE_DIR}")
+
+SET(GSL_LIB ${CMAKE_SOURCE_DIR}/externals/lib/libgsl.a ${CMAKE_SOURCE_DIR}/externals/lib/libgslcblas.a CACHE INTERNAL "GSL Library")
+SET(GSL_INCLUDE ${CMAKE_SOURCE_DIR}/externals/include CACHE INTERNAL "GSL Include")
