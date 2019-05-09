@@ -265,7 +265,7 @@ void readInput::readCovariates(string filename)
     ifstream in;
     if(filename.compare("") == 0)
     {
-        covariates = gsl_matrix_alloc(variantCount, 1);
+        covariates = gsl_matrix_calloc(variantCount, 1);
         gsl_matrix_set_all(covariates, 1);
     }
 }
@@ -425,23 +425,6 @@ void readInput::matchGenes()
     posMap.clear();
 }
 
-
-/*
-
-//Copy and pasted from stackexchange. (modified to use a string stream rather than string for speed)
-//https://stackoverflow.com/questions/478898/how-to-execute-a-command-and-get-output-of-command-within-c-using-posix
-string readInput::exec(const char* cmd) {
-    char buffer[64];
-    string result;
-    shared_ptr<FILE> pipe(popen(cmd, "r"), pclose);
-    if (!pipe) throw runtime_error("popen() failed!");
-    while (!feof(pipe.get())) {
-        if (fgets(buffer, 64, pipe.get()) != nullptr)
-            result += buffer;
-    }
-    return result;
-}
-*/
 
 
 

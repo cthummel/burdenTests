@@ -21,11 +21,11 @@ wsbt::wsbt(gsl_matrix *totalGtype, int aCount, string gene)
     normpvalue = 0;
     totalGenotype = totalGtype;
 
-    testStatistics = gsl_vector_alloc(permutationCount);
-    scores = gsl_vector_alloc(totalGenotype->size2);
-    weights = gsl_vector_alloc(totalGenotype->size1);
-    initialWeights = gsl_vector_alloc(totalGenotype->size1);
-    changedGenotype = gsl_matrix_alloc(totalGenotype->size1, affectedCount);
+    testStatistics = gsl_vector_calloc(permutationCount);
+    scores = gsl_vector_calloc(totalGenotype->size2);
+    weights = gsl_vector_calloc(totalGenotype->size1);
+    initialWeights = gsl_vector_calloc(totalGenotype->size1);
+    changedGenotype = gsl_matrix_calloc(totalGenotype->size1, affectedCount);
 
     r = gsl_rng_alloc(gsl_rng_default);
     subjectPerm = gsl_permutation_calloc(totalGenotype->size2);
@@ -36,8 +36,6 @@ wsbt::wsbt(gsl_matrix *totalGtype, int aCount, string gene)
     auto lastTime = startTime;
 
     //First run through data.
-    gsl_vector_set_all(weights, 0);
-    gsl_vector_set_all(scores, 0);
     gsl_matrix_set_all(changedGenotype, 1);
     double testStat;
     recalculate();
@@ -176,8 +174,8 @@ double wsbt::testStatistic()
     double testStat = 0;
     double currentRank = 1;
     double totalTiedSubjects = 0;
-    gsl_permutation * perm = gsl_permutation_calloc(totalGenotype->size2);
-    gsl_vector * rank = gsl_vector_alloc(totalGenotype->size2);
+    gsl_permutation *perm = gsl_permutation_calloc(totalGenotype->size2);
+    gsl_vector *rank = gsl_vector_calloc(totalGenotype->size2);
     gsl_sort_vector_index(perm, scores);
 
     for(int j = 0; j < scores->size; j++)
