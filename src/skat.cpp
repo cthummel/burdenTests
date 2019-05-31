@@ -15,6 +15,7 @@
 #include <cmath>
 #include "skat.hpp"
 #include "davies.cpp"
+//#include "logisticRegression.cpp"
 
 using namespace std;
 
@@ -60,8 +61,8 @@ skat::skat(gsl_matrix *geno, gsl_vector *maf, gsl_matrix *covariates, gsl_vector
     X = covariates;
     pheno = phenotype;
     weightMatrix = gsl_matrix_calloc(variantCount, variantCount);
-    kernel = gsl_matrix_alloc(subjectCount, subjectCount);
-    coeff = gsl_vector_alloc(covariates->size2);
+    kernel = gsl_matrix_calloc(subjectCount, subjectCount);
+    coeff = gsl_vector_calloc(covariates->size2);
     eigenvalues = gsl_vector_calloc(subjectCount);
 
     string kernel_type = "linear";
@@ -177,8 +178,9 @@ void skat::setTestStatistic()
     //Q = (y - u) * K * (y - u)'
     // 1xn nxn nx1 -> 1xn nx1 -> 1x1 = Q
     cout << "Pheno size: " << pheno->size << endl;
-    res = gsl_vector_alloc(subjectCount);
+    res = gsl_vector_calloc(subjectCount);
     double uhat = gsl_stats_mean(pheno->data, 1, pheno->size);
+    uhat = exp(uhat) / (1 + exp(uhat));
     for (int i = 0; i < subjectCount; i++)
     {
         gsl_vector_set(res, i, gsl_vector_get(pheno, i) - uhat);
@@ -199,6 +201,7 @@ void skat::setTestStatistic()
     //Clean
     gsl_vector_free(tempstat);
     gsl_vector_free(diff);
+    gsl_vector_free(res);
 }
 
 //Find distribution of Q.
@@ -220,6 +223,7 @@ void skat::qDistribution()
 
         double Vsum = 0;
         double uhat = gsl_stats_mean(pheno->data, 1, pheno->size);
+        uhat = exp(uhat) / (1.0 + exp(uhat));
         for (int i = 0; i < subjectCount; i++)
         {
             gsl_matrix_set(V, i, i, uhat * (1 - uhat));

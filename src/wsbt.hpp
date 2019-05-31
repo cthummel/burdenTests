@@ -39,6 +39,7 @@ public:
 private:
     void recalculate();
     double testStatistic();
+    double exactTestStatistic();
     void shuffleMatrix();
 
     double normpvalue;

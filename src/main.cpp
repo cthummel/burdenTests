@@ -322,7 +322,7 @@ int main(int argc, const char *argv[])
             vector<double> pvalues(regions.size());
             vector<double> permpvalues(regions.size());
 
-            gsl_set_error_handler_off();
+            //gsl_set_error_handler_off();
             //gsl_set_error_handler(&handler);
             int index = 0;
             int skipped = 0;
