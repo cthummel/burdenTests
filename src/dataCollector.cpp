@@ -215,6 +215,14 @@ void dataCollector::bcfInput(string filename, string back, string region, string
             {
                 missingData = true;
                 missingCount++;
+                if(j > genotypeGslMatrix->size2)
+                {
+                    cout << "During input, we tried to put data into " << j << " in region " << region << endl;
+                }
+                else if (j < 0)
+                {
+                    cout << "During input, we tried to put data into " << j << " in region " << region << endl;
+                }
                 gsl_matrix_set(genotypeGslMatrix, i, j, -1);
             }
             //Not set up to handle multiallelic sites.
@@ -229,6 +237,14 @@ void dataCollector::bcfInput(string filename, string back, string region, string
                 {
                     missingData = true;
                     missingCount++;
+                    if (j > genotypeGslMatrix->size2)
+                    {
+                        cout << "During input, we tried to put data into " << j << " in region " << region << endl;
+                    }
+                    else if (j < 0)
+                    {
+                        cout << "During input, we tried to put data into " << j << " in region " << region << endl;
+                    }
                     gsl_matrix_set(genotypeGslMatrix, i, j, -1);
                 }
                 continue;
@@ -236,7 +252,15 @@ void dataCollector::bcfInput(string filename, string back, string region, string
             else if (rightAllele != '0')
             {
                 right = 1;
-            }  
+            }
+            if (j > genotypeGslMatrix->size2)
+            {
+                cout << "During input, we tried to put data into " << j << " in region " << region << endl;
+            }
+            else if (j < 0)
+            {
+                cout << "During input, we tried to put data into " << j << " in region " << region << endl;
+            }
             gsl_matrix_set(genotypeGslMatrix, i, j, left + right);
         }
 
@@ -248,6 +272,14 @@ void dataCollector::bcfInput(string filename, string back, string region, string
             for(int j = 0; j < subjectCount; j++)
             {
                 //Getting counts of non-missing alleles
+                if(j > genotypeGslMatrix->size2)
+                {
+                    cout << "During input, we tried to put data into " << j << " in region " << region << endl;
+                }
+                else if (j < 0)
+                {
+                    cout << "During input, we tried to put data into " << j << " in region " << region << endl;
+                }
                 if (gsl_matrix_get(genotypeGslMatrix, i, j) >= 0)
                 {
                     alleleCount += gsl_matrix_get(genotypeGslMatrix, i, j);
@@ -258,6 +290,14 @@ void dataCollector::bcfInput(string filename, string back, string region, string
             int fixed = 0;
             for(int j = 0; j < subjectCount; j++)
             {
+                if(j > genotypeGslMatrix->size2)
+                {
+                    cout << "During input, we tried to put data into " << j << " in region " << region << endl;
+                }
+                else if (j < 0)
+                {
+                    cout << "During input, we tried to put data into " << j << " in region " << region << endl;
+                }
                 if (gsl_matrix_get(genotypeGslMatrix, i, j) < 0)
                 {
                     gsl_matrix_set(genotypeGslMatrix, i, j, mean);
