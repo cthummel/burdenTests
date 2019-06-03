@@ -29,7 +29,7 @@ using namespace std;
 class wsbt
 {
 public:
-    wsbt(gsl_matrix* totalGenotype, int affectedCount, string gene);
+    wsbt(gsl_matrix* totalGenotype, int affectedCount, string gene, bool);
     ~wsbt();
     
     double getPvalue(){return normpvalue;}

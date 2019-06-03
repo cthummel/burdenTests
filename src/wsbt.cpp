@@ -10,12 +10,12 @@
 
 using namespace std;
 
-wsbt::wsbt(gsl_matrix *totalGtype, int aCount, string gene)
+wsbt::wsbt(gsl_matrix *totalGtype, int aCount, string gene, bool exactPvalueCalculation)
 {
     const int permutationCount = 1000;
     bool verbose = false;
     bool dynamic_permutations = false;
-    bool exact = true;
+    bool exact = exactPvalueCalculation;
 
     ofstream outfile;
     affectedCount = aCount;

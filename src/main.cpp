@@ -46,6 +46,7 @@ int main(int argc, const char *argv[])
     vector<string> geneList;
     bool geneBased = false;
     bool userBackgroundIncluded = true;
+    bool exactPvalueCalculation = true;
     auto startTime = chrono::high_resolution_clock::now();
     auto currentTime = startTime;
     auto lasttime = currentTime;
@@ -218,6 +219,10 @@ int main(int argc, const char *argv[])
             geneBased = true;
             region = argv[i];
         }
+        if (strcmp(argv[i], "--p") == 0)
+        {
+            exactPvalueCalculation = false;
+        }
         if (strcmp(argv[i], "--T") == 0)
         {
             if(argc > i)
@@ -265,7 +270,7 @@ int main(int argc, const char *argv[])
                 }
                 else
                 {
-                    wsbt test = wsbt(geneInput.getGslGenotype(), geneInput.getGslGenotype()->size2 - 2504, *iter);
+                    wsbt test = wsbt(geneInput.getGslGenotype(), geneInput.getGslGenotype()->size2 - 2504, *iter, exactPvalueCalculation);
                     genes[i] = *iter;
                     pvalues[i] = test.getPvalue();
                     permpvalues[i] = test.getPermPvalue();
@@ -337,7 +342,7 @@ int main(int argc, const char *argv[])
                 //Reads in genotype data from region.
                 dataCollector geneInput = dataCollector(userBackgroundIncluded, vcffilename, backfilename, iter->second, testType, omp_get_thread_num());
                 //Run the test.
-                wsbt test = wsbt(geneInput.getGslGenotype(), result.getCaseCount(), iter->first);
+                wsbt test = wsbt(geneInput.getGslGenotype(), result.getCaseCount(), iter->first, exactPvalueCalculation);
                 genes[i] = iter->first;
                 pvalues[i] = test.getPvalue();
                 permpvalues[i] = test.getPermPvalue();
