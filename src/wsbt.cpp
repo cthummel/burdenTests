@@ -21,6 +21,7 @@ wsbt::wsbt(gsl_matrix *totalGtype, int aCount, string gene)
     affectedCount = aCount;
     normpvalue = 0;
     totalGenotype = totalGtype;
+    geneName = gene;
 
     testStatistics = gsl_vector_calloc(permutationCount);
     scores = gsl_vector_calloc(totalGenotype->size2);
@@ -221,6 +222,10 @@ double wsbt::testStatistic()
                 //Save calculated ranks in vector.
                 for(int i = 0; i < totalTiedSubjects; i++)
                 {
+                    if(i + j > rank->size)
+                    {
+                        cout << "Tried to set a i + j (" << i << " + " << j << ") rank outside of range." << endl;
+                    }
                     gsl_vector_set(rank, i + j, averageRank);
                 }
                 
@@ -239,6 +244,11 @@ double wsbt::testStatistic()
         //If the last element is unique.
         else
         {
+            if(j > rank->size)
+            {
+                cout << "Tried to set a j (" << j << ") rank outside of range." << endl;
+            }
+            
             gsl_vector_set(rank, j, currentRank);
         }
     }
@@ -436,8 +446,13 @@ void wsbt::recalculate()
                 //First we remove the old weight's effect on all of the scores.
                 if(gsl_vector_get(weights, i) != 0)   //Just want to skip the following loop in the first weight calculation.
                 {
-                    for (int k = 0; k < scores->size; k++)
+                    for (int k = 0; k < totalGenotype->size2; k++)
                     {
+                        if(k > totalGenotype->size2)
+                        {
+                            cout << "Tried to reach outside of gene matrix." << endl;
+                            cout << k << ", " << totalGenotype->size2 << " in gene: " << geneName << endl;
+                        }
                         if (gsl_matrix_get(totalGenotype, i, k) > 0)
                         {
                             double oldWeightedScoreComponent = gsl_matrix_get(totalGenotype, i, k) / gsl_vector_get(weights, i);
@@ -452,6 +467,11 @@ void wsbt::recalculate()
                 int indivudualsU = 0;
                 for (int k = 0; k < totalGenotype->size2; k++)
                 {
+                    if (k > totalGenotype->size2)
+                    {
+                        cout << "Tried to reach outside of gene matrix." << endl;
+                        cout << k << ", " << totalGenotype->size2 << " in gene: " << geneName << endl;
+                    }
                     if (k < affectedCount && gsl_matrix_get(totalGenotype, i, k) > 0)
                     {
                         totalVariant++;
@@ -474,6 +494,11 @@ void wsbt::recalculate()
                 {
                     if(gsl_matrix_get(totalGenotype, i, k) > 0)
                     {
+                        if(k > totalGenotype->size2)
+                        {
+                            cout << "Tried to reach outside of gene matrix." << endl;
+                            cout << k << ", " << totalGenotype->size2 << " in gene: " << geneName << endl;
+                        }
                         double newWeightedScoreComponent = gsl_matrix_get(totalGenotype, i, k) / gsl_vector_get(weights, i);
                         gsl_vector_set(scores, k, gsl_vector_get(scores, k) + newWeightedScoreComponent);
                     }
@@ -483,8 +508,6 @@ void wsbt::recalculate()
             }
         }
     }
-
-    
 }
 
 void wsbt::shuffleMatrix()
@@ -496,6 +519,16 @@ void wsbt::shuffleMatrix()
     {
         for (int j = 0; j < affectedCount; j++)
         {
+            if (j > totalGenotype->size2)
+            {
+                cout << "Tried to reach beyond of gene matrix." << endl;
+                cout << j << ", " << totalGenotype->size2 << " in gene: " << geneName << endl;
+            }
+            if (j > changedGenotype->size2)
+            {
+                cout << "Tried to reach beyond of changed gene matrix." << endl;
+                cout << j << ", " << changedGenotype->size2 << " in gene: " << geneName << endl;
+            }
             //Check if current affected is the same as the new affected for variant k.
             if (gsl_matrix_get(totalGenotype, i, j) == gsl_matrix_get(totalGenotype, i, subjectPerm->data[j]))
             {
@@ -512,6 +545,16 @@ void wsbt::shuffleMatrix()
         //Shuffles affected status.
         for (int j = 0; j < affectedCount; j++)
         {
+            if (subjectPerm->data[j] > totalGenotype->size2)
+            {
+                cout << "When shuffling data, the new column is larger than gene matrix size2." << endl;
+                cout << j << ", " << totalGenotype->size2 << " in gene: " << geneName << endl;
+            }
+            if (subjectPerm->data[j] < 0)
+            {
+                cout << "When shuffling data, the new column is has a negative column value." << endl;
+                cout << j << " in gene: " << geneName << endl;
+            }
             gsl_matrix_swap_columns(totalGenotype, j, subjectPerm->data[j]);
             gsl_vector_swap_elements(scores, j, subjectPerm->data[j]);
         }

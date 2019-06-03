@@ -327,16 +327,6 @@ int main(int argc, const char *argv[])
             int index = 0;
             int skipped = 0;
 
-            /*
-            for(map<string, string>::iterator iter = regions.begin(); iter != regions.end(); iter++, index++)
-            {
-                if(iter->first[0] == 'P')
-                {
-                    break;
-                }
-            }
-            */
-
             #pragma omp parallel for schedule(dynamic)
             for (int i = index; i < regions.size(); i++)
             {

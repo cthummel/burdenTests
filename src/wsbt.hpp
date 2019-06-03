@@ -47,6 +47,7 @@ private:
     int affectedCount;
     int totalSubjects;
     bool verbose = false;
+    string geneName;
 
     gsl_rng *r = nullptr;
     gsl_permutation *subjectPerm = nullptr;
