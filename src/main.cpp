@@ -337,7 +337,7 @@ int main(int argc, const char *argv[])
             ofstream out("wsbtResults.csv");
             out << "Gene,Score,TestStat,Pvalue,Perm-Pvalue" << endl;
 
-            #pragma omp parallel for schedule(dynamic)
+            //#pragma omp parallel for schedule(dynamic)
             for (int i = index; i < regions.size(); i++)
             {
                 //Thread safe method of iterating to the correct gene. Not elegant though.
