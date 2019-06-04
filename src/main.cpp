@@ -326,11 +326,16 @@ int main(int argc, const char *argv[])
             vector<string> genes(regions.size());
             vector<double> pvalues(regions.size());
             vector<double> permpvalues(regions.size());
+            vector<double> scores(regions.size());
+            vector<double> testStats(regions.size());
 
             //gsl_set_error_handler_off();
             //gsl_set_error_handler(&handler);
             int index = 0;
             int skipped = 0;
+
+            ofstream out("wsbtResults.csv");
+            out << "Gene,Score,TestStat,Pvalue,Perm-Pvalue" << endl;
 
             #pragma omp parallel for schedule(dynamic)
             for (int i = index; i < regions.size(); i++)
@@ -346,20 +351,24 @@ int main(int argc, const char *argv[])
                 genes[i] = iter->first;
                 pvalues[i] = test.getPvalue();
                 permpvalues[i] = test.getPermPvalue();
+                scores[i] = test.getScore();
+                testStats[i] = test.getTestStat();
+                out << iter->first << "," << test.getScore() << "," << test.getTestStat() << "," << test.getPvalue() << "," << test.getPermPvalue() << endl;
             }
+            out.close();
+
             gsl_sort_index(perm, pvalues.data(), 1, pvalues.size());
-            ofstream out("wsbtResults.csv");
-            out << "Gene,Pvalue,Perm-Pvalue" << endl;
+            out.open("sorted_wsbtResults.csv");
+            out << "Gene,Score,TestStat,Pvalue,Perm-Pvalue" << endl;
             for (int i = 0; i < pvalues.size(); i++)
             {
                 //perm contains the sorted order.
-                out << genes[perm[i]] << "," << pvalues[perm[i]] << "," << permpvalues[perm[i]] << endl;
+                out << genes[perm[i]] << "," << scores[perm[i]] << "," << testStats[perm[i]] << "," << pvalues[perm[i]] << "," << permpvalues[perm[i]] << endl;
             }
             out.close();
-            if(out.is_open())
-            {
-                cout << "we aint done yet." << endl;
-            }
+
+
+
             double fisherStat = 0;
             int geneCount = 0;
             for (int i = 0; i < pvalues.size(); i++)

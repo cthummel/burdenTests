@@ -37,25 +37,31 @@ wsbt::wsbt(gsl_matrix *totalGtype, int aCount, string gene, bool exactPvalueCalc
     auto startTime = chrono::high_resolution_clock::now();
     auto currentTime = startTime;
     auto lastTime = startTime;
-
+    
+    
     if (exact)
     {
         recalculate();
-        double testStat = exactTestStatistic();
+        testStat = exactTestStatistic();
         normpvalue = gsl_cdf_ugaussian_P(testStat);
         cout << "Gene name: " << gene << endl;
-        cout << "Subject count: " << totalGtype->size2 << endl;
-        cout << "Variant count: " << totalGtype->size1 << endl;
+        cout << "Score: " << gsl_vector_get(scores, 0) << endl;
+        /*
+        cout << "Others: ";
+        for(int i = 1; i < scores->size; i++)
+        {
+            cout << gsl_vector_get(scores, i) << " ";
+        }
+        */
         cout << "Test Statistic: " << testStat << endl;
         cout << "Exact P-value: " << normpvalue << endl;
         cout << endl;
-        
     }
     else
     {
         //First run through data.
         recalculate();
-        double testStat = testStatistic();
+        testStat = testStatistic();
         shuffleMatrix();
         //gsl_vector_memcpy(initialWeights, weights);
 
@@ -376,8 +382,8 @@ double wsbt::exactTestStatistic()
         cout << endl;
     }
 
-    cout << "Finished calculating ranks." << endl;
-    cout << "Total of " << tieTracker.size() << " tied ranks." << endl;
+    //cout << "Finished calculating ranks." << endl;
+    //cout << "Total of " << tieTracker.size() << " tied ranks." << endl;
     
     for(int j = 0; j < totalGenotype->size2; j++)
     {
@@ -413,7 +419,9 @@ double wsbt::exactTestStatistic()
     if(totalGenotype->size2 > 20)
     {
         //The following calculation does the tie correction for the sd. In the case there arent many ties, this is just slightly slower to run.
+        //cout << result << " - " << n1 * n2 / 2.0 << endl;
         result -= n1 * n2 / 2.0;
+
         double sd = 0;
         double tieSummation = 0;
         for(int i = 0; i < tieTracker.size(); i++)
@@ -422,9 +430,10 @@ double wsbt::exactTestStatistic()
             tieSummation += (pow(tieTracker[i], 3) - tieTracker[i]);
         }
 
-        tieSummation = tieSummation / (double)(totalGenotype->size2 * (totalGenotype->size2 - 1));
+        tieSummation = tieSummation / (totalGenotype->size2 * 1.0 * (totalGenotype->size2 - 1));
         sd = (n1 * n2 / 12.0) *  (totalGenotype->size2 + 1 - tieSummation);
         sd = sqrt(sd);
+        //cout << "Sd: " << sd << endl;
         result = result / sd;
     }
     

@@ -265,7 +265,8 @@ void dataCollector::bcfInput(string filename, string back, string region, string
         }
 
         //Fix missing data points by imputing their value with the mean of the geno data for the variant
-        if(missingData && testType != "wsbt")
+        //if(missingData && testType != "wsbt")
+        if(missingData)
         {
             int alleleCount = 0;
             int denominator = 0;
