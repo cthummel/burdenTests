@@ -197,12 +197,13 @@ void dataCollector::bcfInput(string filename, string back, string region, string
 
     string currentChrom;
     in.open(outfile);
-    for(int i = 0; getline(in, line); i++)
+    for(int i = 0; i < genotypeGslMatrix->size1; i++)
     {
+        getline(in, line);
         string::iterator it = line.begin();
         bool missingData = false;
         int missingCount = 0;
-        for(int j = 0; it != line.end(); j++)
+        for(int j = 0; j < genotypeGslMatrix->size2; j++)
         {
             //Skip space.
             it++;
@@ -237,7 +238,7 @@ void dataCollector::bcfInput(string filename, string back, string region, string
                 {
                     missingData = true;
                     missingCount++;
-                    if (j > genotypeGslMatrix->size2)
+                    if (j > genotypeGslMatrix->size2 - 1)
                     {
                         cout << "During input, we tried to put data into " << j << " in region " << region << endl;
                     }
@@ -253,7 +254,7 @@ void dataCollector::bcfInput(string filename, string back, string region, string
             {
                 right = 1;
             }
-            if (j > genotypeGslMatrix->size2)
+            if (j > genotypeGslMatrix->size2 - 1)
             {
                 cout << "During input, we tried to put data into " << j << " in region " << region << endl;
             }
@@ -261,7 +262,10 @@ void dataCollector::bcfInput(string filename, string back, string region, string
             {
                 cout << "During input, we tried to put data into " << j << " in region " << region << endl;
             }
+            std::cout << "start: 1" << std::endl;
             gsl_matrix_set(genotypeGslMatrix, i, j, left + right);
+            std::cout << "end: 1" << std::endl;
+
         }
 
         //Fix missing data points by imputing their value with the mean of the geno data for the variant
@@ -273,7 +277,7 @@ void dataCollector::bcfInput(string filename, string back, string region, string
             for(int j = 0; j < subjectCount; j++)
             {
                 //Getting counts of non-missing alleles
-                if(j > genotypeGslMatrix->size2)
+                if(j > genotypeGslMatrix->size2 - 1)
                 {
                     cout << "During input, we tried to put data into " << j << " in region " << region << endl;
                 }
