@@ -324,6 +324,7 @@ int main(int argc, const char *argv[])
 
             size_t perm[regions.size()];
             vector<string> genes(regions.size());
+            vector<string> locations(regions.size());
             vector<double> pvalues(regions.size());
             vector<double> permpvalues(regions.size());
             vector<double> scores(regions.size());
@@ -333,11 +334,14 @@ int main(int argc, const char *argv[])
             //gsl_set_error_handler(&handler);
             int index = 0;
             int skipped = 0;
+            omp_lock_t outputLock;
+            omp_init_lock(&outputLock);
+
 
             ofstream out("wsbtResults.csv");
-            out << "Gene,Score,TestStat,Pvalue,Perm-Pvalue" << endl;
+            out << "Gene,Region,Score,TestStat,Pvalue,Perm-Pvalue" << endl;
 
-            //#pragma omp parallel for schedule(dynamic)
+            #pragma omp parallel for schedule(dynamic)
             for (int i = index; i < regions.size(); i++)
             {
                 //Thread safe method of iterating to the correct gene. Not elegant though.
@@ -349,21 +353,25 @@ int main(int argc, const char *argv[])
                 //Run the test.
                 wsbt test = wsbt(geneInput.getGslGenotype(), result.getCaseCount(), iter->first, exactPvalueCalculation);
                 genes[i] = iter->first;
+                locations[i] = iter->second;
                 pvalues[i] = test.getPvalue();
                 permpvalues[i] = test.getPermPvalue();
                 scores[i] = test.getScore();
                 testStats[i] = test.getTestStat();
-                out << iter->first << "," << test.getScore() << "," << test.getTestStat() << "," << test.getPvalue() << "," << test.getPermPvalue() << endl;
+                omp_set_lock(&outputLock);
+                out << iter->first << "," << iter->second << "," << test.getScore() << "," << test.getTestStat() << "," << test.getPvalue() << "," << test.getPermPvalue() << endl;
+                omp_unset_lock(&outputLock);
             }
             out.close();
 
             gsl_sort_index(perm, pvalues.data(), 1, pvalues.size());
             out.open("sorted_wsbtResults.csv");
-            out << "Gene,Score,TestStat,Pvalue,Perm-Pvalue" << endl;
+            out << "Gene,Region,Score,TestStat,Pvalue,Perm-Pvalue" << endl;
             for (int i = 0; i < pvalues.size(); i++)
             {
                 //perm contains the sorted order.
-                out << genes[perm[i]] << "," << scores[perm[i]] << "," << testStats[perm[i]] << "," << pvalues[perm[i]] << "," << permpvalues[perm[i]] << endl;
+                out << genes[perm[i]] << "," << locations[perm[i]] << "," << scores[perm[i]] << "," 
+                    << testStats[perm[i]] << "," << pvalues[perm[i]] << "," << permpvalues[perm[i]] << endl;
             }
             out.close();
 
@@ -381,10 +389,7 @@ int main(int argc, const char *argv[])
                 else
                 {
                     cout << "Pvalue for gene " << genes[perm[i]] << " excluded from fisher product test because pvalue = " << pvalues[perm[i]] << endl;
-                    if(pvalues[perm[i]] == 0)
-                    {
-                        skipped++;
-                    }
+                    skipped++;
                 }
             }
             double fisherPvalue = gsl_cdf_chisq_Q(fisherStat, 2 * geneCount);
