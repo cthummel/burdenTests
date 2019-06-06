@@ -402,7 +402,8 @@ int main(int argc, const char *argv[])
                     genes[i] = iter->first;
                     locations[i] = iter->second;
                     pvalues[i] = test.getPvalue();
-                    scores[i] = test.getScore();
+                    //Currently just grabs the first score. 
+                    scores[i] = test.getScores()[0];
                     testStats[i] = test.getTestStat();
                     omp_set_lock(&outputLock);
                     out << genes[i] << "\t" << locations[i] << "\t" << scores[i] << "\t" << testStats[i] << "\t" << pvalues[i] << endl;
@@ -422,8 +423,6 @@ int main(int argc, const char *argv[])
             }
             out.close();
 
-
-
             double fisherStat = 0;
             int geneCount = 0;
             for (int i = 0; i < pvalues.size(); i++)
@@ -441,23 +440,6 @@ int main(int argc, const char *argv[])
             }
             double fisherPvalue = gsl_cdf_chisq_Q(fisherStat, 2 * geneCount);
             cout << "Fisher product test statistic on " << pvalues.size() - skipped <<  " genes is " << fisherStat << " with pvalue " << fisherPvalue << endl;
-        }
-        else
-        {
-            /*
-            readInput result(currentDir, testType, vcfType, vcffilename, region, phenofilename, covfilename);
-
-            currentTime = std::chrono::high_resolution_clock::now();
-            cout << endl;
-            cout << "After Input. Took " << std::chrono::duration_cast<std::chrono::milliseconds>(currentTime - startTime).count() / 1000.0 << " seconds." << endl;
-            cout << endl;
-            lasttime = currentTime;
-
-            wsbt test = wsbt(result.getGslGenotype(), result.getCaseCount(), "All");
-            currentTime = std::chrono::high_resolution_clock::now();
-            cout << "WSBT Took " << std::chrono::duration_cast<std::chrono::milliseconds>(currentTime - lasttime).count() / 60000.0 << " minutes." << endl;
-            lasttime = currentTime;
-            */
         }
         auto endTime = std::chrono::high_resolution_clock::now();
         cout << "Total Time: " << std::chrono::duration_cast<std::chrono::milliseconds>(endTime - startTime).count() / 60000.0 << " minutes." << endl;

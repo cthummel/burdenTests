@@ -33,7 +33,7 @@ public:
     ~wsbt();
     
     double getPvalue(){return normpvalue;}
-    double getScore(){return gsl_vector_get(scores, 0);}
+    vector<double> getScores(){return affectedScores;}
     double getTestStat(){return testStat;}
     gsl_vector* getWeights(){return initialWeights;}
     
@@ -45,10 +45,13 @@ private:
 
     double normpvalue;
     double testStat;
+    double U1 = 0;
+    double U2 = 0;
     int affectedCount;
     int totalSubjects;
     bool verbose = false;
     string geneName;
+    vector<double> affectedScores;
 
     gsl_rng *r = nullptr;
     gsl_permutation *subjectPerm = nullptr;
