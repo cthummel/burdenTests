@@ -44,15 +44,15 @@ wsbt::wsbt(gsl_matrix *totalGtype, int aCount, string gene, bool exactPvalueCalc
         recalculate();
         testStat = exactTestStatistic();
         normpvalue = gsl_cdf_ugaussian_P(testStat);
-        cout << "Gene name: " << gene << endl;
-        cout << "Score: " << gsl_vector_get(scores, 0) << endl;
+        //Low p-values correspond to when the variant is expressed more in sample than background.
         /*
-        cout << "Others: ";
-        for(int i = 1; i < scores->size; i++)
+        if(normpvalue > .5)
         {
-            cout << gsl_vector_get(scores, i) << " ";
+            normpvalue = 1 - normpvalue;
         }
         */
+        cout << "Gene name: " << gene << endl;
+        cout << "Score: " << gsl_vector_get(scores, 0) << endl;
         cout << "Test Statistic: " << testStat << endl;
         cout << "Exact P-value: " << normpvalue << endl;
         cout << endl;
@@ -130,7 +130,7 @@ wsbt::wsbt(gsl_matrix *totalGtype, int aCount, string gene, bool exactPvalueCalc
                 {
                     normpvalue = 1 - normpvalue;
                 }
-                normpvalue = normpvalue * 2;
+                //normpvalue = normpvalue * 2;
 
                 //Reporting output.
                 currentTime = chrono::high_resolution_clock::now();
@@ -154,26 +154,6 @@ wsbt::wsbt(gsl_matrix *totalGtype, int aCount, string gene, bool exactPvalueCalc
                 shuffleMatrix();
             }
         }
-
-        double extremeCount = 1;
-        for (int i = 1; i < permutationCount; i++)
-        {
-            if (testStat > 0)
-            {
-                if (testStat <= gsl_vector_get(testStatistics, i))
-                {
-                    extremeCount++;
-                }
-            }
-            else
-            {
-                if (testStat >= gsl_vector_get(testStatistics, i))
-                {
-                    extremeCount++;
-                }
-            }
-        }
-        permpvalue = extremeCount / (permutationCount + 1);
     }
 }
 
@@ -228,10 +208,6 @@ double wsbt::testStatistic()
                 //Save calculated ranks in vector.
                 for(int i = 0; i < totalTiedSubjects; i++)
                 {
-                    if(i + j > rank->size)
-                    {
-                        cout << "Tried to set a i + j (" << i << " + " << j << ") rank outside of range." << endl;
-                    }
                     gsl_vector_set(rank, i + j, averageRank);
                 }
                 
@@ -250,11 +226,6 @@ double wsbt::testStatistic()
         //If the last element is unique.
         else
         {
-            if(j > rank->size)
-            {
-                cout << "Tried to set a j (" << j << ") rank outside of range." << endl;
-            }
-            
             gsl_vector_set(rank, j, currentRank);
         }
     }
@@ -404,6 +375,7 @@ double wsbt::exactTestStatistic()
     U1 -= n1 * (n1 + 1) / 2.0;
     U2 -= n2 * (n2 + 1) / 2.0;
 
+    /*
     if(U1 < U2)
     {
         //cout << "U1 < U2: " << U1 << "<" << U2 << endl;
@@ -414,6 +386,9 @@ double wsbt::exactTestStatistic()
         //cout << "U2 < U1: " << U2 << "<" << U1 << endl;
         result = U2;
     }
+    */
+    
+    result = U2;
 
     //The data set will likely always have more than 20 total subjects but we should implement the other distribution calculation later anyway.
     if(totalGenotype->size2 > 20)
@@ -457,11 +432,6 @@ void wsbt::recalculate()
                 {
                     for (int k = 0; k < totalGenotype->size2; k++)
                     {
-                        if(k > totalGenotype->size2)
-                        {
-                            cout << "Tried to reach outside of gene matrix." << endl;
-                            cout << k << ", " << totalGenotype->size2 << " in gene: " << geneName << endl;
-                        }
                         if (gsl_matrix_get(totalGenotype, i, k) > 0)
                         {
                             double oldWeightedScoreComponent = gsl_matrix_get(totalGenotype, i, k) / gsl_vector_get(weights, i);
@@ -476,11 +446,6 @@ void wsbt::recalculate()
                 int indivudualsU = 0;
                 for (int k = 0; k < totalGenotype->size2; k++)
                 {
-                    if (k > totalGenotype->size2)
-                    {
-                        cout << "Tried to reach outside of gene matrix." << endl;
-                        cout << k << ", " << totalGenotype->size2 << " in gene: " << geneName << endl;
-                    }
                     if (k < affectedCount && gsl_matrix_get(totalGenotype, i, k) > 0)
                     {
                         totalVariant++;
@@ -503,11 +468,6 @@ void wsbt::recalculate()
                 {
                     if(gsl_matrix_get(totalGenotype, i, k) > 0)
                     {
-                        if(k > totalGenotype->size2)
-                        {
-                            cout << "Tried to reach outside of gene matrix." << endl;
-                            cout << k << ", " << totalGenotype->size2 << " in gene: " << geneName << endl;
-                        }
                         double newWeightedScoreComponent = gsl_matrix_get(totalGenotype, i, k) / gsl_vector_get(weights, i);
                         gsl_vector_set(scores, k, gsl_vector_get(scores, k) + newWeightedScoreComponent);
                     }

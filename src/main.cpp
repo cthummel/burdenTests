@@ -31,6 +31,22 @@ void handler(const char * reason, const char * file, int line, int gsl_errno)
     }
 }
 
+//Returns true if all user data is missing. False otherwise.
+bool checkMissingData(gsl_matrix *data, int caseCount)
+{
+    for (int i = 0; i < data->size1; i++)
+    {
+        for (int j = 0; j < caseCount; j++)
+        {
+            if (gsl_matrix_get(data, i, j) > -1)
+            {
+                return false;
+            }
+        }
+    }
+    return true;
+}
+
 int main(int argc, const char *argv[])
 {
     string currentDir = "";
@@ -43,6 +59,7 @@ int main(int argc, const char *argv[])
     string testType = ""; 
     string region = "";
     string regionFile = "";
+    string outputFileName = "output";
     vector<string> geneList;
     bool geneBased = false;
     bool userBackgroundIncluded = true;
@@ -127,7 +144,7 @@ int main(int argc, const char *argv[])
         if (strcmp(argv[i], "--b") == 0 || strcmp(argv[i], "--back") == 0)
         {
             userBackgroundIncluded = false;
-            if(argc > i + 1)
+            if(argc > i)
             {
                 backfilename = argv[i+1];
                 i++;
@@ -140,12 +157,12 @@ int main(int argc, const char *argv[])
         }
         if (strcmp(argv[i], "--r") == 0 || strcmp(argv[i], "--region") == 0)
         {
-            if(i + 1 < argc)
+            if(argc > i)
             {
                 while(argv[i + 1][0] != '-')
                 {
                     geneList.push_back(argv[i + 1]);
-                    if(i + 2 < argc)
+                    if(argc > i + 1)
                     {
                         i++;
                     }
@@ -164,7 +181,7 @@ int main(int argc, const char *argv[])
         }
         if(strcmp(argv[i], "--R") == 0)
         {
-            if(i + 1 < argc)
+            if(argc > i)
             {
                 ifstream in(argv[i + 1]);
                 string line;
@@ -188,40 +205,60 @@ int main(int argc, const char *argv[])
             }
             continue;
         }
+        if (strcmp(argv[i], "--o") == 0 || strcmp(argv[i], "--output") == 0) 
+        {
+            if (argc > i)
+            {
+                outputFileName = argv[i + 1];
+                if (outputFileName.substr(outputFileName.length() - 4) == ".tsv")
+                {
+                    outputFileName = outputFileName.substr(0, outputFileName.length() - 4);
+                }
+                i++;
+            }
+        }
         //Test type parsing.
         if (strcmp(argv[i], "wsbt") == 0)
         {
             testType = argv[i];
+            continue;
         }
         if (strcmp(argv[i], "burden") == 0)
         {
             testType = argv[i];
+            continue;
         }
         if (strcmp(argv[i], "cast") == 0)
         {
             testType = argv[i];
+            continue;
         }
         if (strcmp(argv[i], "skat") == 0)
         {
             testType = argv[i];
+            continue;
         }
         if (strcmp(argv[i], "skato") == 0)
         {
             testType = argv[i];
+            continue;
         }
         if (strcmp(argv[i], "-h") == 0)
         {
             testType = argv[i];
+            continue;
         }
         //Test Parameter parsing.
         if (strcmp(argv[i], "--g") == 0)
         {
             geneBased = true;
             region = argv[i];
+            continue;
         }
         if (strcmp(argv[i], "--p") == 0)
         {
             exactPvalueCalculation = false;
+            continue;
         }
         if (strcmp(argv[i], "--T") == 0)
         {
@@ -231,7 +268,6 @@ int main(int argc, const char *argv[])
                 i++;
             }
         }
-
     }
 
     //Run input on the given test and save results in Input
@@ -244,7 +280,6 @@ int main(int argc, const char *argv[])
             size_t perm[geneList.size()];
             vector<string> genes(geneList.size());
             vector<double> pvalues(geneList.size());
-            vector<double> permpvalues(geneList.size());
             vector<double> runTime(geneList.size());
             int index = 0;
             int skipped = 0;
@@ -265,7 +300,6 @@ int main(int argc, const char *argv[])
                     
                     genes[i] = *iter;
                     pvalues[i] = -1;
-                    permpvalues[i] = -1;
                     skipped++; 
                 }
                 else
@@ -273,7 +307,6 @@ int main(int argc, const char *argv[])
                     wsbt test = wsbt(geneInput.getGslGenotype(), geneInput.getGslGenotype()->size2 - 2504, *iter, exactPvalueCalculation);
                     genes[i] = *iter;
                     pvalues[i] = test.getPvalue();
-                    permpvalues[i] = test.getPermPvalue();
                 }
                 
                 //Check test speed.
@@ -286,7 +319,7 @@ int main(int argc, const char *argv[])
             for (int i = 0; i < pvalues.size(); i++)
             {
                 //perm contains the sorted order.
-                out << "Pvalue for gene " << genes[perm[i]] << " is " << pvalues[perm[i]] << ", " << permpvalues[perm[i]] << endl;
+                out << "Pvalue for gene " << genes[perm[i]] << " is " << pvalues[perm[i]] << endl;
             }
             out.close();
             double fisherStat = 0;
@@ -326,7 +359,6 @@ int main(int argc, const char *argv[])
             vector<string> genes(regions.size());
             vector<string> locations(regions.size());
             vector<double> pvalues(regions.size());
-            vector<double> permpvalues(regions.size());
             vector<double> scores(regions.size());
             vector<double> testStats(regions.size());
 
@@ -338,8 +370,8 @@ int main(int argc, const char *argv[])
             omp_init_lock(&outputLock);
 
 
-            ofstream out("wsbtResults.csv");
-            out << "Gene,Region,Score,TestStat,Pvalue,Perm-Pvalue" << endl;
+            ofstream out(outputFileName + ".tsv");
+            out << "Gene\tRegion\tScore\tTestStat\tPvalue" << endl;
 
             #pragma omp parallel for schedule(dynamic)
             for (int i = index; i < regions.size(); i++)
@@ -350,28 +382,43 @@ int main(int argc, const char *argv[])
 
                 //Reads in genotype data from region.
                 dataCollector geneInput = dataCollector(userBackgroundIncluded, vcffilename, backfilename, iter->second, testType, omp_get_thread_num());
-                //Run the test.
-                wsbt test = wsbt(geneInput.getGslGenotype(), result.getCaseCount(), iter->first, exactPvalueCalculation);
-                genes[i] = iter->first;
-                locations[i] = iter->second;
-                pvalues[i] = test.getPvalue();
-                permpvalues[i] = test.getPermPvalue();
-                scores[i] = test.getScore();
-                testStats[i] = test.getTestStat();
-                omp_set_lock(&outputLock);
-                out << iter->first << "," << iter->second << "," << test.getScore() << "," << test.getTestStat() << "," << test.getPvalue() << "," << test.getPermPvalue() << endl;
-                omp_unset_lock(&outputLock);
+                
+                if(checkMissingData(geneInput.getGslGenotype(), result.getCaseCount()))
+                {
+                    cout << "User data for " << iter->first << " contains no genotype data. Skipping test.\n" << endl;
+                    genes[i] = iter->first;
+                    locations[i] = iter->second;
+                    pvalues[i] = -1;
+                    scores[i] = -9999;
+                    testStats[i] = -9999;
+                    omp_set_lock(&outputLock);
+                    out << genes[i] << "\t" << locations[i] << "\t" << scores[i] << "\t" << testStats[i] << "\t" << pvalues[i] << endl;
+                    omp_unset_lock(&outputLock);
+                }
+                else
+                {
+                    //Run the test.
+                    wsbt test = wsbt(geneInput.getGslGenotype(), result.getCaseCount(), iter->first, exactPvalueCalculation);
+                    genes[i] = iter->first;
+                    locations[i] = iter->second;
+                    pvalues[i] = test.getPvalue();
+                    scores[i] = test.getScore();
+                    testStats[i] = test.getTestStat();
+                    omp_set_lock(&outputLock);
+                    out << genes[i] << "\t" << locations[i] << "\t" << scores[i] << "\t" << testStats[i] << "\t" << pvalues[i] << endl;
+                    omp_unset_lock(&outputLock);
+                }
             }
             out.close();
 
             gsl_sort_index(perm, pvalues.data(), 1, pvalues.size());
-            out.open("sorted_wsbtResults.csv");
-            out << "Gene,Region,Score,TestStat,Pvalue,Perm-Pvalue" << endl;
+            out.open("sorted_" + outputFileName + ".tsv");
+            out << "Gene\tRegion\tScore\tTestStat\tPvalue" << endl;
             for (int i = 0; i < pvalues.size(); i++)
             {
                 //perm contains the sorted order.
-                out << genes[perm[i]] << "," << locations[perm[i]] << "," << scores[perm[i]] << "," 
-                    << testStats[perm[i]] << "," << pvalues[perm[i]] << "," << permpvalues[perm[i]] << endl;
+                out << genes[perm[i]] << "\t" << locations[perm[i]] << "\t" << scores[perm[i]] << "\t" 
+                    << testStats[perm[i]] << "\t" << pvalues[perm[i]] << endl;
             }
             out.close();
 
@@ -419,24 +466,7 @@ int main(int argc, const char *argv[])
     }
     else if (testType == "burden")
     {
-        /*
-        readInput result(currentDir, testType, vcfType, vcffilename, region, phenofilename, covfilename);
-
-        currentTime = std::chrono::high_resolution_clock::now();
-        cout << endl;
-        cout << "After Input. Took " << std::chrono::duration_cast<std::chrono::milliseconds>(currentTime - startTime).count() / 1000.0 << " seconds." << endl;
-        cout << endl;
-        lasttime = currentTime;
-
-        gsl_vector *pheno = gsl_vector_alloc(result.getMaf()->size);
-        genericBurdenTest test = genericBurdenTest(result.getGslGenotype(), result.getMaf(), pheno);
-        cout << "Variant weights: ";
-        for (int i = 0; i < test.getWeights()->size; i++)
-        {
-            cout << gsl_vector_get(test.getWeights(), i) << " ";
-        }
-        cout << endl;
-        */
+       
     }
     else if (testType == "cast")
     {
@@ -489,8 +519,7 @@ int main(int argc, const char *argv[])
 
             gsl_sort_index(perm, pvalues.data(), 1, pvalues.size());
             ofstream outFile;
-            string output = vcffilename + ".SKAT.results";
-            outFile.open(output);
+            outFile.open(outputFileName + ".SKAT.results");
             for (int i = 0; i < genes.size() ; i++)
             {
                 outFile << "Gene: " << genes[perm[i]] << "\tpvalue:" << pvalues[perm[i]] << "\tQ:" << testStats[perm[i]] << "\truntime:" << runTime[perm[i]] << " minutes." << endl;

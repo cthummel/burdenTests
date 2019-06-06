@@ -33,7 +33,6 @@ public:
     ~wsbt();
     
     double getPvalue(){return normpvalue;}
-    double getPermPvalue(){return permpvalue;}
     double getScore(){return gsl_vector_get(scores, 0);}
     double getTestStat(){return testStat;}
     gsl_vector* getWeights(){return initialWeights;}
@@ -45,7 +44,6 @@ private:
     void shuffleMatrix();
 
     double normpvalue;
-    double permpvalue;
     double testStat;
     int affectedCount;
     int totalSubjects;

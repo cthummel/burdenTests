@@ -247,31 +247,49 @@ void dataCollector::bcfInput(string filename, string back, string region, string
         }
 
         //Fix missing data points by imputing their value with the mean of the geno data for the variant
-        //if(missingData && testType != "wsbt")
-        if(missingData && testType != "wsbt")
+        if(missingData)
         {
-            int alleleCount = 0;
-            int denominator = 0;
-            for(int j = 0; j < genotypeGslMatrix->size2; j++)
+            if(testType == "wsbt")
             {
-                //Getting counts of non-missing alleles
-                if (gsl_matrix_get(genotypeGslMatrix, i, j) >= 0)
+                int fixed = 0;
+                for (int j = 0; j < subjectCount; j++)
                 {
-                    alleleCount += gsl_matrix_get(genotypeGslMatrix, i, j);
-                    denominator++;
+                    if (gsl_matrix_get(genotypeGslMatrix, i, j) < 0)
+                    {
+                        gsl_matrix_set(genotypeGslMatrix, i, j, 0);
+                        fixed++;
+                        if (fixed == missingCount)
+                        {
+                            break;
+                        }
+                    }
                 }
             }
-            double mean = (1.0 * alleleCount) / denominator;
-            int fixed = 0;
-            for(int j = 0; j < subjectCount; j++)
+            else
             {
-                if (gsl_matrix_get(genotypeGslMatrix, i, j) < 0)
+                int alleleCount = 0;
+                int denominator = 0;
+                for (int j = 0; j < genotypeGslMatrix->size2; j++)
                 {
-                    gsl_matrix_set(genotypeGslMatrix, i, j, mean);
-                    fixed++;
-                    if (fixed == missingCount)
+                    //Getting counts of non-missing alleles
+                    if (gsl_matrix_get(genotypeGslMatrix, i, j) >= 0)
                     {
-                        break;
+                        alleleCount += gsl_matrix_get(genotypeGslMatrix, i, j);
+                        denominator++;
+                    }
+                }
+                double mean = (1.0 * alleleCount) / denominator;
+                int fixed = 0;
+                for (int j = 0; j < subjectCount; j++)
+                {
+                    if (gsl_matrix_get(genotypeGslMatrix, i, j) < 0)
+                    {
+                        gsl_matrix_set(genotypeGslMatrix, i, j, mean);
+                        fixed++;
+                        if (fixed == missingCount)
+                        {
+                            break;
+                        }
                     }
                 }
             }
