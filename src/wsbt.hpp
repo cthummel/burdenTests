@@ -33,6 +33,7 @@ public:
     ~wsbt();
     
     double getPvalue(){return normpvalue;}
+    double getBackMean(){return backMean;}
     vector<double> getScores(){return affectedScores;}
     double getTestStat(){return testStat;}
     gsl_vector* getWeights(){return initialWeights;}
@@ -45,6 +46,7 @@ private:
 
     double normpvalue;
     double testStat;
+    double backMean;
     double U1 = 0;
     double U2 = 0;
     int affectedCount;

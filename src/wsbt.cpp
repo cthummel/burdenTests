@@ -44,12 +44,6 @@ wsbt::wsbt(gsl_matrix *totalGtype, int aCount, string gene, bool exactPvalueCalc
         testStat = exactTestStatistic();
         normpvalue = gsl_cdf_ugaussian_P(testStat);
         //Low p-values correspond to when the variant is expressed more in sample than background.
-        /*
-        if(normpvalue > .5)
-        {
-            normpvalue = 1 - normpvalue;
-        }
-        */
 
         double meanBack = gsl_stats_mean(scores->data, 1, scores->size) * scores->size;
         for(int i = 0; i < affectedScores.size(); i++)
@@ -424,14 +418,20 @@ void wsbt::recalculate()
                 int indivudualsU = 0;
                 for (int k = 0; k < totalGenotype->size2; k++)
                 {
-                    if (k < affectedCount && gsl_matrix_get(totalGenotype, i, k) > 0)
+                    if (k < affectedCount)
                     {
-                        totalVariant++;
+                        if (gsl_matrix_get(totalGenotype, i, k) > 0)
+                        {
+                            totalVariant++;
+                        }
                     }
-                    if (k >= affectedCount && gsl_matrix_get(totalGenotype, i, k) > 0)
+                    else
                     {
-                        mutantAllelesU += gsl_matrix_get(totalGenotype, i, k);
-                        indivudualsU++;
+                        if(affectedCount && gsl_matrix_get(totalGenotype, i, k) > 0)
+                        {
+                            mutantAllelesU += gsl_matrix_get(totalGenotype, i, k);
+                            indivudualsU++;
+                        }
                     }
                 }
                 totalVariant += indivudualsU;
@@ -466,16 +466,6 @@ void wsbt::shuffleMatrix()
     {
         for (int j = 0; j < affectedCount; j++)
         {
-            if (j > totalGenotype->size2)
-            {
-                cout << "Tried to reach beyond of gene matrix." << endl;
-                cout << j << ", " << totalGenotype->size2 << " in gene: " << geneName << endl;
-            }
-            if (j > changedGenotype->size2)
-            {
-                cout << "Tried to reach beyond of changed gene matrix." << endl;
-                cout << j << ", " << changedGenotype->size2 << " in gene: " << geneName << endl;
-            }
             //Check if current affected is the same as the new affected for variant k.
             if (gsl_matrix_get(totalGenotype, i, j) == gsl_matrix_get(totalGenotype, i, subjectPerm->data[j]))
             {
@@ -492,16 +482,6 @@ void wsbt::shuffleMatrix()
         //Shuffles affected status.
         for (int j = 0; j < affectedCount; j++)
         {
-            if (subjectPerm->data[j] > totalGenotype->size2)
-            {
-                cout << "When shuffling data, the new column is larger than gene matrix size2." << endl;
-                cout << j << ", " << totalGenotype->size2 << " in gene: " << geneName << endl;
-            }
-            if (subjectPerm->data[j] < 0)
-            {
-                cout << "When shuffling data, the new column is has a negative column value." << endl;
-                cout << j << " in gene: " << geneName << endl;
-            }
             gsl_matrix_swap_columns(totalGenotype, j, subjectPerm->data[j]);
             gsl_vector_swap_elements(scores, j, subjectPerm->data[j]);
         }

@@ -252,7 +252,7 @@ void dataCollector::bcfInput(string filename, string back, string region, string
             if(testType == "wsbt")
             {
                 int fixed = 0;
-                for (int j = 0; j < subjectCount; j++)
+                for (int j = 0; j < genotypeGslMatrix->size2; j++)
                 {
                     if (gsl_matrix_get(genotypeGslMatrix, i, j) < 0)
                     {
@@ -280,7 +280,7 @@ void dataCollector::bcfInput(string filename, string back, string region, string
                 }
                 double mean = (1.0 * alleleCount) / denominator;
                 int fixed = 0;
-                for (int j = 0; j < subjectCount; j++)
+                for (int j = 0; j < genotypeGslMatrix->size2; j++)
                 {
                     if (gsl_matrix_get(genotypeGslMatrix, i, j) < 0)
                     {
