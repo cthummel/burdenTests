@@ -30,6 +30,7 @@ class wsbt
 {
 public:
     wsbt(gsl_matrix* totalGenotype, int affectedCount, string gene, bool);
+    void driverOutput();
     ~wsbt();
     
     double getPvalue(){return normpvalue;}

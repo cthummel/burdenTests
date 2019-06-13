@@ -204,7 +204,7 @@ void dataCollector::bcfInput(string filename, string back, string region, string
         string::iterator it = line.begin();
         if(line.length() / 4 != genotypeGslMatrix->size2)
         {
-            cerr << "The vcf genotype data for gene " << region << " in line " << i << " has length/4=" << line.length() / 4 << " while j is " << genotypeGslMatrix->size2 << endl;
+            cerr << "The vcf genotype data for gene " << region << " in line " << i << " has length=" << line.length() / 4 << " while j is " << genotypeGslMatrix->size2 << endl;
         }
         bool missingData = false;
         int missingCount = 0;
@@ -251,6 +251,7 @@ void dataCollector::bcfInput(string filename, string back, string region, string
         {
             if(testType == "wsbt")
             {
+                continue;
                 int fixed = 0;
                 for (int j = 0; j < genotypeGslMatrix->size2; j++)
                 {

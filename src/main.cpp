@@ -34,6 +34,7 @@ void handler(const char * reason, const char * file, int line, int gsl_errno)
 //Returns true if all user data is missing. False otherwise.
 bool checkMissingData(gsl_matrix *data, int caseCount)
 {
+    return false;
     for (int i = 0; i < data->size1; i++)
     {
         for (int j = 0; j < caseCount; j++)
@@ -210,10 +211,14 @@ int main(int argc, const char *argv[])
             if (argc > i)
             {
                 outputFileName = argv[i + 1];
-                if (outputFileName.substr(outputFileName.length() - 4) == ".tsv")
+                if(outputFileName.length() > 4)
                 {
-                    outputFileName = outputFileName.substr(0, outputFileName.length() - 4);
+                    if (outputFileName.substr(outputFileName.length() - 4) == ".tsv")
+                    {
+                        outputFileName = outputFileName.substr(0, outputFileName.length() - 4);
+                    }
                 }
+                
                 i++;
             }
         }
@@ -391,23 +396,45 @@ int main(int argc, const char *argv[])
                     pvalues[i] = -1;
                     scores[i] = -9999;
                     testStats[i] = -9999;
-                    omp_set_lock(&outputLock);
-                    out << genes[i] << "\t" << locations[i] << "\t" << scores[i] << "\t" << testStats[i] << "\t" << pvalues[i] << endl;
-                    omp_unset_lock(&outputLock);
+                    if(outputFileName == "")
+                    {
+                        omp_set_lock(&outputLock);
+                        cout << genes[i] << "\t" << locations[i] << "\t" << scores[i] << "\t" << testStats[i] << "\t" << pvalues[i] << endl;
+                        omp_unset_lock(&outputLock);
+                    }
+                    else
+                    {
+                        omp_set_lock(&outputLock);
+                        out << genes[i] << "\t" << locations[i] << "\t" << scores[i] << "\t" << testStats[i] << "\t" << pvalues[i] << endl;
+                        omp_unset_lock(&outputLock);
+                    }
+                    
                 }
                 else
                 {
                     //Run the test.
                     wsbt test = wsbt(geneInput.getGslGenotype(), result.getCaseCount(), iter->first, exactPvalueCalculation);
+                    omp_set_lock(&outputLock);
+                    test.driverOutput();
+                    omp_unset_lock(&outputLock);
                     genes[i] = iter->first;
                     locations[i] = iter->second;
                     pvalues[i] = test.getPvalue();
                     //Currently just grabs the first score. 
                     scores[i] = test.getScores()[0];
                     testStats[i] = test.getTestStat();
-                    omp_set_lock(&outputLock);
-                    out << genes[i] << "\t" << locations[i] << "\t" << scores[i] << "\t" << testStats[i] << "\t" << pvalues[i] << endl;
-                    omp_unset_lock(&outputLock);
+                    if(outputFileName == "")
+                    {
+                        omp_set_lock(&outputLock);
+                        cout << genes[i] << "\t" << locations[i] << "\t" << scores[i] << "\t" << testStats[i] << "\t" << pvalues[i] << endl;
+                        omp_unset_lock(&outputLock);
+                    }
+                    else
+                    {
+                        omp_set_lock(&outputLock);
+                        out << genes[i] << "\t" << locations[i] << "\t" << scores[i] << "\t" << testStats[i] << "\t" << pvalues[i] << endl;
+                        omp_unset_lock(&outputLock);
+                    }
                 }
             }
             out.close();
