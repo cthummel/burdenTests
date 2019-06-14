@@ -378,6 +378,7 @@ int main(int argc, char *argv[])
         gsl_matrix *data = readGeno(subjectCount, variantCount, dataFile, testType);
         auto runStartTime = chrono::high_resolution_clock::now();
         wsbt test = wsbt(data, caseCount, geneName, true);
+        test.driverOutput();
         auto runEndTime = std::chrono::high_resolution_clock::now();
         cout << "Total runtime: " << std::chrono::duration_cast<std::chrono::milliseconds>(runEndTime - runStartTime).count() / 1000.0 << " seconds." << endl;
 

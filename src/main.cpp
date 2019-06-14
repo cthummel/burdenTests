@@ -69,6 +69,9 @@ int main(int argc, const char *argv[])
     auto currentTime = startTime;
     auto lasttime = currentTime;
 
+    omp_lock_t outputLock;
+    omp_init_lock(&outputLock);
+
     currentDir = argv[0];
     if (currentDir[0] == '.')
     {
@@ -285,11 +288,18 @@ int main(int argc, const char *argv[])
             size_t perm[geneList.size()];
             vector<string> genes(geneList.size());
             vector<double> pvalues(geneList.size());
+            vector<double> scores(geneList.size());
+            vector<double> testStats(geneList.size());
             vector<double> runTime(geneList.size());
-            int index = 0;
+            
+            //int index = 0;
             int skipped = 0;
+
+            ofstream out(outputFileName + ".tsv");
+            out << "Region\tScore\tTestStat\tPvalue" << endl;
+
             #pragma omp parallel for schedule(dynamic)
-            for (int i = index; i < geneList.size(); i++)
+            for (int i = 0; i < geneList.size(); i++)
             {
                 //Thread safe method of iterating to the correct gene. Not elegant though.
                 vector<string>::iterator iter = geneList.begin();
@@ -302,31 +312,42 @@ int main(int argc, const char *argv[])
                 if(geneInput.getGslGenotype() == nullptr)
                 {
                     cout << "Gene in region " << *iter << " has no variants in data sets. --Skipping--" << endl;
-                    
                     genes[i] = *iter;
                     pvalues[i] = -1;
+                    scores[i] = -1;
+                    testStats[i] = -9999;
                     skipped++; 
                 }
                 else
                 {
                     wsbt test = wsbt(geneInput.getGslGenotype(), geneInput.getGslGenotype()->size2 - 2504, *iter, exactPvalueCalculation);
+                    test.driverOutput();
                     genes[i] = *iter;
                     pvalues[i] = test.getPvalue();
+                    scores[i] = test.getScores()[0];
+                    testStats[i] = test.getTestStat();
                 }
                 
+                omp_set_lock(&outputLock);
+                out << genes[i] << "\t" << scores[i] << "\t" << testStats[i] << "\t" << pvalues[i] << endl;
+                omp_unset_lock(&outputLock);
+
                 //Check test speed.
                 auto runCurrentTime = std::chrono::high_resolution_clock::now();
                 runTime[i] = std::chrono::duration_cast<std::chrono::milliseconds>(runCurrentTime - runStartTime).count() / 60000.0;
             }
+            out.close();
+
             gsl_sort_index(perm, pvalues.data(), 1, pvalues.size());
-            ofstream out;
-            out.open("wsbtResults.txt");
+            out.open("sorted_" + outputFileName + ".tsv");
+            out << "Gene\tRegion\tScore\tTestStat\tPvalue" << endl;
             for (int i = 0; i < pvalues.size(); i++)
             {
                 //perm contains the sorted order.
-                out << "Pvalue for gene " << genes[perm[i]] << " is " << pvalues[perm[i]] << endl;
+                out << genes[perm[i]] << "\t" << scores[perm[i]] << "\t" << testStats[perm[i]] << "\t" << pvalues[perm[i]] << endl;
             }
             out.close();
+
             double fisherStat = 0;
             int geneCount = 0;
             for (int i = 0; i < pvalues.size(); i++)
@@ -358,7 +379,6 @@ int main(int argc, const char *argv[])
             lasttime = currentTime;
 
             map<string, string> regions = result.getRegions();
-           // vector<geneId> *geneInfo = result.getGenes();
 
             size_t perm[regions.size()];
             vector<string> genes(regions.size());
@@ -367,19 +387,14 @@ int main(int argc, const char *argv[])
             vector<double> scores(regions.size());
             vector<double> testStats(regions.size());
 
-            //gsl_set_error_handler_off();
-            //gsl_set_error_handler(&handler);
-            int index = 0;
+            //int index = 0;
             int skipped = 0;
-            omp_lock_t outputLock;
-            omp_init_lock(&outputLock);
-
 
             ofstream out(outputFileName + ".tsv");
             out << "Gene\tRegion\tScore\tTestStat\tPvalue" << endl;
 
             #pragma omp parallel for schedule(dynamic)
-            for (int i = index; i < regions.size(); i++)
+            for (int i = 0; i < regions.size(); i++)
             {
                 //Thread safe method of iterating to the correct gene. Not elegant though.
                 map<string, string>::iterator iter = regions.begin();
@@ -414,41 +429,69 @@ int main(int argc, const char *argv[])
                 {
                     //Run the test.
                     wsbt test = wsbt(geneInput.getGslGenotype(), result.getCaseCount(), iter->first, exactPvalueCalculation);
-                    omp_set_lock(&outputLock);
-                    test.driverOutput();
-                    omp_unset_lock(&outputLock);
-                    genes[i] = iter->first;
-                    locations[i] = iter->second;
-                    pvalues[i] = test.getPvalue();
-                    //Currently just grabs the first score. 
-                    scores[i] = test.getScores()[0];
-                    testStats[i] = test.getTestStat();
-                    if(outputFileName == "")
+                    
+                    if(exactPvalueCalculation)
                     {
                         omp_set_lock(&outputLock);
-                        cout << genes[i] << "\t" << locations[i] << "\t" << scores[i] << "\t" << testStats[i] << "\t" << pvalues[i] << endl;
+                        test.driverOutput();
                         omp_unset_lock(&outputLock);
+
+                        genes[i] = iter->first;
+                        locations[i] = iter->second;
+                        pvalues[i] = test.getPvalue();
+                        //Currently just grabs the first score.
+                        scores[i] = test.getScores()[0];
+                        testStats[i] = test.getTestStat();
+
+                        if (outputFileName == "")
+                        {
+                            omp_set_lock(&outputLock);
+                            cout << genes[i] << "\t" << locations[i] << "\t" << scores[i] << "\t" << testStats[i] << "\t" << pvalues[i] << endl;
+                            omp_unset_lock(&outputLock);
+                        }
+                        else
+                        {
+                            omp_set_lock(&outputLock);
+                            out << genes[i] << "\t" << locations[i] << "\t" << scores[i] << "\t" << testStats[i] << "\t" << pvalues[i] << endl;
+                            omp_unset_lock(&outputLock);
+                        }
                     }
                     else
                     {
-                        omp_set_lock(&outputLock);
-                        out << genes[i] << "\t" << locations[i] << "\t" << scores[i] << "\t" << testStats[i] << "\t" << pvalues[i] << endl;
-                        omp_unset_lock(&outputLock);
+                        genes[i] = iter->first;
+                        locations[i] = iter->second;
+                        pvalues[i] = test.getPvalue();
+                        testStats[i] = test.getTestStat();
                     }
                 }
             }
             out.close();
 
             gsl_sort_index(perm, pvalues.data(), 1, pvalues.size());
-            out.open("sorted_" + outputFileName + ".tsv");
-            out << "Gene\tRegion\tScore\tTestStat\tPvalue" << endl;
-            for (int i = 0; i < pvalues.size(); i++)
+            if (exactPvalueCalculation)
             {
-                //perm contains the sorted order.
-                out << genes[perm[i]] << "\t" << locations[perm[i]] << "\t" << scores[perm[i]] << "\t" 
-                    << testStats[perm[i]] << "\t" << pvalues[perm[i]] << endl;
+                out.open("sorted_" + outputFileName + ".tsv");
+                out << "Gene\tRegion\tScore\tTestStat\tPvalue" << endl;
+                for (int i = 0; i < pvalues.size(); i++)
+                {
+                    //perm contains the sorted order.
+                    out << genes[perm[i]] << "\t" << locations[perm[i]] << "\t" << scores[perm[i]] << "\t"
+                        << testStats[perm[i]] << "\t" << pvalues[perm[i]] << endl;
+                }
+                out.close();
             }
-            out.close();
+            else
+            {
+                out.open("sorted_" + outputFileName + ".tsv");
+                out << "Gene\tRegion\tTestStat\tPvalue" << endl;
+                for (int i = 0; i < pvalues.size(); i++)
+                {
+                    //perm contains the sorted order.
+                    out << genes[perm[i]] << "\t" << locations[perm[i]] << "\t" << testStats[perm[i]] << "\t" << pvalues[perm[i]] << endl;
+                }
+                out.close();
+            }
+            
 
             double fisherStat = 0;
             int geneCount = 0;
