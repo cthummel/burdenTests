@@ -421,7 +421,7 @@ void wsbt::recalculate()
                 {
                     if (k < affectedCount)
                     {
-                        if (gsl_matrix_get(totalGenotype, i, k) > 0)
+                        if (gsl_matrix_get(totalGenotype, i, k) > -1)
                         {
                             totalVariant++;
                         }
@@ -429,7 +429,7 @@ void wsbt::recalculate()
                     else
                     {
                         //We look for variants that have more than 0 alleles because we need individuals genotyped for the variant.
-                        if(gsl_matrix_get(totalGenotype, i, k) > 0)
+                        if(gsl_matrix_get(totalGenotype, i, k) > -1)
                         {
                             mutantAllelesU += gsl_matrix_get(totalGenotype, i, k);
                             indivudualsU++;
