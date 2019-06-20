@@ -15,12 +15,13 @@ using namespace std;
 class dataCollector
 {
     public:
-      dataCollector(bool mergeData, string userVcf, string backFilename, string region, string test_type, int thread);
-      //dataCollector(int variantCount, int subjectCount, string genoData, string mafFile, string phenoFile, string covFile);
+      dataCollector(bool mergeData, string userVcf, string backFilename, string region, string test_type, int caseCount, int thread);
       ~dataCollector();
 
       gsl_matrix* getGslGenotype(){return genotypeGslMatrix;}
       gsl_vector* getMaf(){return maf;}
+      int getCaseUniqueVariantCount(){return caseUniqueVariantCount;}
+      int getBackgroundUniqueVariantCount(){return backgroundUniqueVariantCount;}
 
     private:
       void readVcfInitialInfo(string filename, string region, string outfile);
@@ -29,6 +30,9 @@ class dataCollector
 
     int variantCount = 0;
     int subjectCount = 0;
+    int caseCount = 0;
+    int caseUniqueVariantCount = 0;
+    int backgroundUniqueVariantCount = 0;
     bool preMerged = false;
     string userFile = "";
     string backFile = "";

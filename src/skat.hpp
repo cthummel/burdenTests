@@ -57,11 +57,9 @@ private:
     gsl_matrix *genoMatrix = nullptr;
     gsl_matrix *weightMatrix = nullptr;
     gsl_matrix *kernel = nullptr;
-    gsl_matrix *rvKernel = nullptr;
     gsl_matrix *X = nullptr;
     gsl_vector *pheno = nullptr;
     gsl_vector *coeff = nullptr;
-    gsl_vector *res = nullptr;
     gsl_vector *eigenvalues = nullptr;
 };
 

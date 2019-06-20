@@ -287,6 +287,9 @@ int main(int argc, const char *argv[])
 
             size_t perm[geneList.size()];
             vector<string> genes(geneList.size());
+            vector<int> effectSizes(geneList.size());
+            vector<int> UserUniqueVariantCounts(geneList.size());
+            vector<int> variantCounts(geneList.size());
             vector<double> pvalues(geneList.size());
             vector<double> scores(geneList.size());
             vector<double> testStats(geneList.size());
@@ -307,7 +310,7 @@ int main(int argc, const char *argv[])
                 auto runStartTime = chrono::high_resolution_clock::now();
 
                 //Reads in genotype data from region.
-                dataCollector geneInput = dataCollector(userBackgroundIncluded, vcffilename, backfilename, *iter, testType, omp_get_thread_num());
+                dataCollector geneInput = dataCollector(userBackgroundIncluded, vcffilename, backfilename, *iter, testType, 1, omp_get_thread_num());
                 //Run the test.
                 if(geneInput.getGslGenotype() == nullptr)
                 {
@@ -340,11 +343,13 @@ int main(int argc, const char *argv[])
 
             gsl_sort_index(perm, pvalues.data(), 1, pvalues.size());
             out.open("sorted_" + outputFileName + ".tsv");
-            out << "Gene\tRegion\tScore\tTestStat\tPvalue" << endl;
+            out << "Region\tScore\tTestStat\tPvalue\tEffectSize\tCaseUniqueVariants\tTotalVariants" << endl;
             for (int i = 0; i < pvalues.size(); i++)
             {
                 //perm contains the sorted order.
-                out << genes[perm[i]] << "\t" << scores[perm[i]] << "\t" << testStats[perm[i]] << "\t" << pvalues[perm[i]] << endl;
+                out << genes[perm[i]] << "\t" << scores[perm[i]] << "\t" << testStats[perm[i]] << "\t" << pvalues[perm[i]] 
+                << "\t" << effectSizes[perm[i]] << "\t" << UserUniqueVariantCounts[perm[i]] << "\t" << variantCounts[perm[i]]
+                << endl;
             }
             out.close();
 
@@ -383,6 +388,10 @@ int main(int argc, const char *argv[])
             size_t perm[regions.size()];
             vector<string> genes(regions.size());
             vector<string> locations(regions.size());
+            vector<int> effectSizes(regions.size());
+            vector<int> UserUniqueVariantCounts(regions.size());
+            vector<int> BackUniqueVariantCounts(regions.size());
+            vector<int> variantCounts(regions.size());
             vector<double> pvalues(regions.size());
             vector<double> scores(regions.size());
             vector<double> testStats(regions.size());
@@ -391,7 +400,7 @@ int main(int argc, const char *argv[])
             int skipped = 0;
 
             ofstream out(outputFileName + ".tsv");
-            out << "Gene\tRegion\tScore\tTestStat\tPvalue" << endl;
+            out << "Gene\tRegion\tScore\tTestStat\tPvalue\tRegionSize\tCaseUniqueVariants\tBackgroundUniqueVariants\tTotalVariants" << endl;
 
             #pragma omp parallel for schedule(dynamic)
             for (int i = 0; i < regions.size(); i++)
@@ -400,9 +409,14 @@ int main(int argc, const char *argv[])
                 map<string, string>::iterator iter = regions.begin();
                 advance(iter, i);
 
+                effectSizes[i] = stoi(iter->second.substr(iter->second.find("-")+1)) - stoi(iter->second.substr(iter->second.find(":")+1, iter->second.find("-")));
+
                 //Reads in genotype data from region.
-                dataCollector geneInput = dataCollector(userBackgroundIncluded, vcffilename, backfilename, iter->second, testType, omp_get_thread_num());
-                
+                dataCollector geneInput = dataCollector(userBackgroundIncluded, vcffilename, backfilename, iter->second, testType, result.getCaseCount(), omp_get_thread_num());
+                variantCounts[i] = geneInput.getGslGenotype()->size1;
+                UserUniqueVariantCounts[i] = geneInput.getCaseUniqueVariantCount();
+                BackUniqueVariantCounts[i] = geneInput.getBackgroundUniqueVariantCount();
+
                 if(checkMissingData(geneInput.getGslGenotype(), result.getCaseCount()))
                 {
                     cout << "User data for " << iter->first << " contains no genotype data. Skipping test.\n" << endl;
@@ -429,7 +443,6 @@ int main(int argc, const char *argv[])
                 {
                     //Run the test.
                     wsbt test = wsbt(geneInput.getGslGenotype(), result.getCaseCount(), iter->first, exactPvalueCalculation);
-                    
                     if(exactPvalueCalculation)
                     {
                         omp_set_lock(&outputLock);
@@ -438,21 +451,26 @@ int main(int argc, const char *argv[])
 
                         genes[i] = iter->first;
                         locations[i] = iter->second;
-                        pvalues[i] = test.getPvalue();
                         //Currently just grabs the first score.
                         scores[i] = test.getScores()[0];
                         testStats[i] = test.getTestStat();
+                        pvalues[i] = test.getPvalue();
+                        
 
                         if (outputFileName == "")
                         {
                             omp_set_lock(&outputLock);
-                            cout << genes[i] << "\t" << locations[i] << "\t" << scores[i] << "\t" << testStats[i] << "\t" << pvalues[i] << endl;
+                            cout << genes[i] << "\t" << locations[i] << "\t" << scores[i] << "\t" << testStats[i] << "\t" << pvalues[i] 
+                            << "\t" << effectSizes[i] << "\t" << UserUniqueVariantCounts[i] << "\t" << BackUniqueVariantCounts[i] << "\t" << variantCounts[i]
+                            << endl;
                             omp_unset_lock(&outputLock);
                         }
                         else
                         {
                             omp_set_lock(&outputLock);
-                            out << genes[i] << "\t" << locations[i] << "\t" << scores[i] << "\t" << testStats[i] << "\t" << pvalues[i] << endl;
+                            out << genes[i] << "\t" << locations[i] << "\t" << scores[i] << "\t" << testStats[i] << "\t" << pvalues[i] 
+                            << "\t" << effectSizes[i] << "\t" << UserUniqueVariantCounts[i] << "\t" << BackUniqueVariantCounts[i] << "\t" << variantCounts[i]
+                            << endl;
                             omp_unset_lock(&outputLock);
                         }
                     }
@@ -471,12 +489,13 @@ int main(int argc, const char *argv[])
             if (exactPvalueCalculation)
             {
                 out.open("sorted_" + outputFileName + ".tsv");
-                out << "Gene\tRegion\tScore\tTestStat\tPvalue" << endl;
+                out << "Gene\tRegion\tScore\tTestStat\tPvalue\tRegionSize\tCaseUniqueVariants\tBackgroundUniqueVariants\tTotalVariants" << endl;
                 for (int i = 0; i < pvalues.size(); i++)
                 {
                     //perm contains the sorted order.
-                    out << genes[perm[i]] << "\t" << locations[perm[i]] << "\t" << scores[perm[i]] << "\t"
-                        << testStats[perm[i]] << "\t" << pvalues[perm[i]] << endl;
+                    out << genes[perm[i]] << "\t" << locations[perm[i]] << "\t" << scores[perm[i]] << "\t" << testStats[perm[i]] << "\t" << pvalues[perm[i]] 
+                    << "\t" << effectSizes[perm[i]] << "\t" << UserUniqueVariantCounts[perm[i]] << "\t" << BackUniqueVariantCounts[perm[i]] << "\t" << variantCounts[perm[i]]
+                    << endl;
                 }
                 out.close();
             }
@@ -554,7 +573,7 @@ int main(int argc, const char *argv[])
                 advance(iter, i);
                 cout << "Running SKAT test on gene " << iter->first << endl;
                 //Read in genotpe data from file for this gene.
-                dataCollector geneInput = dataCollector(userBackgroundIncluded, vcffilename, backfilename, iter->second, testType, omp_get_thread_num());
+                dataCollector geneInput = dataCollector(userBackgroundIncluded, vcffilename, backfilename, iter->second, testType, result.getCaseCount(), omp_get_thread_num());
                 //Run Test
                 auto runStartTime = std::chrono::high_resolution_clock::now();
                 skat test = skat(geneInput.getGslGenotype(), geneInput.getMaf(), result.getCovariates(), result.getPheno());

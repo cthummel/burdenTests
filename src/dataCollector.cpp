@@ -8,12 +8,13 @@ using namespace std;
 
 //This is used to read in the data set for each gene when we need them.
 //Only works on pre-merged vcf files where user has attached their data set to 1000Genomes.
-dataCollector::dataCollector(bool userBackgroundIncluded, string user, string back, string region, string test_type, int thread_ID)
+dataCollector::dataCollector(bool userBackgroundIncluded, string user, string back, string region, string test_type, int userCaseCount, int thread_ID)
 {
     testType = test_type;
     preMerged = userBackgroundIncluded;
     userFile = user;
     backFile = back;
+    caseCount = userCaseCount;
 
     if (userBackgroundIncluded)
     {
@@ -204,10 +205,16 @@ void dataCollector::bcfInput(string filename, string back, string region, string
         string::iterator it = line.begin();
         if(line.length() / 4 != genotypeGslMatrix->size2)
         {
-            cerr << "The vcf genotype data for gene " << region << " in line " << i << " has length=" << line.length() / 4 << " while j is " << genotypeGslMatrix->size2 << endl;
+            cerr << "The vcf genotype data for gene " << region << " in line " << i << " has length=" << line.length() / 4 << " while subjectCount is " << genotypeGslMatrix->size2 << endl;
         }
+        //Used for SKAT test to impute missing genotypes.
         bool missingData = false;
         int missingCount = 0;
+
+        //Will change to false if any non ./. records found.
+        bool uniqueCaseVariant = true;
+        bool uniqueBackVariant = true;
+
         for(int j = 0; j < genotypeGslMatrix->size2; j++)
         {
             //Skip space.
@@ -223,10 +230,23 @@ void dataCollector::bcfInput(string filename, string back, string region, string
                 missingCount++;
                 gsl_matrix_set(genotypeGslMatrix, i, j, -1);
             }
-            //Not set up to handle multiallelic sites.
-            else if(leftAllele != '0')
+            else
             {
-                left = 1;
+                //Not set up to handle multiallelic sites.
+                if (leftAllele != '0')
+                {
+                    left = 1;
+                }
+                //Setting this as a non-unique variant.
+                if(j < caseCount)
+                {
+                    uniqueBackVariant = false;
+                }
+                else
+                {
+                    uniqueCaseVariant = false;
+                }
+                
             }
             if(rightAllele == '.')
             {
@@ -239,11 +259,32 @@ void dataCollector::bcfInput(string filename, string back, string region, string
                 }
                 continue;
             }
-            else if (rightAllele != '0')
+            else
             {
-                right = 1;
+                if (rightAllele != '0')
+                {
+                    right = 1;
+                }
+                //Setting this as a non-unique variant.
+                if(j < caseCount)
+                {
+                    uniqueBackVariant = false;
+                }
+                else
+                {
+                    uniqueCaseVariant = false;
+                }
             }
             gsl_matrix_set(genotypeGslMatrix, i, j, left + right);
+        }
+
+        if(uniqueCaseVariant)
+        {
+            caseUniqueVariantCount++;
+        }
+        if(uniqueBackVariant)
+        {
+            backgroundUniqueVariantCount++;
         }
 
         //Fix missing data points by imputing their value with the mean of the geno data for the variant

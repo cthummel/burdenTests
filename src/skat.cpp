@@ -140,9 +140,6 @@ void skat::makeKernel(string kernel_type)
 
     if (kernel_type == "linear")
     {
-        rvKernel = gsl_matrix_alloc(variantCount, subjectCount);
-        gsl_blas_dgemm(CblasNoTrans, CblasNoTrans, 1, tempWeight, genoMatrix, 0, rvKernel);
-
         gsl_matrix *tempkernel = gsl_matrix_alloc(variantCount, subjectCount);
         gsl_blas_dgemm(CblasNoTrans, CblasNoTrans, 1, weightMatrix, genoMatrix, 0, tempkernel);
         gsl_blas_dgemm(CblasTrans, CblasNoTrans, 1.0, genoMatrix, tempkernel, 0.0, kernel);
@@ -178,29 +175,19 @@ void skat::setTestStatistic()
     //Q = (y - u) * K * (y - u)'
     // 1xn nxn nx1 -> 1xn nx1 -> 1x1 = Q
     cout << "Pheno size: " << pheno->size << endl;
-    res = gsl_vector_calloc(subjectCount);
+    gsl_vector *res = gsl_vector_calloc(subjectCount);
     double uhat = gsl_stats_mean(pheno->data, 1, pheno->size);
     uhat = exp(uhat) / (1 + exp(uhat));
     for (int i = 0; i < subjectCount; i++)
     {
         gsl_vector_set(res, i, gsl_vector_get(pheno, i) - uhat);
     }
-    gsl_vector *tempstat = gsl_vector_alloc(variantCount);
-    gsl_blas_dgemv(CblasNoTrans, 1.0, rvKernel, res, 0.0, tempstat);
-    gsl_blas_ddot(tempstat, tempstat, &rvStat);
-
-    gsl_vector *diff = gsl_vector_alloc(subjectCount);
-    for (int i = 0; i < subjectCount; i++)
-    {
-        gsl_vector_set(diff, i, gsl_vector_get(pheno, i) - uhat);
-    }
-    tempstat = gsl_vector_alloc(subjectCount);
-    gsl_blas_dgemv(CblasNoTrans, 1.0, kernel, diff, 0.0, tempstat);
-    gsl_blas_ddot(diff, tempstat, &testStatistic);
+    gsl_vector *tempstat = gsl_vector_calloc(subjectCount);
+    gsl_blas_dgemv(CblasNoTrans, 1.0, kernel, res, 0.0, tempstat);
+    gsl_blas_ddot(res, tempstat, &testStatistic);
 
     //Clean
     gsl_vector_free(tempstat);
-    gsl_vector_free(diff);
     gsl_vector_free(res);
 }
 
@@ -263,9 +250,6 @@ void skat::qDistribution()
         if (isBinary)
         {
             gsl_vector *uhat = logisticRegression();
-
-            //gsl_vector_set_all(uhat, .99);
-
             for (int i = 0; i < subjectCount; i++)
             {
                 gsl_matrix_set(V, i, i, gsl_vector_get(uhat, i) * (1 - gsl_vector_get(uhat, i)));

@@ -51,29 +51,6 @@ wsbt::wsbt(gsl_matrix *totalGtype, int aCount, string gene, bool exactPvalueCalc
             backMean -= affectedScores[i];
         }
         backMean = backMean / (scores->size - affectedCount);
-
-        /*
-        cout << "Gene name: " << gene << endl;
-        if(affectedCount == 1)
-        {
-            cout << "Score: " << affectedScores[0] << endl;
-        }
-        else
-        {
-            cout << "Scores: ";
-            for (int i = 0; i < affectedScores.size(); i++)
-            {
-                cout << affectedScores[i] << " ";
-            }
-            cout << endl;
-        }
-        cout << "Mean Background Score: " << backMean << endl;
-        cout << "U_Case: " << U1 << endl;
-        cout << "U_Control: " << U2 << endl;
-        cout << "Test Statistic: " << testStat << endl;
-        cout << "Exact P-value: " << normpvalue << endl;
-        cout << endl;
-        */
     }
     else
     {
@@ -503,6 +480,7 @@ void wsbt::shuffleMatrix()
 void wsbt::driverOutput()
 {
     cout << "Gene name: " << geneName << endl;
+    cout << "Variant Count: " << totalGenotype->size1 << endl;
     if (affectedCount == 1)
     {
         cout << "Score: " << affectedScores[0] << endl;
