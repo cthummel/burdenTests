@@ -393,7 +393,7 @@ int main(int argc, const char *argv[])
             vector<int> BackUniqueVariantCounts(regions.size());
             vector<int> variantCounts(regions.size());
             vector<double> pvalues(regions.size());
-            vector<double> scores(regions.size());
+            vector<vector<double>> scores(regions.size(), vector<double>(result.getCaseCount()));
             vector<double> testStats(regions.size());
 
             //int index = 0;
@@ -428,18 +428,33 @@ int main(int argc, const char *argv[])
                     genes[i] = iter->first;
                     locations[i] = iter->second;
                     pvalues[i] = -1;
-                    scores[i] = -9999;
+                    for(int j = 0; j < result.getCaseCount(); j++)
+                    {
+                        scores[i][j] = -9999;
+                    }
                     testStats[i] = -9999;
                     if(outputFileName == "")
                     {
                         omp_set_lock(&outputLock);
-                        cout << genes[i] << "\t" << locations[i] << "\t" << scores[i] << "\t" << testStats[i] << "\t" << pvalues[i] << endl;
+                        cout << genes[i] << "\t" << locations[i] << "\t";
+                        for (int j = 0; j < result.getCaseCount(); j++)
+                        {
+                            cout << scores[i][j] << "\t";
+                        }
+                        cout << testStats[i] << "\t" << pvalues[i] << "\t" << effectSizes[i] << "\t" << UserUniqueVariantCounts[i] << "\t"
+                             << BackUniqueVariantCounts[i] << "\t" << variantCounts[i] << endl;
                         omp_unset_lock(&outputLock);
                     }
                     else
                     {
                         omp_set_lock(&outputLock);
-                        out << genes[i] << "\t" << locations[i] << "\t" << scores[i] << "\t" << testStats[i] << "\t" << pvalues[i] << endl;
+                        out << genes[i] << "\t" << locations[i] << "\t";
+                        for (int j = 0; j < result.getCaseCount(); j++)
+                        {
+                            out << scores[i][j] << "\t";
+                        }
+                        out << testStats[i] << "\t" << pvalues[i] << "\t" << effectSizes[i] << "\t" << UserUniqueVariantCounts[i] << "\t"
+                            << BackUniqueVariantCounts[i] << "\t" << variantCounts[i] << endl;
                         omp_unset_lock(&outputLock);
                     }
                     
@@ -456,8 +471,7 @@ int main(int argc, const char *argv[])
 
                         genes[i] = iter->first;
                         locations[i] = iter->second;
-                        //Currently just grabs the first score.
-                        scores[i] = test.getScores()[0];
+                        scores[i] = test.getScores();
                         testStats[i] = test.getTestStat();
                         pvalues[i] = test.getPvalue();
                         
@@ -465,17 +479,25 @@ int main(int argc, const char *argv[])
                         if (outputFileName == "")
                         {
                             omp_set_lock(&outputLock);
-                            cout << genes[i] << "\t" << locations[i] << "\t" << scores[i] << "\t" << testStats[i] << "\t" << pvalues[i] 
-                            << "\t" << effectSizes[i] << "\t" << UserUniqueVariantCounts[i] << "\t" << BackUniqueVariantCounts[i] << "\t" << variantCounts[i]
-                            << endl;
+                            cout << genes[i] << "\t" << locations[i] << "\t";
+                            for(int j = 0; j < result.getCaseCount(); j++)
+                            {
+                                cout << scores[i][j] << "\t";
+                            } 
+                            cout << testStats[i] << "\t" << pvalues[i] << "\t" << effectSizes[i] << "\t" << UserUniqueVariantCounts[i] << "\t" 
+                            << BackUniqueVariantCounts[i] << "\t" << variantCounts[i] << endl;
                             omp_unset_lock(&outputLock);
                         }
                         else
                         {
                             omp_set_lock(&outputLock);
-                            out << genes[i] << "\t" << locations[i] << "\t" << scores[i] << "\t" << testStats[i] << "\t" << pvalues[i] 
-                            << "\t" << effectSizes[i] << "\t" << UserUniqueVariantCounts[i] << "\t" << BackUniqueVariantCounts[i] << "\t" << variantCounts[i]
-                            << endl;
+                            out << genes[i] << "\t" << locations[i] << "\t";
+                            for(int j = 0; j < result.getCaseCount(); j++)
+                            {
+                                out << scores[i][j] << "\t";
+                            } 
+                            out << testStats[i] << "\t" << pvalues[i] << "\t" << effectSizes[i] << "\t" << UserUniqueVariantCounts[i] << "\t" 
+                            << BackUniqueVariantCounts[i] << "\t" << variantCounts[i] << endl;
                             omp_unset_lock(&outputLock);
                         }
                     }
@@ -494,13 +516,26 @@ int main(int argc, const char *argv[])
             if (exactPvalueCalculation)
             {
                 out.open("sorted_" + outputFileName + ".tsv");
-                out << "Gene\tRegion\tScore\tTestStat\tPvalue\tRegionSize\tCaseUniqueVariants\tBackgroundUniqueVariants\tTotalVariants" << endl;
+
+                //Header
+                out << "Gene\tRegion\t";
+                for(int i = 0; i < result.getCaseCount(); i++)
+                {
+                    out << result.getSampleNames()->at(i) << "_Score\t";
+                }
+                out << "TestStat\tPvalue\tRegionSize\tCaseUniqueVariants\tBackgroundUniqueVariants\tTotalVariants" << endl;
+
+                //Data
                 for (int i = 0; i < pvalues.size(); i++)
                 {
                     //perm contains the sorted order.
-                    out << genes[perm[i]] << "\t" << locations[perm[i]] << "\t" << scores[perm[i]] << "\t" << testStats[perm[i]] << "\t" << pvalues[perm[i]] 
-                    << "\t" << effectSizes[perm[i]] << "\t" << UserUniqueVariantCounts[perm[i]] << "\t" << BackUniqueVariantCounts[perm[i]] << "\t" << variantCounts[perm[i]]
-                    << endl;
+                    out << genes[perm[i]] << "\t" << locations[perm[i]] << "\t";
+                    for(int j = 0; j < result.getCaseCount(); j++)
+                    {
+                        out << scores[perm[i]][j] << "\t"; 
+                    } 
+                    out << testStats[perm[i]] << "\t" << pvalues[perm[i]] << "\t" << effectSizes[perm[i]] << "\t" << UserUniqueVariantCounts[perm[i]] 
+                    << "\t" << BackUniqueVariantCounts[perm[i]] << "\t" << variantCounts[perm[i]] << endl;
                 }
                 out.close();
             }
