@@ -400,7 +400,12 @@ int main(int argc, const char *argv[])
             int skipped = 0;
 
             ofstream out(outputFileName + ".tsv");
-            out << "Gene\tRegion\tScore\tTestStat\tPvalue\tRegionSize\tCaseUniqueVariants\tBackgroundUniqueVariants\tTotalVariants" << endl;
+            out << "Gene\tRegion\t";
+            for(int i = 0; i < result.getCaseCount(); i++)
+            {
+                out << result.getSampleNames()->at(i) << "_Score\t";
+            }
+            out << "TestStat\tPvalue\tRegionSize\tCaseUniqueVariants\tBackgroundUniqueVariants\tTotalVariants" << endl;
 
             #pragma omp parallel for schedule(dynamic)
             for (int i = 0; i < regions.size(); i++)

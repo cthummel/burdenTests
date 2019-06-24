@@ -31,7 +31,8 @@ class readInput
     gsl_matrix* getCovariates(){return covariates;}
     gsl_vector* getPheno(){return pheno;}
     map<string, string> getRegions(){return regions;}
-    vector<geneId> * getGenes(){return &info;}
+    vector<geneId>* getGenes(){return &info;}
+    vector<string>* getSampleNames(){return &sampleNames;}
     
 
 private:
@@ -45,6 +46,7 @@ private:
     void buildGeneInfo(string filename);
     void buildPosMap(string filename);
     void matchGenes();
+    void readSampleNames(string filename);
 
     int variantCount = 0;
     int subjectCount = 0;
@@ -61,6 +63,7 @@ private:
     regex variantCountMatch;
     
     vector<geneId> info;
+    vector<string> sampleNames;
     map<string, vector<int> > posMap;
     map<string, string> regions;
     map<string, pair<int,int>> genePosMap;

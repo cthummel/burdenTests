@@ -28,6 +28,7 @@ readInput::readInput(string dir, string tType, string inputVcfType, string userV
         {
             readVcfInitialInfo(userVcf);
             readCaseCount(userVcf);
+            readSampleNames(userVcf);
             buildPosMap(userVcf);
             buildGeneInfo("orderedRefFlat.txt");
             matchGenes();
@@ -38,6 +39,7 @@ readInput::readInput(string dir, string tType, string inputVcfType, string userV
         readVcfInitialInfo(userVcf);
         buildPosMap(userVcf);
         readCaseCount(userVcf);
+        readSampleNames(userVcf);
         readPhenotype(phenoFile);
         readCovariates(covFile);
         if (variantRegion == "--g")
@@ -423,6 +425,24 @@ void readInput::matchGenes()
     
     //Dont need the posMap anymore.
     posMap.clear();
+}
+
+//Requires caseCount to be a known value.
+void readInput::readSampleNames(string filename)
+{
+    string outputFile = "tmp/sampleNames.txt";
+
+    string command = externals_loc + "bcftools query -l " + filename + " > " + outputFile;
+    system(command.c_str());
+
+    ifstream in(outputFile);
+    string line;
+    for(int i = 0; i < caseCount; i++)
+    {
+        getline(in,line);
+        sampleNames.push_back(line);
+    }
+    in.close();
 }
 
 
