@@ -8,19 +8,19 @@
 
 #include "input.hpp"
 #include <fstream>
-//#include <sstream>
+#include <sstream>
 
 using namespace std;
 
 //Sets up initial test paramters from user information.
-readInput::readInput(string dir, string tType, string inputVcfType, string userVcf, string region, string phenoFile, string covFile)
+readInput::readInput(string dir, string tType, string geneRegionIndicator, string userVcf, string region, string phenoFile, string covFile)
 {
     caseCount = 0;
     variantRegion = region;
     testType = tType;
+    codingRegionType = geneRegionIndicator;
     testDir = dir;
     
-
     //Switching on test type to get proper input.
     if (testType == "wsbt")
     {
@@ -31,7 +31,17 @@ readInput::readInput(string dir, string tType, string inputVcfType, string userV
             readSampleNames(userVcf);
             buildPosMap(userVcf);
             buildGeneInfo("orderedRefFlat.txt");
-            matchGenes();
+            if(codingRegionType == "transcript")
+            {
+                cout << "--- Running initial gene check in transcript mode ---" << endl;
+                matchGenesOnTranscript();
+            }
+            else if (codingRegionType == "exon")
+            {
+                cout << "--- Running initial gene check in exon mode ---" << endl;
+                matchGenesOnExons();
+            }
+            
         }
     }
     else if (testType == "skat")
@@ -45,7 +55,7 @@ readInput::readInput(string dir, string tType, string inputVcfType, string userV
         if (variantRegion == "--g")
         {
             buildGeneInfo("orderedrefFlat.txt");
-            matchGenes();
+            matchGenesOnTranscript();
         }
     }
     else if (testType == "skato")
@@ -251,7 +261,7 @@ void readInput::readPhenotype(string phenoFile)
                 }
                 if (j == 5)
                 {
-                    gsl_vector_set(pheno, i, stoi(token));
+                    gsl_vector_set(pheno, i, stoi(token) - 1);
                 }
                 
                 last = current + 1;
@@ -284,9 +294,11 @@ void readInput::buildGeneInfo(string filename)
         size_t last = 0;
         size_t current = line.find('\t', last);
         geneId currentGene;
-        for (int j = 0; current != string::npos; j++)
+        for (int j = 0; last != string::npos; j++)
         {
+            
             string token = line.substr(last, current - last);
+            //cout << i << "," << j << endl;
             if (j == 0)
             {
                 currentGene.geneName = token;
@@ -306,19 +318,15 @@ void readInput::buildGeneInfo(string filename)
                 else
                 {
                     currentGene.geneChrom = token;
-                    //cout << token << " ";
                 }
-                currentGene.region = currentGene.geneChrom + ":";
             }
             if (j == 4)
             {
                 currentGene.txStartPos = stoi(token);
-                currentGene.region += token + "-";
             }
             if (j == 5)
             {
                 currentGene.txEndPos = stoi(token);
-                currentGene.region += token;
             }
             if (j == 6)
             {
@@ -328,8 +336,65 @@ void readInput::buildGeneInfo(string filename)
             {
                 currentGene.codingEndPos = stoi(token);
             }
-            last = current + 1;
-            current = line.find('\t', last);
+            //Exon Count
+            if (j == 8 && codingRegionType == "exon")
+            {
+                currentGene.exonCount = stoi(token);
+                currentGene.exonStarts = vector<int>(currentGene.exonCount);
+                currentGene.exonEnds = vector<int>(currentGene.exonCount);
+            }
+            //Exon Start Position
+            if(j == 9 && codingRegionType == "exon")
+            {
+                size_t exonStart = 0;
+                for(int k = 0; k < currentGene.exonCount; k++)
+                {
+                    size_t exonEnd = token.find(',', exonStart);
+                    string exon = token.substr(exonStart, exonEnd - exonStart);
+                    currentGene.exonStarts[k] = stoi(exon);
+                    exonStart = exonEnd + 1;
+                }
+            }
+            //Exon end position
+            if(j == 10 && codingRegionType == "exon")
+            {
+                size_t exonStart = 0;
+                for(int k = 0; k < currentGene.exonCount; k++)
+                {
+                    size_t exonEnd = token.find(',', exonStart);
+                    
+                    currentGene.exonEnds[k] = stoi(token.substr(exonStart, exonEnd - exonStart));
+                    exonStart = exonEnd + 1;
+                }
+            }
+            if(current == string::npos)
+            {
+                //Breaks out of parsing this entry.
+                last = string::npos;
+            }
+            else
+            {
+                last = current + 1;
+                current = line.find('\t', last);
+            }
+        }
+        //Setup the region for the current gene
+        if (codingRegionType == "exon")
+        {
+            stringstream temp;
+            for (int k = 0; k < currentGene.exonCount; k++)
+            {
+                temp << currentGene.geneChrom << ":" << currentGene.exonStarts[k] << "-" << currentGene.exonEnds[k];
+                if (k + 1 < currentGene.exonCount)
+                {
+                    temp << ",";
+                }
+            }
+            currentGene.region = temp.str();
+        }
+        else
+        {
+            currentGene.region = currentGene.geneChrom + ":" + to_string(currentGene.txStartPos) + "-" + to_string(currentGene.txEndPos);
         }
         info.push_back(currentGene);
     }
@@ -372,11 +437,12 @@ void readInput::buildPosMap(string filename)
 }
 
 
-void readInput::matchGenes()
+void readInput::matchGenesOnTranscript()
 {
     cout << endl << "Looking through " << info.size() << " gene entries." << endl;
     for (int i = 0; i < info.size(); i++)
     {
+        bool geneFound = false;
         //Check if the chromosome of current gene is even in the data set.
         if (posMap.find(info[i].geneChrom) == posMap.end())
         {
@@ -390,9 +456,8 @@ void readInput::matchGenes()
             if (posMap[info[i].geneChrom][j] >= info[i].txStartPos && posMap[info[i].geneChrom][j] <= info[i].txEndPos)
             {
                 //Try and enter the gene into the list of present genes.
-                string temp = info[i].geneChrom + ":" + to_string(info[i].txStartPos) + "-" + to_string(info[i].txEndPos);
                 pair<map<string, string>::iterator, bool> duplicate;
-                duplicate = regions.insert(pair<string, string>(info[i].geneName, temp));
+                duplicate = regions.insert(pair<string, string>(info[i].geneName, info[i].region));
                 //This gene was a duplicate of another already entered in. Take the largest transcript region.
                 if(duplicate.second == false)
                 {
@@ -402,7 +467,7 @@ void readInput::matchGenes()
                     int newWidth = info[i].txEndPos - info[i].txStartPos;
                     if(newWidth > (oldEnd - oldStart))
                     {
-                        regions[info[i].geneName] = temp;
+                        regions[info[i].geneName] = info[i].region;
                         genePosMap[info[i].geneName] = pair<int, int>(info[i].txStartPos, info[i].txEndPos);
                     }
                 }
@@ -410,8 +475,9 @@ void readInput::matchGenes()
                 {
                     genePosMap.insert(pair<string, pair<int, int>>(info[i].geneName, pair<int,int>(info[i].txStartPos,info[i].txEndPos)));
                 }
+                geneFound = true;
             }
-            if (posMap[info[i].geneChrom][j] > info[i].txEndPos)
+            if (posMap[info[i].geneChrom][j] > info[i].txEndPos || geneFound)
             {
                 break;
             }
@@ -425,6 +491,64 @@ void readInput::matchGenes()
     
     //Dont need the posMap anymore.
     posMap.clear();
+}
+
+void readInput::matchGenesOnExons()
+{
+    cout << endl << "Looking through " << info.size() << " gene entries." << endl;
+    for (int i = 0; i < info.size(); i++)
+    {
+        bool geneFound = false;
+        //Check if the chromosome of current gene is even in the data set.
+        if (posMap.find(info[i].geneChrom) == posMap.end())
+        {
+            continue;
+        }
+
+        //Iterate through all the variants in a chromosome to find gene matches.
+        for (int j = 0; j < posMap[info[i].geneChrom].size(); j++)
+        {
+            for(int k = 0; k < info[i].exonCount; k++)
+            {
+                //Consider not searching the early positions multiple times. Could initiate j to the last seen useful position.
+                if (posMap[info[i].geneChrom][j] >= info[i].exonStarts[k] && posMap[info[i].geneChrom][j] <= info[i].exonEnds[k])
+                {
+                    //Try and enter the gene into the list of present genes.
+                    pair<map<string, string>::iterator, bool> duplicate;
+                    duplicate = regions.insert(pair<string, string>(info[i].geneName, info[i].region));
+                    //This gene was a duplicate of another already entered in. Take the largest transcript region.
+                    if (duplicate.second == false)
+                    {
+                        string oldRegion = regions[info[i].geneName];
+                        int oldStart = genePosMap[info[i].geneName].first;
+                        int oldEnd = genePosMap[info[i].geneName].second;
+                        int newWidth = info[i].txEndPos - info[i].txStartPos;
+                        if (newWidth > (oldEnd - oldStart))
+                        {
+                            regions[info[i].geneName] = info[i].region;
+                            genePosMap[info[i].geneName] = pair<int, int>(info[i].txStartPos, info[i].txEndPos);
+                        }
+                    }
+                    else
+                    {
+                        genePosMap.insert(pair<string, pair<int, int>>(info[i].geneName, pair<int, int>(info[i].txStartPos, info[i].txEndPos)));
+                    }
+                    geneFound = true;
+                    break;
+                }
+                
+                if (posMap[info[i].geneChrom][j] > info[i].txEndPos)
+                {
+                    break;
+                }
+                
+            }
+            if(geneFound)
+            {
+                break;
+            }
+        }
+    }
 }
 
 //Requires caseCount to be a known value.

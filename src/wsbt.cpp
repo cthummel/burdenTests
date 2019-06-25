@@ -70,10 +70,10 @@ wsbt::wsbt(gsl_matrix *totalGtype, int aCount, string gene, bool exactPvalueCalc
             double testStatSigma = gsl_stats_sd(testStatistics->data, 1, k + 1);
             double zscore = (testStat - testStatMean) / testStatSigma;
             normpvalue = gsl_cdf_ugaussian_P(zscore);
-            if (normpvalue > .5)
-            {
+            //if (normpvalue > .5)
+            //{
                 normpvalue = 1 - normpvalue;
-            }
+            //}
             //normpvalue = normpvalue * 2;
 
             //Reporting output.
@@ -417,6 +417,10 @@ void wsbt::recalculate()
                 double upper = mutantAllelesU + 1.0;
                 double lower = (2.0 * indivudualsU) + 2.0;
                 double unaffectedRatio = upper / lower;
+                if(unaffectedRatio >= 1)
+                {
+                    cout << "Uh oh. Qi is " << unaffectedRatio << endl;
+                }
                 double nancheck = sqrt(totalVariant * unaffectedRatio * (1.0 - unaffectedRatio));
                 gsl_vector_set(weights, i, nancheck);
 

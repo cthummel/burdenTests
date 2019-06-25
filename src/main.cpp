@@ -58,11 +58,12 @@ int main(int argc, const char *argv[])
     string covfilename = "";
     string filename = "";
     string testType = ""; 
-    string region = "";
+    string region = "--g";
     string regionFile = "";
     string outputFileName = "output";
+    string variantRegion = "transcript";
     vector<string> geneList;
-    bool geneBased = false;
+    bool agnosticGeneRun = true;
     bool userBackgroundIncluded = true;
     bool exactPvalueCalculation = true;
     auto startTime = chrono::high_resolution_clock::now();
@@ -163,6 +164,7 @@ int main(int argc, const char *argv[])
         {
             if(argc > i)
             {
+                agnosticGeneRun = false;
                 while(argv[i + 1][0] != '-')
                 {
                     geneList.push_back(argv[i + 1]);
@@ -187,6 +189,7 @@ int main(int argc, const char *argv[])
         {
             if(argc > i)
             {
+                agnosticGeneRun = false;
                 ifstream in(argv[i + 1]);
                 string line;
                 while(getline(in, line))
@@ -206,6 +209,7 @@ int main(int argc, const char *argv[])
             else
             {
                 cout << "--R <RegionFileName.txt>" << endl;
+                return 1;
             }
             continue;
         }
@@ -224,6 +228,11 @@ int main(int argc, const char *argv[])
                 
                 i++;
             }
+        }
+        if (strcmp(argv[i], "--e") == 0 || strcmp(argv[i], "--exon") == 0) 
+        {
+            variantRegion = "exon";
+            continue;
         }
         //Test type parsing.
         if (strcmp(argv[i], "wsbt") == 0)
@@ -259,7 +268,7 @@ int main(int argc, const char *argv[])
         //Test Parameter parsing.
         if (strcmp(argv[i], "--g") == 0)
         {
-            geneBased = true;
+            agnosticGeneRun = true;
             region = argv[i];
             continue;
         }
@@ -374,9 +383,10 @@ int main(int argc, const char *argv[])
             double fisherPvalue = gsl_cdf_chisq_Q(fisherStat, 2 * geneCount);
             cout << "Fisher product test statistic for " << geneList.size() - skipped << " gene(s) is " << fisherStat << " with pvalue " << fisherPvalue << endl;
         }
-        else if (geneBased)
+        else if (agnosticGeneRun)
         {
-            readInput result = readInput(currentDir, testType, vcfType, vcffilename, region, phenofilename, covfilename);
+            cout << "Starting gene agnostic run of the Weighted Sums Burden Test." << endl;
+            readInput result = readInput(currentDir, testType, variantRegion, vcffilename, region, phenofilename, covfilename);
             currentTime = std::chrono::high_resolution_clock::now();
             cout << endl;
             cout << "After Input. Took " << std::chrono::duration_cast<std::chrono::milliseconds>(currentTime - startTime).count() / 1000.0 << " seconds." << endl;
@@ -585,7 +595,7 @@ int main(int argc, const char *argv[])
     }
     else if (testType == "skat")
     {
-        readInput result(currentDir, testType, vcfType, vcffilename, region, phenofilename, covfilename);
+        readInput result(currentDir, testType, variantRegion, vcffilename, region, phenofilename, covfilename);
 
         currentTime = std::chrono::high_resolution_clock::now();
         cout << endl;
@@ -595,7 +605,7 @@ int main(int argc, const char *argv[])
 
         currentTime = std::chrono::high_resolution_clock::now();
         lasttime = currentTime;
-        if (geneBased)
+        if (agnosticGeneRun)
         {
             map<string, string> regions = result.getRegions();
             size_t perm[regions.size()];
@@ -654,6 +664,61 @@ int main(int argc, const char *argv[])
     else if (testType == "skato")
     {
         cout << testType << " is not yet implemented." << endl;
+        if(agnosticGeneRun)
+        {
+            readInput result(currentDir, testType, variantRegion, vcffilename, region, phenofilename, covfilename);
+
+            currentTime = std::chrono::high_resolution_clock::now();
+            cout << endl;
+            cout << "After Input. Took " << std::chrono::duration_cast<std::chrono::milliseconds>(currentTime - startTime).count() / 1000.0 << " seconds." << endl;
+            cout << endl;
+            lasttime = currentTime;
+
+            currentTime = std::chrono::high_resolution_clock::now();
+            lasttime = currentTime;
+
+            map<string,string> regions = result.getRegions();
+            size_t perm[regions.size()];
+            vector<string> genes(regions.size());
+            vector<string> locations(regions.size());
+            vector<int> effectSizes(regions.size());
+            vector<int> UserUniqueVariantCounts(regions.size());
+            vector<int> BackUniqueVariantCounts(regions.size());
+            vector<int> variantCounts(regions.size());
+            vector<double> pvalues(regions.size());
+            vector<vector<double>> scores(regions.size(), vector<double>(result.getCaseCount()));
+            vector<double> testStats(regions.size());
+
+            //int index = 0;
+            int skipped = 0;
+
+            ofstream out(outputFileName + ".tsv");
+            out << "Gene\tRegion\t";
+            for(int i = 0; i < result.getCaseCount(); i++)
+            {
+                out << result.getSampleNames()->at(i) << "_Score\t";
+            }
+            out << "TestStat\tPvalue\tRegionSize\tCaseUniqueVariants\tBackgroundUniqueVariants\tTotalVariants" << endl;
+
+            #pragma omp parallel for schedule(dynamic)
+            for (int i = 0; i < regions.size(); i++)
+            {
+                //Iterate to run the correct gene.
+                map<string, string>::iterator iter = regions.begin();
+                advance(iter, i);
+                cout << "Running SKAT test on gene " << iter->first << endl;
+                //Read in genotpe data from file for this gene.
+                dataCollector geneInput = dataCollector(userBackgroundIncluded, vcffilename, backfilename, iter->second, testType, result.getCaseCount(), omp_get_thread_num());
+                //Run SKAT Test
+                auto runStartTime = std::chrono::high_resolution_clock::now();
+                skat skatTest = skat(geneInput.getGslGenotype(), geneInput.getMaf(), result.getCovariates(), result.getPheno());
+                auto runCurrentTime = std::chrono::high_resolution_clock::now();
+                cout << "SKAT Took " << std::chrono::duration_cast<std::chrono::milliseconds>(runCurrentTime - runStartTime).count() / 60000.0 << " minutes." << endl;
+                //Run WSBT
+                wsbt wsbtTest = wsbt(geneInput.getGslGenotype(), result.getCaseCount(), iter->first, exactPvalueCalculation);
+
+            }
+        }
     }
     else if (testType == "-h")
     {

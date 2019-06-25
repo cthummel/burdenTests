@@ -45,7 +45,8 @@ private:
     void readGenes(string filename);
     void buildGeneInfo(string filename);
     void buildPosMap(string filename);
-    void matchGenes();
+    void matchGenesOnTranscript();
+    void matchGenesOnExons();
     void readSampleNames(string filename);
 
     int variantCount = 0;
@@ -57,6 +58,7 @@ private:
     string variantRegion;
     string testType;
     string vcfType;
+    string codingRegionType;
     string externals_loc = "../../externals/bin/";
     string testDir;
     regex subjectCountMatch;
