@@ -34,6 +34,10 @@ void handler(const char * reason, const char * file, int line, int gsl_errno)
 //Returns true if all user data is missing. False otherwise.
 bool checkMissingData(gsl_matrix *data, int caseCount)
 {
+    if(data->size1 == 0)
+    {
+        return true;
+    }
     return false;
     for (int i = 0; i < data->size1; i++)
     {

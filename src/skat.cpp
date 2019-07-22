@@ -285,7 +285,7 @@ void skat::qDistribution()
         gsl_matrix *VX = gsl_matrix_alloc(subjectCount, X_Count + 1);           //VX
         gsl_matrix *XtransverseV = gsl_matrix_alloc(X_Count + 1, subjectCount); //X'V
         gsl_matrix *inverse = gsl_matrix_alloc(X_Count + 1, X_Count + 1);       //(X'VX)^-1
-        gsl_matrix *partRight = gsl_matrix_alloc(X_Count + 1, subjectCount);    //((X'VX)^-1) * X'V
+        gsl_matrix *partRight = gsl_matrix_alloc(X_Count + 1, subjectCount);    //(X'VX)^-1 * X'V
         gsl_matrix *right = gsl_matrix_alloc(X_Count + 1, subjectCount);        //VX * ((X'VX)^-1) * X'V
 
         gsl_blas_dgemm(CblasNoTrans, CblasNoTrans, 1, V, Xtilde, 0.0, VX);

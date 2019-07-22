@@ -31,6 +31,7 @@ readInput::readInput(string dir, string tType, string geneRegionIndicator, strin
             readSampleNames(userVcf);
             buildPosMap(userVcf);
             buildGeneInfo("orderedRefFlat.txt");
+            //buildGeneInfo("nameOrderedRefFlat.txt");
             if(codingRegionType == "transcript")
             {
                 cout << "--- Running initial gene check in transcript mode ---" << endl;
