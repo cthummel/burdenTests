@@ -63,6 +63,21 @@ dataCollector::dataCollector(bool userBackgroundIncluded, string user, string ba
             }
             
         }
+        else if(test_type == "skato")
+        {
+            readVcfInitialInfo(backFile, region, "tmp/data" + to_string(thread_ID) + ".stats");
+            if (variantCount != 0 && subjectCount != 0)
+            {
+                genotypeGslMatrix = gsl_matrix_alloc(variantCount, subjectCount);
+                maf = gsl_vector_alloc(variantCount);
+                readMaf(user, region, "tmp/maf" + to_string(thread_ID) + ".txt");
+                bcfInput(user, backFile, region, "tmp/merge" + to_string(thread_ID) + ".txt");
+            }
+            else
+            {
+                cout << "Data set did not contain variants in " << region << "." << endl;
+            }
+        }
         
     }
 }
@@ -338,4 +353,46 @@ void dataCollector::bcfInput(string filename, string back, string region, string
         } 
     }
     in.close();
+}
+
+void dataCollector::annotationParser(string filename, string back, string region, string outfile)
+{
+    string line;
+    string command;
+    if(preMerged)
+    {
+        command = externals_loc + "bcftools query -r " + region + " -f '%AF\\n' " + userFile + " > " + outfile;
+    }
+    else
+    {
+        command = externals_loc + "bcftools merge -r " + region + " " + userFile + " " + backFile +  " | " 
+                //+ externals_loc + "bcftools annotate -a      -r " + region + " " + userFile + " | "
+                + externals_loc + "bcftools query -r " + region + " -f '%INFO/CSQ\\n' " + userFile + " > " + outfile;
+    }
+    system(command.c_str());
+    ifstream in(outfile);
+    for (int i = 0; i < genotypeGslMatrix->size1; i++)
+    {
+        getline(in, line);
+        size_t last = 0;
+        size_t current = line.find('|', last);
+        geneId currentGene;
+        for (int j = 0; last != string::npos; j++)
+        {
+            
+            string token = line.substr(last, current - last);
+
+
+            if(current == string::npos)
+            {
+                //Breaks out of parsing this entry.
+                last = string::npos;
+            }
+            else
+            {
+                last = current + 1;
+                current = line.find('|', last);
+            }
+        }
+    }
 }

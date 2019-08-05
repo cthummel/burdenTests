@@ -19,6 +19,7 @@
 #include "output.cpp"
 //#include "cast.cpp"
 #include "skat.cpp"
+#include "skato.cpp"
 #include "dataCollector.cpp"
 
 using namespace std;
@@ -667,20 +668,16 @@ int main(int argc, const char *argv[])
     }
     else if (testType == "skato")
     {
-        cout << testType << " is not yet implemented." << endl;
+        //cout << testType << " is not yet implemented." << endl;
+        readInput result(currentDir, testType, variantRegion, vcffilename, region, phenofilename, covfilename);
+        currentTime = std::chrono::high_resolution_clock::now();
+        cout << endl;
+        cout << "After Input. Took " << std::chrono::duration_cast<std::chrono::milliseconds>(currentTime - startTime).count() / 1000.0 << " seconds." << endl;
+        cout << endl;
+        lasttime = currentTime;
+
         if(agnosticGeneRun)
         {
-            readInput result(currentDir, testType, variantRegion, vcffilename, region, phenofilename, covfilename);
-
-            currentTime = std::chrono::high_resolution_clock::now();
-            cout << endl;
-            cout << "After Input. Took " << std::chrono::duration_cast<std::chrono::milliseconds>(currentTime - startTime).count() / 1000.0 << " seconds." << endl;
-            cout << endl;
-            lasttime = currentTime;
-
-            currentTime = std::chrono::high_resolution_clock::now();
-            lasttime = currentTime;
-
             map<string,string> regions = result.getRegions();
             size_t perm[regions.size()];
             vector<string> genes(regions.size());
@@ -710,16 +707,25 @@ int main(int argc, const char *argv[])
                 //Iterate to run the correct gene.
                 map<string, string>::iterator iter = regions.begin();
                 advance(iter, i);
-                cout << "Running SKAT test on gene " << iter->first << endl;
+                cout << "Running SKATO test on gene " << iter->first << endl;
                 //Read in genotpe data from file for this gene.
                 dataCollector geneInput = dataCollector(userBackgroundIncluded, vcffilename, backfilename, iter->second, testType, result.getCaseCount(), omp_get_thread_num());
-                //Run SKAT Test
+                //Run SKATO Test
                 auto runStartTime = std::chrono::high_resolution_clock::now();
-                skat skatTest = skat(geneInput.getGslGenotype(), geneInput.getMaf(), result.getCovariates(), result.getPheno());
+                skato skatoTest = skato(geneInput.getGslGenotype(), result.getCovariates(), geneInput.getMaf(), result.getPheno());
                 auto runCurrentTime = std::chrono::high_resolution_clock::now();
-                cout << "SKAT Took " << std::chrono::duration_cast<std::chrono::milliseconds>(runCurrentTime - runStartTime).count() / 60000.0 << " minutes." << endl;
+                cout << "SKATO Took " << std::chrono::duration_cast<std::chrono::milliseconds>(runCurrentTime - runStartTime).count() / 60000.0 << " minutes." << endl;
+                
+                //After test Reporting
+                effectSizes[i] = stoi(iter->second.substr(iter->second.find("-")+1)) - stoi(iter->second.substr(iter->second.find(":")+1, iter->second.find("-")));
+                variantCounts[i] = geneInput.getGslGenotype()->size1;
+                UserUniqueVariantCounts[i] = geneInput.getCaseUniqueVariantCount();
+                BackUniqueVariantCounts[i] = geneInput.getBackgroundUniqueVariantCount();
+                pvalues[i] = skatoTest.getPvalue();
+
+
                 //Run WSBT
-                wsbt wsbtTest = wsbt(geneInput.getGslGenotype(), result.getCaseCount(), iter->first, exactPvalueCalculation);
+                //wsbt wsbtTest = wsbt(geneInput.getGslGenotype(), result.getCaseCount(), iter->first, exactPvalueCalculation);
 
             }
         }

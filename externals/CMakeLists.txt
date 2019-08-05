@@ -9,10 +9,10 @@ include(bcftools.cmake)
 LIST(APPEND BURDEN_TEST_DEPENDANCIES ${BCFTOOLS_PROJECT})
 #include(bedtools.cmake)
 #LIST(APPEND BURDEN_TEST_DEPENDANCIES ${BEDTOOLS_PROJECT})
+include(openmp.cmake)
+LIST(APPEND BURDEN_TEST_DEPENDANCIES ${OPENMP_PROJECT})
 if(OPENMP_NOTFOUND)
 	MESSAGE("OpenMP was not found. Multithreading will be disabled.")
-	#include(openmp.cmake)
-	#LIST(APPEND BURDEN_TEST_DEPENDANCIES ${OPENMP_PROJECT})
 endif()
 
 

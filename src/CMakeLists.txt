@@ -17,7 +17,7 @@ ADD_LIBRARY(burden_test_core STATIC
 			     cast.cpp
 			     skat.cpp
 			     geneInfo.cpp
-			    # skato.cpp
+			     skato.cpp
 			     genericBurdenTest.cpp
 			     dataCollector.cpp
 )

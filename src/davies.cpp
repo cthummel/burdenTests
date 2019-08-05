@@ -2,6 +2,9 @@
 This entire file is a c++ implementation of the Davies Algorithm (1980). I have copied it from the ctf.cpp file from rvtests.
 They are the ones who adapted that old programming language to one that is more modern. Not me.
 */
+
+#ifndef davies_cpp
+#define davies_cpp
 #define UseDouble 0 /* all floating point double */
 
 #include <stdio.h>
@@ -513,7 +516,7 @@ l1:
     goto endofproc;
   }
   d2 = c - ctff(acc1, &un);
-  cout << "d2: " << d2 << endl;
+  //std::cout << "d2: " << d2 << std::endl;
   if (d2 < 0.0)
   {
     //std::cout << "We are outside the range of the distribution. Setting p-value to 0." << endl;
@@ -588,3 +591,5 @@ endofproc:
   trace[6] = (real)count;
   return qfval;
 }
+
+#endif

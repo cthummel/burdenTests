@@ -61,6 +61,17 @@ readInput::readInput(string dir, string tType, string geneRegionIndicator, strin
     }
     else if (testType == "skato")
     {
+        readVcfInitialInfo(userVcf);
+        buildPosMap(userVcf);
+        readCaseCount(userVcf);
+        readSampleNames(userVcf);
+        readPhenotype(phenoFile);
+        readCovariates(covFile);
+        if (variantRegion == "--g")
+        {
+            buildGeneInfo("orderedrefFlat.txt");
+            matchGenesOnTranscript();
+        }
     }
 }
 
@@ -273,12 +284,13 @@ void readInput::readPhenotype(string phenoFile)
     }
 }
 
+//Need a good method for reading covariates
 void readInput::readCovariates(string filename)
 {
     ifstream in;
     if(filename.compare("") == 0)
     {
-        covariates = gsl_matrix_calloc(variantCount, 1);
+        covariates = gsl_matrix_calloc(subjectCount + 2504, 1);
         gsl_matrix_set_all(covariates, 1);
     }
 }

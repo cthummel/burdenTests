@@ -251,19 +251,6 @@ vector<double> svm::checkPrecision(vector<int> predictions, vector<int> answers)
             }
         }
     }
-    if(TP == 0 && FP == 0)
-    {
-        //cout << predictions.size() << " = " << FN << " + " <<  TN << " = "<< (TN + FN) << " ?" << endl;
-        for(int i = 0; i < predictions.size(); i++)
-        {
-            if(predictions[i] == 1)
-            {
-                cout << "Yippee" << endl;
-            }
-            //cout << predictions[i] << ", " << answers[i] << endl;
-        }
-        //cout << "We making nans lads" << endl;
-    }
     precision = TP / (TP + FP);
     recall = TP / (TP + FN);
     fvalue = (2 * (precision * recall)) / (precision + recall);
