@@ -27,6 +27,7 @@ class dataCollector
       void readVcfInitialInfo(string filename, string region, string outfile);
       void readMaf(string filename, string region, string outfile);
       void bcfInput(string filename, string back, string region, string outfile);
+      void annotationParser(string filename, string back, string region, string outfile);
 
     int variantCount = 0;
     int subjectCount = 0;
