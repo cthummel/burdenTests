@@ -29,7 +29,7 @@ using namespace std;
 class wsbt
 {
 public:
-    wsbt(gsl_matrix* totalGenotype, int affectedCount, string gene, bool);
+    wsbt(gsl_matrix_short* totalGenotype, gsl_vector* CADDWeights, int affectedCount, string gene, bool exactPvalueCalc);
     void driverOutput();
     ~wsbt();
     
@@ -40,7 +40,7 @@ public:
     gsl_vector* getWeights(){return initialWeights;}
     
 private:
-    void recalculate();
+    void recalculate(gsl_vector* CADDWeights);
     double testStatistic();
     double exactTestStatistic();
     void shuffleMatrix();
@@ -59,8 +59,8 @@ private:
     gsl_rng *r = nullptr;
     gsl_permutation *subjectPerm = nullptr;
     
-    gsl_matrix* totalGenotype = nullptr;
-    gsl_matrix* changedGenotype = nullptr;
+    gsl_matrix_short* totalGenotype = nullptr;
+    gsl_matrix_short* changedGenotype = nullptr;
     gsl_vector* scores = nullptr;
     gsl_vector* testStatistics = nullptr;
     gsl_vector* weights = nullptr;

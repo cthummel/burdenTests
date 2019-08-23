@@ -10,7 +10,170 @@
 
 using namespace std;
 
-gsl_matrix* readGeno(int subjectCount, int variantCount, string genoFile, string testType)
+gsl_matrix_short* readGenoShort(int subjectCount, int variantCount, string genoFile, string testType)
+{
+    gsl_matrix_short* genotypeGslMatrix = gsl_matrix_short_alloc(variantCount, subjectCount);
+    string line = "";
+
+    if(genoFile == "-")
+    {
+        for (int i = 0; getline(std::cin, line); i++)
+        {
+            string::iterator it = line.begin();
+            bool missingData = false;
+            int missingCount = 0;
+            for (int j = 0; it != line.end(); j++)
+            {
+                //Skip space.
+                it++;
+                char leftAllele = *it++;
+                char phase = *it++;
+                char rightAllele = *it++;
+                int left = 0;
+                int right = 0;
+                if (leftAllele == '.')
+                {
+                    missingData = true;
+                    missingCount++;
+                    gsl_matrix_short_set(genotypeGslMatrix, i, j, -1);
+                }
+                //Not set up to handle multiallelic sites.
+                else if (leftAllele != '0')
+                {
+                    left = 1;
+                }
+                if (rightAllele == '.')
+                {
+                    //If we have already taken care of the missing data we dont need to again.
+                    if (leftAllele != '.')
+                    {
+                        missingData = true;
+                        missingCount++;
+                        gsl_matrix_short_set(genotypeGslMatrix, i, j, -1);
+                    }
+                    continue;
+                }
+                else if (rightAllele != '0')
+                {
+                    right = 1;
+                }
+                gsl_matrix_short_set(genotypeGslMatrix, i, j, left + right);
+            }
+
+            //Fix missing data points by imputing their value with the mean of the geno data for the variant
+            if (missingData && testType != "wsbt")
+            {
+                int alleleCount = 0;
+                int denominator = 0;
+                for (int j = 0; j < subjectCount; j++)
+                {
+                    //Getting counts of non-missing alleles
+                    if (gsl_matrix_short_get(genotypeGslMatrix, i, j) >= 0)
+                    {
+                        alleleCount += gsl_matrix_short_get(genotypeGslMatrix, i, j);
+                        denominator++;
+                    }
+                }
+                double mean = (1.0 * alleleCount) / denominator;
+                int fixed = 0;
+                for (int j = 0; j < subjectCount; j++)
+                {
+                    if (gsl_matrix_short_get(genotypeGslMatrix, i, j) < 0)
+                    {
+                        gsl_matrix_short_set(genotypeGslMatrix, i, j, mean);
+                        fixed++;
+                        if (fixed == missingCount)
+                        {
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+    }
+    else
+    {
+        ifstream in(genoFile);
+        for (int i = 0; getline(in, line); i++)
+        {
+            string::iterator it = line.begin();
+            bool missingData = false;
+            int missingCount = 0;
+            for (int j = 0; it != line.end(); j++)
+            {
+                //Skip space.
+                it++;
+                char leftAllele = *it++;
+                char phase = *it++;
+                char rightAllele = *it++;
+                int left = 0;
+                int right = 0;
+                if (leftAllele == '.')
+                {
+                    missingData = true;
+                    missingCount++;
+                    gsl_matrix_short_set(genotypeGslMatrix, i, j, -1);
+                }
+                //Not set up to handle multiallelic sites.
+                else if (leftAllele != '0')
+                {
+                    left = 1;
+                }
+                if (rightAllele == '.')
+                {
+                    //If we have already taken care of the missing data we dont need to again.
+                    if (leftAllele != '.')
+                    {
+                        missingData = true;
+                        missingCount++;
+                        gsl_matrix_short_set(genotypeGslMatrix, i, j, -1);
+                    }
+                    continue;
+                }
+                else if (rightAllele != '0')
+                {
+                    right = 1;
+                }
+                gsl_matrix_short_set(genotypeGslMatrix, i, j, left + right);
+            }
+
+            //Fix missing data points by imputing their value with the mean of the geno data for the variant
+            if (missingData && testType != "wsbt")
+            {
+                int alleleCount = 0;
+                int denominator = 0;
+                for (int j = 0; j < subjectCount; j++)
+                {
+                    //Getting counts of non-missing alleles
+                    if (gsl_matrix_short_get(genotypeGslMatrix, i, j) >= 0)
+                    {
+                        alleleCount += gsl_matrix_short_get(genotypeGslMatrix, i, j);
+                        denominator++;
+                    }
+                }
+                double mean = (1.0 * alleleCount) / denominator;
+                int fixed = 0;
+                for (int j = 0; j < subjectCount; j++)
+                {
+                    if (gsl_matrix_short_get(genotypeGslMatrix, i, j) < 0)
+                    {
+                        gsl_matrix_short_set(genotypeGslMatrix, i, j, mean);
+                        fixed++;
+                        if (fixed == missingCount)
+                        {
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+        in.close();
+    }
+
+    return genotypeGslMatrix;
+}
+
+gsl_matrix* readGenoDouble(int subjectCount, int variantCount, string genoFile, string testType)
 {
     gsl_matrix *genotypeGslMatrix = gsl_matrix_alloc(variantCount, subjectCount);
     string line = "";
@@ -375,14 +538,14 @@ int main(int argc, char *argv[])
         cout << "Case Count: " << caseCount << endl;
         cout << "DataFile: " << dataFile << endl;
         cout << endl;
-        gsl_matrix *data = readGeno(subjectCount, variantCount, dataFile, testType);
+        gsl_matrix_short *data = readGenoShort(subjectCount, variantCount, dataFile, testType);
         auto runStartTime = chrono::high_resolution_clock::now();
-        wsbt test = wsbt(data, caseCount, geneName, true);
+        wsbt test = wsbt(data, nullptr, caseCount, geneName, true);
         test.driverOutput();
         auto runEndTime = std::chrono::high_resolution_clock::now();
         cout << "Total runtime: " << std::chrono::duration_cast<std::chrono::milliseconds>(runEndTime - runStartTime).count() / 1000.0 << " seconds." << endl;
 
-        gsl_matrix_free(data);
+        gsl_matrix_short_free(data);
     }
     else if (strcmp(testType.c_str(), "skat") == 0)
     {
@@ -392,7 +555,7 @@ int main(int argc, char *argv[])
         cout << "DataFile: " << dataFile << endl;
         cout << "MafFile: " << mafFile << endl;
         cout << endl;
-        gsl_matrix *data = readGeno(subjectCount, variantCount, dataFile, testType);
+        gsl_matrix *data = readGenoDouble(subjectCount, variantCount, dataFile, testType);
         gsl_vector *maf = readMaf(variantCount, mafFile);
         gsl_matrix *cov = readCov(variantCount, covFile);
         gsl_vector *pheno = readPheno(subjectCount, caseCount, phenoFile);

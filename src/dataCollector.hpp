@@ -15,19 +15,24 @@ using namespace std;
 class dataCollector
 {
     public:
-      dataCollector(bool mergeData, string userVcf, string backFilename, string region, string test_type, int caseCount, int thread);
+      dataCollector(bool mergeData, bool CADD, string userVcf, string backFilename, string region, string test_type, int caseCount, int thread);
       ~dataCollector();
 
+      gsl_matrix_short* getShortGslGenotype(){return shortGenotypeGslMatrix;}
       gsl_matrix* getGslGenotype(){return genotypeGslMatrix;}
       gsl_vector* getMaf(){return maf;}
+      gsl_vector* getCADDWeights(){return CADDWeights;}
       int getCaseUniqueVariantCount(){return caseUniqueVariantCount;}
       int getBackgroundUniqueVariantCount(){return backgroundUniqueVariantCount;}
 
     private:
       void readVcfInitialInfo(string filename, string region, string outfile);
       void readMaf(string filename, string region, string outfile);
-      void bcfInput(string filename, string back, string region, string outfile);
+      void readCADD(string filename, string back, string region, string rawfile, string annoFile, string outfile);
+      void shortBcfInput(string filename, string back, string region, string outfile);
+      void doubleBcfInput(string filename, string back, string region, string outfile);
       void annotationParser(string filename, string back, string region, string outfile);
+      void weightImport(string region, string outfile);
 
     int variantCount = 0;
     int subjectCount = 0;
@@ -43,7 +48,9 @@ class dataCollector
     regex subjectCountMatch;
     regex variantCountMatch;
 
+    gsl_matrix_short* shortGenotypeGslMatrix = nullptr;
     gsl_matrix* genotypeGslMatrix = nullptr;
+    gsl_vector* CADDWeights = nullptr;
     gsl_vector* maf = nullptr;
 };
 

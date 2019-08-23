@@ -33,7 +33,7 @@ void handler(const char * reason, const char * file, int line, int gsl_errno)
 }
 
 //Returns true if all user data is missing. False otherwise.
-bool checkMissingData(gsl_matrix *data, int caseCount)
+bool checkMissingData(gsl_matrix_short *data, int caseCount)
 {
     if(data->size1 == 0)
     {
@@ -44,7 +44,7 @@ bool checkMissingData(gsl_matrix *data, int caseCount)
     {
         for (int j = 0; j < caseCount; j++)
         {
-            if (gsl_matrix_get(data, i, j) > -1)
+            if (gsl_matrix_short_get(data, i, j) > -1)
             {
                 return false;
             }
@@ -52,6 +52,7 @@ bool checkMissingData(gsl_matrix *data, int caseCount)
     }
     return true;
 }
+
 
 int main(int argc, const char *argv[])
 {
@@ -71,6 +72,7 @@ int main(int argc, const char *argv[])
     bool agnosticGeneRun = true;
     bool userBackgroundIncluded = true;
     bool exactPvalueCalculation = true;
+    bool useCADDWeights = false;
     auto startTime = chrono::high_resolution_clock::now();
     auto currentTime = startTime;
     auto lasttime = currentTime;
@@ -239,6 +241,13 @@ int main(int argc, const char *argv[])
             variantRegion = "exon";
             continue;
         }
+        if (strcmp(argv[i], "--CADD") == 0)
+        {
+            useCADDWeights = true;
+            string annotationFile = "echo '#Chr\\tPos\\tRef\\tAlt\\tRawScore\\tPHRED' > tmp/CADDNames.txt";
+            system(annotationFile.c_str()); 
+            continue;
+        } 
         //Test type parsing.
         if (strcmp(argv[i], "wsbt") == 0)
         {
@@ -324,7 +333,7 @@ int main(int argc, const char *argv[])
                 auto runStartTime = chrono::high_resolution_clock::now();
 
                 //Reads in genotype data from region.
-                dataCollector geneInput = dataCollector(userBackgroundIncluded, vcffilename, backfilename, *iter, testType, 1, omp_get_thread_num());
+                dataCollector geneInput = dataCollector(userBackgroundIncluded, useCADDWeights, vcffilename, backfilename, *iter, testType, 1, omp_get_thread_num());
                 //Run the test.
                 if(geneInput.getGslGenotype() == nullptr)
                 {
@@ -337,7 +346,12 @@ int main(int argc, const char *argv[])
                 }
                 else
                 {
-                    wsbt test = wsbt(geneInput.getGslGenotype(), geneInput.getGslGenotype()->size2 - 2504, *iter, exactPvalueCalculation);
+                    gsl_vector* CADDWeights = nullptr;
+                    if(useCADDWeights)
+                    {
+                        CADDWeights = geneInput.getCADDWeights();
+                    }
+                    wsbt test = wsbt(geneInput.getShortGslGenotype(), CADDWeights, geneInput.getShortGslGenotype()->size2 - 2504, *iter, exactPvalueCalculation);
                     test.driverOutput();
                     genes[i] = *iter;
                     pvalues[i] = test.getPvalue();
@@ -432,12 +446,12 @@ int main(int argc, const char *argv[])
                 effectSizes[i] = stoi(iter->second.substr(iter->second.find("-")+1)) - stoi(iter->second.substr(iter->second.find(":")+1, iter->second.find("-")));
 
                 //Reads in genotype data from region.
-                dataCollector geneInput = dataCollector(userBackgroundIncluded, vcffilename, backfilename, iter->second, testType, result.getCaseCount(), omp_get_thread_num());
-                variantCounts[i] = geneInput.getGslGenotype()->size1;
+                dataCollector geneInput = dataCollector(userBackgroundIncluded, useCADDWeights, vcffilename, backfilename, iter->second, testType, result.getCaseCount(), omp_get_thread_num());
+                variantCounts[i] = geneInput.getShortGslGenotype()->size1;
                 UserUniqueVariantCounts[i] = geneInput.getCaseUniqueVariantCount();
                 BackUniqueVariantCounts[i] = geneInput.getBackgroundUniqueVariantCount();
 
-                if(checkMissingData(geneInput.getGslGenotype(), result.getCaseCount()))
+                if(checkMissingData(geneInput.getShortGslGenotype(), result.getCaseCount()))
                 {
                     cout << "User data for " << iter->first << " contains no genotype data. Skipping test.\n" << endl;
                     genes[i] = iter->first;
@@ -477,7 +491,12 @@ int main(int argc, const char *argv[])
                 else
                 {
                     //Run the test.
-                    wsbt test = wsbt(geneInput.getGslGenotype(), result.getCaseCount(), iter->first, exactPvalueCalculation);
+                    gsl_vector* CADDWeights = nullptr;
+                    if(useCADDWeights)
+                    {
+                        CADDWeights = geneInput.getCADDWeights();
+                    }
+                    wsbt test = wsbt(geneInput.getShortGslGenotype(), CADDWeights, result.getCaseCount(), iter->first, exactPvalueCalculation);
                     if(exactPvalueCalculation)
                     {
                         omp_set_lock(&outputLock);
@@ -628,7 +647,7 @@ int main(int argc, const char *argv[])
                 advance(iter, i);
                 cout << "Running SKAT test on gene " << iter->first << endl;
                 //Read in genotpe data from file for this gene.
-                dataCollector geneInput = dataCollector(userBackgroundIncluded, vcffilename, backfilename, iter->second, testType, result.getCaseCount(), omp_get_thread_num());
+                dataCollector geneInput = dataCollector(userBackgroundIncluded, useCADDWeights, vcffilename, backfilename, iter->second, testType, result.getCaseCount(), omp_get_thread_num());
                 //Run Test
                 auto runStartTime = std::chrono::high_resolution_clock::now();
                 skat test = skat(geneInput.getGslGenotype(), geneInput.getMaf(), result.getCovariates(), result.getPheno());
@@ -709,7 +728,7 @@ int main(int argc, const char *argv[])
                 advance(iter, i);
                 cout << "Running SKATO test on gene " << iter->first << endl;
                 //Read in genotpe data from file for this gene.
-                dataCollector geneInput = dataCollector(userBackgroundIncluded, vcffilename, backfilename, iter->second, testType, result.getCaseCount(), omp_get_thread_num());
+                dataCollector geneInput = dataCollector(userBackgroundIncluded, useCADDWeights, vcffilename, backfilename, iter->second, testType, result.getCaseCount(), omp_get_thread_num());
                 //Run SKATO Test
                 auto runStartTime = std::chrono::high_resolution_clock::now();
                 skato skatoTest = skato(geneInput.getGslGenotype(), result.getCovariates(), geneInput.getMaf(), result.getPheno());
