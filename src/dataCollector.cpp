@@ -616,7 +616,8 @@ void dataCollector::readCADD(string filename, string back, string region, string
         system(annotationCommand.str().c_str());
     }
     string line;
-    ifstream in(outfile);
+    //ifstream in(outfile);
+    ifstream in("anno.txt");
     CADDWeights = gsl_vector_calloc(variantCount);
     for(int i = 0; i < variantCount; i++)
     {
