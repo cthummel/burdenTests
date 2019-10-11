@@ -3,11 +3,9 @@ import pandas as pd
 import math, sys, getopt, gzip, random
 from sklearn import svm
 from sklearn.linear_model import LogisticRegression
-
-sys.path.insert(0, "~/burdenTest/PyVCF/vcf")
-
-import vcf
-
+from sklearn.metrics import roc_curve, auc
+from sklearn.model_selection import train_test_split
+from imblearn.over_sampling import SMOTENC
 
 def read(path):
     reval = []
@@ -195,8 +193,18 @@ def main(argv):
     #print(np.sum(Y))  
     backData = backData.drop(columns=['IMPACT_HIGH', 'Consequence'])
     backData = backData.drop(columns=['Allele', 'SYMBOL', 'Gene', 'Feature_type', 'Feature', 'BIOTYPE', 'EXON', 'INTRON', 'HGVSc', 'HGVSp', 'cDNA_position', 'CDS_position', 'Protein_position', 'Amino_acids', 'Codons', 'Existing_variation', 'DISTANCE', 'STRAND', 'FLAGS', 'SYMBOL_SOURCE', 'HGNC_ID'])
-    model = LogisticRegression(random_state=0, solver='liblinear', fit_intercept=True, C=10.0).fit(backConsequenceData, np.ravel(Y), sample_weight=w)
+    
+    
+    
+    smote_nc = SMOTENC(categorical_features=np.arange(0,24), random_state=0)
+    X_resampled, y_resampled = smote_nc.fit_resample(backData, Y)
 
+    print("Array Shapes", np.shape(X_resampled), np.shape(y_resampled))
+    
+    print("X_resampled, y_resampled", X_resampled, y_resampled)
+    
+    #model = LogisticRegression(random_state=0, solver='liblinear', fit_intercept=True, C=10.0).fit(backConsequenceData, np.ravel(Y), sample_weight=w)
+    model = LogisticRegression(random_state=0, solver='liblinear', fit_intercept=True, C=10.0).fit(X_resampled, np.ravel(y_resampled), sample_weight=w)
     #data = pd.get_dummies(data=data, columns=['IMPACT'],  prefix=['IMPACT'])
     #data = data.drop(columns=['IMPACT', 'Consequence'])
     #data = data.drop(columns=['Allele', 'SYMBOL', 'Gene', 'Feature_type', 'Feature', 'BIOTYPE', 'EXON', 'INTRON', 'HGVSc', 'HGVSp', 'cDNA_position', 'CDS_position', 'Protein_position', 'Amino_acids', 'Codons', 'Existing_variation', 'DISTANCE', 'STRAND', 'FLAGS', 'SYMBOL_SOURCE', 'HGNC_ID'])
@@ -204,9 +212,9 @@ def main(argv):
 
     
 
-    causitiveVariants = model.predict(userConsequenceData)
+    causitiveVariants = model.predict(userConsequenceData.iloc[:,0:23])
     print(causitiveVariants, np.sum(causitiveVariants))
-    scores = model.predict_proba(userConsequenceData)
+    scores = model.predict_proba(userConsequenceData.iloc[:,0:23])
     print(scores)
     index = 0
     nonzeroColumns = []

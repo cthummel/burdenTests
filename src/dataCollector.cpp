@@ -45,6 +45,10 @@ dataCollector::dataCollector(bool userBackgroundIncluded, bool includeCADDWeight
                 {
                     readCADD(user, back, region, "tmp/annoRaw" + to_string(thread_ID) + ".tsv", "tmp/anno" + to_string(thread_ID) + ".tsv","tmp/CADD" + to_string(thread_ID)+ ".txt");
                 }
+                if(caseUniqueVariantCount > 0)
+                {
+                    setAverageImpact(userUniques, caseUniqueVariantCount, region, "tmp/impact" + to_string(thread_ID) + ".txt");
+                }
             }
             else
             {
@@ -224,7 +228,7 @@ void dataCollector::shortBcfInput(string filename, string back, string region, s
                             + externals_loc + "bcftools query -f '[ %GT]\\n' - > " + outfile;
         system(mergeCommand.c_str());
     }
-
+    userUniques = vector<int>(shortGenotypeGslMatrix->size1, 0);
     string currentChrom;
     in.open(outfile);
     for(int i = 0; i < shortGenotypeGslMatrix->size1; i++)
@@ -309,6 +313,7 @@ void dataCollector::shortBcfInput(string filename, string back, string region, s
         if(uniqueCaseVariant)
         {
             caseUniqueVariantCount++;
+            userUniques[i] = 1;
         }
         if(uniqueBackVariant)
         {
@@ -385,15 +390,16 @@ void dataCollector::doubleBcfInput(string filename, string back, string region, 
     }
 
     string currentChrom;
+    userUniques = vector<int>(genotypeGslMatrix->size1, 0);
     in.open(outfile);
     for(int i = 0; i < genotypeGslMatrix->size1; i++)
     {
         getline(in, line);
         string::iterator it = line.begin();
-        if(line.length() / 4 != genotypeGslMatrix->size2)
-        {
-            cerr << "The vcf genotype data for gene " << region << " in line " << i << " has length=" << line.length() / 4 << " while subjectCount is " << genotypeGslMatrix->size2 << endl;
-        }
+        //if(line.length() / 4 != genotypeGslMatrix->size2)
+        //{
+            //cerr << "The vcf genotype data for gene " << region << " in line " << i << " has length=" << line.length() / 4 << " while subjectCount is " << genotypeGslMatrix->size2 << endl;
+        //}
         //Used for SKAT test to impute missing genotypes.
         bool missingData = false;
         int missingCount = 0;
@@ -468,6 +474,8 @@ void dataCollector::doubleBcfInput(string filename, string back, string region, 
         if(uniqueCaseVariant)
         {
             caseUniqueVariantCount++;
+            cout << "found unique variant" << endl;
+            userUniques[i] = 1;
         }
         if(uniqueBackVariant)
         {
@@ -635,5 +643,72 @@ void dataCollector::readCADD(string filename, string back, string region, string
     }
 
 
+}
+
+void dataCollector::setAverageImpact(vector<int> userUnique, int uniqueCount, string region, string outfile)
+{
+    double result = 0;
+    string command = externals_loc + "bcftools query -r " + region + " -f '%INFO/CSQ\\n' " + userFile + " > " + outfile;
+    system(command.c_str());
+
+    string line;
+    ifstream in(outfile);
+    for(int i = 0; i < shortGenotypeGslMatrix->size1; i++)
+    {
+        getline(in, line);
+        if(userUnique[i] == 1)
+        {
+            size_t lastPos = 0;
+            size_t currentPos = 0;
+            int variantMaxImpact = 0;
+            while (currentPos != string::npos)
+            {
+                for (int j = 0; j < 3; j++)
+                {
+                    lastPos = currentPos;
+                    currentPos = line.find("|", lastPos) + 1;
+                }
+                string impactString = line.substr(lastPos, currentPos - lastPos - 1);
+
+                if (impactString == "MODIFIER")
+                {
+                    if(variantMaxImpact < 1)
+                    {
+                        variantMaxImpact = 1;
+                    }
+                }
+                else if (impactString == "LOW")
+                {
+                    if(variantMaxImpact < 2)
+                    {
+                        variantMaxImpact = 2;
+                    }
+                }
+                else if (impactString == "MODERATE")
+                {
+                    if(variantMaxImpact < 3)
+                    {
+                        variantMaxImpact = 3;
+                    }
+                }
+                else
+                {
+                    if(variantMaxImpact < 4)
+                    {
+                        variantMaxImpact = 4;
+                    }
+                }
+
+                currentPos = line.find(",", lastPos);
+                if (currentPos != string::npos)
+                {
+                    currentPos += 1;
+                }
+                lastPos = currentPos;
+            }
+            result += variantMaxImpact;
+        }
+    }
+    averageImpact = result / uniqueCount;
 }
 

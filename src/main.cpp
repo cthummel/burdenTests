@@ -424,6 +424,7 @@ int main(int argc, const char *argv[])
             vector<double> pvalues(regions.size());
             vector<vector<double>> scores(regions.size(), vector<double>(result.getCaseCount()));
             vector<double> testStats(regions.size());
+            vector<double> averageImpacts(regions.size());
 
             //int index = 0;
             int skipped = 0;
@@ -434,7 +435,7 @@ int main(int argc, const char *argv[])
             {
                 out << result.getSampleNames()->at(i) << "_Score\t";
             }
-            out << "TestStat\tPvalue\tRegionSize\tCaseUniqueVariants\tBackgroundUniqueVariants\tTotalVariants" << endl;
+            out << "TestStat\tPvalue\tRegionSize\tCaseUniqueVariants\tBackgroundUniqueVariants\tTotalVariants\tAverageImpact" << endl;
 
             #pragma omp parallel for schedule(dynamic)
             for (int i = 0; i < regions.size(); i++)
@@ -457,6 +458,7 @@ int main(int argc, const char *argv[])
                     genes[i] = iter->first;
                     locations[i] = iter->second;
                     pvalues[i] = -1;
+                    averageImpacts[i] = geneInput.getAverageImpact();
                     for(int j = 0; j < result.getCaseCount(); j++)
                     {
                         scores[i][j] = -9999;
@@ -471,7 +473,7 @@ int main(int argc, const char *argv[])
                             cout << scores[i][j] << "\t";
                         }
                         cout << testStats[i] << "\t" << pvalues[i] << "\t" << effectSizes[i] << "\t" << UserUniqueVariantCounts[i] << "\t"
-                             << BackUniqueVariantCounts[i] << "\t" << variantCounts[i] << endl;
+                             << BackUniqueVariantCounts[i] << "\t" << variantCounts[i] << "\t" << geneInput.getAverageImpact() << endl;
                         omp_unset_lock(&outputLock);
                     }
                     else
@@ -483,7 +485,7 @@ int main(int argc, const char *argv[])
                             out << scores[i][j] << "\t";
                         }
                         out << testStats[i] << "\t" << pvalues[i] << "\t" << effectSizes[i] << "\t" << UserUniqueVariantCounts[i] << "\t"
-                            << BackUniqueVariantCounts[i] << "\t" << variantCounts[i] << endl;
+                            << BackUniqueVariantCounts[i] << "\t" << variantCounts[i] << "\t" << geneInput.getAverageImpact() << endl;
                         omp_unset_lock(&outputLock);
                     }
                     
@@ -508,6 +510,7 @@ int main(int argc, const char *argv[])
                         scores[i] = test.getScores();
                         testStats[i] = test.getTestStat();
                         pvalues[i] = test.getPvalue();
+                        averageImpacts[i] = geneInput.getAverageImpact();
                         
 
                         if (outputFileName == "")
@@ -519,7 +522,7 @@ int main(int argc, const char *argv[])
                                 cout << scores[i][j] << "\t";
                             } 
                             cout << testStats[i] << "\t" << pvalues[i] << "\t" << effectSizes[i] << "\t" << UserUniqueVariantCounts[i] << "\t" 
-                            << BackUniqueVariantCounts[i] << "\t" << variantCounts[i] << endl;
+                            << BackUniqueVariantCounts[i] << "\t" << variantCounts[i] << "\t" << geneInput.getAverageImpact() << endl;
                             omp_unset_lock(&outputLock);
                         }
                         else
@@ -531,7 +534,7 @@ int main(int argc, const char *argv[])
                                 out << scores[i][j] << "\t";
                             } 
                             out << testStats[i] << "\t" << pvalues[i] << "\t" << effectSizes[i] << "\t" << UserUniqueVariantCounts[i] << "\t" 
-                            << BackUniqueVariantCounts[i] << "\t" << variantCounts[i] << endl;
+                            << BackUniqueVariantCounts[i] << "\t" << variantCounts[i] << "\t" << geneInput.getAverageImpact() << endl;
                             omp_unset_lock(&outputLock);
                         }
                     }
@@ -557,7 +560,7 @@ int main(int argc, const char *argv[])
                 {
                     out << result.getSampleNames()->at(i) << "_Score\t";
                 }
-                out << "TestStat\tPvalue\tRegionSize\tCaseUniqueVariants\tBackgroundUniqueVariants\tTotalVariants" << endl;
+                out << "TestStat\tPvalue\tRegionSize\tCaseUniqueVariants\tBackgroundUniqueVariants\tTotalVariants\tAverageImpact" << endl;
 
                 //Data
                 for (int i = 0; i < pvalues.size(); i++)
@@ -569,7 +572,7 @@ int main(int argc, const char *argv[])
                         out << scores[perm[i]][j] << "\t"; 
                     } 
                     out << testStats[perm[i]] << "\t" << pvalues[perm[i]] << "\t" << effectSizes[perm[i]] << "\t" << UserUniqueVariantCounts[perm[i]] 
-                    << "\t" << BackUniqueVariantCounts[perm[i]] << "\t" << variantCounts[perm[i]] << endl;
+                    << "\t" << BackUniqueVariantCounts[perm[i]] << "\t" << variantCounts[perm[i]] << "\t" << averageImpacts[perm[i]] << endl;
                 }
                 out.close();
             }

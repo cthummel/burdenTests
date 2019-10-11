@@ -24,6 +24,7 @@ class dataCollector
       gsl_vector* getCADDWeights(){return CADDWeights;}
       int getCaseUniqueVariantCount(){return caseUniqueVariantCount;}
       int getBackgroundUniqueVariantCount(){return backgroundUniqueVariantCount;}
+      double getAverageImpact(){return averageImpact;}
 
     private:
       void readVcfInitialInfo(string filename, string region, string outfile);
@@ -33,12 +34,14 @@ class dataCollector
       void doubleBcfInput(string filename, string back, string region, string outfile);
       void annotationParser(string filename, string back, string region, string outfile);
       void weightImport(string region, string outfile);
+      void setAverageImpact(vector<int> userUniqueVariants, int uniqueCount, string region, string outfile);
 
     int variantCount = 0;
     int subjectCount = 0;
     int caseCount = 0;
     int caseUniqueVariantCount = 0;
     int backgroundUniqueVariantCount = 0;
+    double averageImpact = 0;
     bool preMerged = false;
     string userFile = "";
     string backFile = "";
@@ -47,6 +50,7 @@ class dataCollector
     string externals_loc = "../../externals/bin/";
     regex subjectCountMatch;
     regex variantCountMatch;
+    vector<int> userUniques;
 
     gsl_matrix_short* shortGenotypeGslMatrix = nullptr;
     gsl_matrix* genotypeGslMatrix = nullptr;
