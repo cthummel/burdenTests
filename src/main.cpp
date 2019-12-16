@@ -425,6 +425,7 @@ int main(int argc, const char *argv[])
             vector<vector<double>> scores(regions.size(), vector<double>(result.getCaseCount()));
             vector<double> testStats(regions.size());
             vector<double> averageImpacts(regions.size());
+            vector<bool> geneNoData(regions.size());
 
             //int index = 0;
             int skipped = 0;
@@ -448,56 +449,61 @@ int main(int argc, const char *argv[])
 
                 //Reads in genotype data from region.
                 dataCollector geneInput = dataCollector(userBackgroundIncluded, useCADDWeights, vcffilename, backfilename, iter->second, testType, result.getCaseCount(), omp_get_thread_num());
-                variantCounts[i] = geneInput.getShortGslGenotype()->size1;
-                UserUniqueVariantCounts[i] = geneInput.getCaseUniqueVariantCount();
-                BackUniqueVariantCounts[i] = geneInput.getBackgroundUniqueVariantCount();
+                // variantCounts[i] = geneInput.getShortGslGenotype()->size1;
+                // UserUniqueVariantCounts[i] = geneInput.getCaseUniqueVariantCount();
+                // BackUniqueVariantCounts[i] = geneInput.getBackgroundUniqueVariantCount();
 
-                if(checkMissingData(geneInput.getShortGslGenotype(), result.getCaseCount()))
+                if(!geneInput.containsUserVariants())
                 {
-                    cout << "User data for " << iter->first << " contains no genotype data. Skipping test.\n" << endl;
-                    genes[i] = iter->first;
-                    locations[i] = iter->second;
+                    //cout << "User data for " << iter->first << " contains no genotype data. Skipping test.\n" << endl;
+                    // genes[i] = iter->first;
+                    // locations[i] = iter->second;
                     pvalues[i] = -1;
-                    averageImpacts[i] = geneInput.getAverageImpact();
-                    for(int j = 0; j < result.getCaseCount(); j++)
-                    {
-                        scores[i][j] = -9999;
-                    }
-                    testStats[i] = -9999;
-                    if(outputFileName == "")
-                    {
-                        omp_set_lock(&outputLock);
-                        cout << genes[i] << "\t" << locations[i] << "\t";
-                        for (int j = 0; j < result.getCaseCount(); j++)
-                        {
-                            cout << scores[i][j] << "\t";
-                        }
-                        cout << testStats[i] << "\t" << pvalues[i] << "\t" << effectSizes[i] << "\t" << UserUniqueVariantCounts[i] << "\t"
-                             << BackUniqueVariantCounts[i] << "\t" << variantCounts[i] << "\t" << geneInput.getAverageImpact() << endl;
-                        omp_unset_lock(&outputLock);
-                    }
-                    else
-                    {
-                        omp_set_lock(&outputLock);
-                        out << genes[i] << "\t" << locations[i] << "\t";
-                        for (int j = 0; j < result.getCaseCount(); j++)
-                        {
-                            out << scores[i][j] << "\t";
-                        }
-                        out << testStats[i] << "\t" << pvalues[i] << "\t" << effectSizes[i] << "\t" << UserUniqueVariantCounts[i] << "\t"
-                            << BackUniqueVariantCounts[i] << "\t" << variantCounts[i] << "\t" << geneInput.getAverageImpact() << endl;
-                        omp_unset_lock(&outputLock);
-                    }
-                    
+                    // averageImpacts[i] = -1;
+                    geneNoData[i] = true;
+                    // for(int j = 0; j < result.getCaseCount(); j++)
+                    // {
+                    //     scores[i][j] = -9999;
+                    // }
+                    // testStats[i] = -9999;
+                    // if(outputFileName == "")
+                    // {
+                    //     omp_set_lock(&outputLock);
+                    //     cout << genes[i] << "\t" << locations[i] << "\t";
+                    //     for (int j = 0; j < result.getCaseCount(); j++)
+                    //     {
+                    //         cout << scores[i][j] << "\t";
+                    //     }
+                    //     cout << testStats[i] << "\t" << pvalues[i] << "\t" << effectSizes[i] << "\t" << UserUniqueVariantCounts[i] << "\t"
+                    //          << BackUniqueVariantCounts[i] << "\t" << variantCounts[i] << "\t" << geneInput.getAverageImpact() << endl;
+                    //     omp_unset_lock(&outputLock);
+                    // }
+                    // else
+                    // {
+                    //     omp_set_lock(&outputLock);
+                    //     out << genes[i] << "\t" << locations[i] << "\t";
+                    //     for (int j = 0; j < result.getCaseCount(); j++)
+                    //     {
+                    //         out << scores[i][j] << "\t";
+                    //     }
+                    //     out << testStats[i] << "\t" << pvalues[i] << "\t" << effectSizes[i] << "\t" << UserUniqueVariantCounts[i] << "\t"
+                    //         << BackUniqueVariantCounts[i] << "\t" << variantCounts[i] << "\t" << geneInput.getAverageImpact() << endl;
+                    //     omp_unset_lock(&outputLock);
+                    // }
                 }
                 else
                 {
                     //Run the test.
+                    variantCounts[i] = geneInput.getShortGslGenotype()->size1;
+                    UserUniqueVariantCounts[i] = geneInput.getCaseUniqueVariantCount();
+                    BackUniqueVariantCounts[i] = geneInput.getBackgroundUniqueVariantCount();
+
                     gsl_vector* CADDWeights = nullptr;
                     if(useCADDWeights)
                     {
                         CADDWeights = geneInput.getCADDWeights();
                     }
+
                     wsbt test = wsbt(geneInput.getShortGslGenotype(), CADDWeights, result.getCaseCount(), iter->first, exactPvalueCalculation);
                     if(exactPvalueCalculation)
                     {
@@ -511,7 +517,7 @@ int main(int argc, const char *argv[])
                         testStats[i] = test.getTestStat();
                         pvalues[i] = test.getPvalue();
                         averageImpacts[i] = geneInput.getAverageImpact();
-                        
+                        geneNoData[i] = false;
 
                         if (outputFileName == "")
                         {
@@ -565,14 +571,17 @@ int main(int argc, const char *argv[])
                 //Data
                 for (int i = 0; i < pvalues.size(); i++)
                 {
-                    //perm contains the sorted order.
-                    out << genes[perm[i]] << "\t" << locations[perm[i]] << "\t";
-                    for(int j = 0; j < result.getCaseCount(); j++)
+                    if(geneNoData[perm[i]] == false)
                     {
-                        out << scores[perm[i]][j] << "\t"; 
-                    } 
-                    out << testStats[perm[i]] << "\t" << pvalues[perm[i]] << "\t" << effectSizes[perm[i]] << "\t" << UserUniqueVariantCounts[perm[i]] 
-                    << "\t" << BackUniqueVariantCounts[perm[i]] << "\t" << variantCounts[perm[i]] << "\t" << averageImpacts[perm[i]] << endl;
+                        //perm contains the sorted order.
+                        out << genes[perm[i]] << "\t" << locations[perm[i]] << "\t";
+                        for(int j = 0; j < result.getCaseCount(); j++)
+                        {
+                            out << scores[perm[i]][j] << "\t"; 
+                        } 
+                        out << testStats[perm[i]] << "\t" << pvalues[perm[i]] << "\t" << effectSizes[perm[i]] << "\t" << UserUniqueVariantCounts[perm[i]] 
+                        << "\t" << BackUniqueVariantCounts[perm[i]] << "\t" << variantCounts[perm[i]] << "\t" << averageImpacts[perm[i]] << endl;
+                    }
                 }
                 out.close();
             }

@@ -28,7 +28,7 @@ dataCollector::dataCollector(bool userBackgroundIncluded, bool includeCADDWeight
         }
         else
         {
-            cout << "Data set did not contain variants in " << region << "." << endl;
+            //cout << "Data set did not contain variants in " << region << "." << endl;
         }
         
     }
@@ -52,7 +52,7 @@ dataCollector::dataCollector(bool userBackgroundIncluded, bool includeCADDWeight
             }
             else
             {
-                cout << "Data set did not contain variants in " << region << "." << endl;
+                //cout << "Data set did not contain variants in " << region << "." << endl;
             }
             
         }

@@ -48,11 +48,14 @@ private:
     void matchGenesOnTranscript();
     void matchGenesOnExons();
     void readSampleNames(string filename);
+    void readAllGenes(string filename);
 
     int variantCount = 0;
     int subjectCount = 0;
     int caseCount = 0;
     bool preMerged;
+    bool skipXChrom;
+    bool skipYChrom;
     string userFile;
     string backFile;
     string variantRegion;

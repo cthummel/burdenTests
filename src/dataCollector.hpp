@@ -25,6 +25,7 @@ class dataCollector
       int getCaseUniqueVariantCount(){return caseUniqueVariantCount;}
       int getBackgroundUniqueVariantCount(){return backgroundUniqueVariantCount;}
       double getAverageImpact(){return averageImpact;}
+      bool containsUserVariants(){if (variantCount == 0){return false;}else{return true;}}
 
     private:
       void readVcfInitialInfo(string filename, string region, string outfile);
