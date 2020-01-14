@@ -46,6 +46,7 @@ private:
     void buildGeneInfo(string filename);
     void buildPosMap(string filename);
     void matchGenesOnTranscript();
+    void matchGenesOnTranscriptv2();
     void matchGenesOnExons();
     void readSampleNames(string filename);
     void readAllGenes(string filename);

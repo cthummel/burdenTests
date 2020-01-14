@@ -484,6 +484,8 @@ void readInput::matchGenesOnTranscript()
             continue;
         }
 
+        //Honestly this take forever on 87 Million variants because we have to search 40Mill+ each time.
+        //Lets try a better search method.
         //Iterate through all the variants in a chromosome to find gene matches.
         for (int j = 0; j < posMap[info[i].geneChrom].size(); j++)
         {
@@ -528,6 +530,121 @@ void readInput::matchGenesOnTranscript()
     //Dont need the posMap anymore.
     posMap.clear();
 }
+
+
+//Not working yet. Need to finalize the skip forward step.
+void readInput::matchGenesOnTranscriptv2()
+{
+    //cout << endl << "Looking through " << info.size() << " gene entries." << endl;
+    
+    for (std::map<std::string, vector<int>>::iterator it = posMap.begin(); it != posMap.end(); ++it)
+    {
+        vector<int> *currentPositionsInChromosome = &it->second;
+        for(int i = 0; i < currentPositionsInChromosome->size(); ++i)
+        {
+            int positionsToMoveRight = 0;
+            for(int j = 0; j < info.size(); ++j)
+            {
+                if(info[j].geneChrom == it->first)
+                {
+                    if(currentPositionsInChromosome->at(i) >= info[j].txStartPos && currentPositionsInChromosome->at(i) <= info[j].txEndPos)
+                    {
+                        //Try and enter the gene into the list of present genes.
+                        pair<map<string, string>::iterator, bool> duplicate;
+                        duplicate = regions.insert(pair<string, string>(info[j].geneName, info[j].region));
+                        //This gene was a duplicate of another already entered in. Take the largest transcript region.
+                        if (duplicate.second == false)
+                        {
+                            string oldRegion = regions[info[j].geneName];
+                            int oldStart = genePosMap[info[j].geneName].first;
+                            int oldEnd = genePosMap[info[j].geneName].second;
+                            int newWidth = info[j].txEndPos - info[j].txStartPos;
+                            if (newWidth > (oldEnd - oldStart))
+                            {
+                                regions[info[j].geneName] = info[j].region;
+                                genePosMap[info[j].geneName] = pair<int, int>(info[j].txStartPos, info[j].txEndPos);
+                            }
+                            if(newWidth > positionsToMoveRight)
+                            {
+                                positionsToMoveRight = newWidth;
+                            }
+                        }
+                        else
+                        {
+                            cout << "Matched variant(s) to gene " << info[j].geneName << " in region " << info[j].geneChrom << ":" << info[j].txStartPos << "-" << info[j].txEndPos << endl;
+                            if (info[j].txEndPos - info[j].txStartPos > positionsToMoveRight)
+                            {
+                                positionsToMoveRight = info[j].txEndPos - info[j].txStartPos;
+                            }
+                            genePosMap.insert(pair<string, pair<int, int>>(info[j].geneName, pair<int, int>(info[j].txStartPos, info[j].txEndPos)));
+                        }
+                    }
+
+                    //Increment the position count until we have a position not in the current gene.
+                }
+            }
+        }
+    }
+
+
+
+
+    for (int i = 0; i < info.size(); i++)
+    {
+        bool geneFound = false;
+        //Check if the chromosome of current gene is even in the data set.
+        if (posMap.find(info[i].geneChrom) == posMap.end())
+        {
+            continue;
+        }
+
+        //Honestly this take forever on 87 Million variants because we have to search 40Mill+ each time.
+        //Lets try a better search method.
+        //Iterate through all the variants in a chromosome to find gene matches.
+        for (int j = 0; j < posMap[info[i].geneChrom].size(); j++)
+        {
+            //Consider not searching the early positions multiple times. Could initiate j to the last seen useful position.
+            if (posMap[info[i].geneChrom][j] >= info[i].txStartPos && posMap[info[i].geneChrom][j] <= info[i].txEndPos)
+            {
+                //Try and enter the gene into the list of present genes.
+                pair<map<string, string>::iterator, bool> duplicate;
+                duplicate = regions.insert(pair<string, string>(info[i].geneName, info[i].region));
+                //This gene was a duplicate of another already entered in. Take the largest transcript region.
+                if(duplicate.second == false)
+                {
+                    string oldRegion = regions[info[i].geneName];
+                    int oldStart = genePosMap[info[i].geneName].first;
+                    int oldEnd = genePosMap[info[i].geneName].second;
+                    int newWidth = info[i].txEndPos - info[i].txStartPos;
+                    if(newWidth > (oldEnd - oldStart))
+                    {
+                        regions[info[i].geneName] = info[i].region;
+                        genePosMap[info[i].geneName] = pair<int, int>(info[i].txStartPos, info[i].txEndPos);
+                    }
+                }
+                else
+                {
+                    cout << "Matched variant(s) to gene " << info[i].geneName << " in region " << info[i].geneChrom << ":" << info[i].txStartPos << "-" << info[i].txEndPos << endl;
+                    genePosMap.insert(pair<string, pair<int, int>>(info[i].geneName, pair<int,int>(info[i].txStartPos,info[i].txEndPos)));
+                }
+                geneFound = true;
+            }
+            if (posMap[info[i].geneChrom][j] > info[i].txEndPos || geneFound)
+            {
+                break;
+            }
+        }
+    }
+    cout << "Matched variant(s) to " << regions.size() << " unique genes." << endl;
+    for(map<string,string>::iterator it = regions.begin(); it != regions.end(); it++)
+    {
+        //cout << "Matched variant(s) to gene " << it->first << " in region " << it->second << endl;
+    }
+    
+    //Dont need the posMap anymore.
+    posMap.clear();
+}
+
 
 void readInput::matchGenesOnExons()
 {

@@ -91,6 +91,7 @@ int main(int argc, const char *argv[])
     }
 
     //Check for proper argument formatting and filetypes.
+    //This loop does full command line processing required.
     for (int i = 1; i < argc; i++)
     {
         //File parsing.
@@ -301,9 +302,11 @@ int main(int argc, const char *argv[])
         }
     }
 
-    //Run input on the given test and save results in Input
+    //Runs the Weighted Sums Burden Test based off parameters passed in on command line.
+    //User can enter a set of genes or run agnostically.
     if (testType == "wsbt")
     {
+        //Runs if the User provides a set of genes.
         if(geneList.size() > 0)
         {
             cout << "---Running WSBT in region mode---" << endl;
@@ -324,6 +327,7 @@ int main(int argc, const char *argv[])
             ofstream out(outputFileName + ".tsv");
             out << "Region\tScore\tTestStat\tPvalue" << endl;
 
+            //Use OMP for multithreading.
             #pragma omp parallel for schedule(dynamic)
             for (int i = 0; i < geneList.size(); i++)
             {
@@ -334,7 +338,7 @@ int main(int argc, const char *argv[])
 
                 //Reads in genotype data from region.
                 dataCollector geneInput = dataCollector(userBackgroundIncluded, useCADDWeights, vcffilename, backfilename, *iter, testType, 1, omp_get_thread_num());
-                //Run the test.
+                //Check ff there is no data for the requested gene.
                 if(geneInput.getGslGenotype() == nullptr)
                 {
                     cout << "Gene in region " << *iter << " has no variants in data sets. --Skipping--" << endl;
@@ -344,6 +348,7 @@ int main(int argc, const char *argv[])
                     testStats[i] = -9999;
                     skipped++; 
                 }
+                //Run test
                 else
                 {
                     gsl_vector* CADDWeights = nullptr;
@@ -359,6 +364,7 @@ int main(int argc, const char *argv[])
                     testStats[i] = test.getTestStat();
                 }
                 
+                //Use OMP thread locks so output isnt mangled.
                 omp_set_lock(&outputLock);
                 out << genes[i] << "\t" << scores[i] << "\t" << testStats[i] << "\t" << pvalues[i] << endl;
                 omp_unset_lock(&outputLock);
@@ -369,6 +375,7 @@ int main(int argc, const char *argv[])
             }
             out.close();
 
+            //Post run output.
             gsl_sort_index(perm, pvalues.data(), 1, pvalues.size());
             out.open("sorted_" + outputFileName + ".tsv");
             out << "Region\tScore\tTestStat\tPvalue\tEffectSize\tCaseUniqueVariants\tTotalVariants" << endl;
@@ -381,6 +388,7 @@ int main(int argc, const char *argv[])
             }
             out.close();
 
+            //Run Fisher test.
             double fisherStat = 0;
             int geneCount = 0;
             for (int i = 0; i < pvalues.size(); i++)
@@ -402,9 +410,15 @@ int main(int argc, const char *argv[])
             double fisherPvalue = gsl_cdf_chisq_Q(fisherStat, 2 * geneCount);
             cout << "Fisher product test statistic for " << geneList.size() - skipped << " gene(s) is " << fisherStat << " with pvalue " << fisherPvalue << endl;
         }
+        //Runs Agnostic gene run on all genes in OrderedRefFlat.txt
         else if (agnosticGeneRun)
         {
+            //Read in data
             cout << "Starting gene agnostic run of the Weighted Sums Burden Test." << endl;
+            if(exactPvalueCalculation)
+            {
+                cout << "Running with exact p-value calculation." << endl;
+            }
             readInput result = readInput(currentDir, testType, variantRegion, vcffilename, region, phenofilename, covfilename);
             currentTime = std::chrono::high_resolution_clock::now();
             cout << endl;
@@ -414,6 +428,7 @@ int main(int argc, const char *argv[])
 
             map<string, string> regions = result.getRegions();
 
+            //Output Vectors.
             size_t perm[regions.size()];
             vector<string> genes(regions.size());
             vector<string> locations(regions.size());
@@ -425,7 +440,7 @@ int main(int argc, const char *argv[])
             vector<vector<double>> scores(regions.size(), vector<double>(result.getCaseCount()));
             vector<double> testStats(regions.size());
             vector<double> averageImpacts(regions.size());
-            vector<bool> geneNoData(regions.size());
+            vector<bool> geneNoData(regions.size(), false);
 
             //int index = 0;
             int skipped = 0;
