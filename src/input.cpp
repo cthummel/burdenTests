@@ -669,22 +669,25 @@ void readInput::matchGenesOnExons()
                     //Try and enter the gene into the list of present genes.
                     pair<map<string, string>::iterator, bool> duplicate;
                     duplicate = regions.insert(pair<string, string>(info[i].geneName, info[i].region));
-                    //This gene was a duplicate of another already entered in. Take the largest transcript region.
+                    //This gene was a duplicate of another already entered in. Merge exon regions to avoid variant double counts.
                     if (duplicate.second == false)
                     {
-                        string oldRegion = regions[info[i].geneName];
-                        int oldStart = genePosMap[info[i].geneName].first;
-                        int oldEnd = genePosMap[info[i].geneName].second;
-                        int newWidth = info[i].txEndPos - info[i].txStartPos;
-                        if (newWidth > (oldEnd - oldStart))
-                        {
-                            regions[info[i].geneName] = info[i].region;
-                            genePosMap[info[i].geneName] = pair<int, int>(info[i].txStartPos, info[i].txEndPos);
-                        }
+                        cout << "Duplicate record for " << info[i].geneName << ". Updating entry with combined range." << endl;
+                        vector<int> oldStarts = geneExonPosMap[info[i].geneName].first;
+                        vector<int> oldEnds = geneExonPosMap[info[i].geneName].second;
+                        geneExonPosMap[info[i].geneName] = mergeExons(oldStarts, oldEnds, info[i].exonStarts, info[i].exonEnds);
+                        stringstream newRegion;
+                        // cout << "Matched Genes in " + info[i].geneName + " combined region ";
+                        // for(int m = 0; m < geneExonPosMap[info[i].geneName].first.size(); m++)
+                        // {
+                        //     newRegion << geneExonPosMap[info[i].geneName].first[m] << "-" << geneExonPosMap[info[i].geneName].second[m] << ",";
+                        // }
+                        // cout << newRegion.str() << endl;
+                        regions[info[i].geneName] = newRegion.str();
                     }
                     else
                     {
-                        genePosMap.insert(pair<string, pair<int, int>>(info[i].geneName, pair<int, int>(info[i].txStartPos, info[i].txEndPos)));
+                        geneExonPosMap.insert(pair<string, pair<vector<int>, vector<int>>>(info[i].geneName, pair<vector<int>, vector<int>>(info[i].exonStarts, info[i].exonEnds)));
                     }
                     geneFound = true;
                     break;
@@ -879,6 +882,67 @@ void readInput::readAllGenes(string filename)
     in.close();
 }
 
+
+pair<vector<int>, vector<int>> readInput::mergeExons(vector<int> oldStarts, vector<int>oldEnds, vector<int> newStarts, vector<int>newEnds)
+{
+    vector<int> mergedStarts;
+    vector<int> mergedEnds;
+    vector<int> combinedStarts = oldStarts;
+    vector<int> combinedEnds = oldEnds;
+
+    combinedStarts.insert(combinedStarts.end(), newStarts.begin(), newStarts.end());
+    combinedEnds.insert(combinedEnds.end(), newEnds.begin(), newEnds.end());
+
+    //Perm contains the sorted order by start position.
+    size_t perm[combinedStarts.size()];
+    gsl_sort_int_index(perm, combinedStarts.data(), 1, combinedStarts.size());
+    
+    //The first interval is pushed.
+    int currentIndex = 0;
+    mergedStarts.push_back(combinedStarts[perm[0]]);
+    mergedEnds.push_back(combinedEnds[perm[0]]);
+
+    for(int i = 1; i < combinedStarts.size(); i++)
+    {
+        //If the next interval lies beyond the current one.
+        if(combinedStarts[perm[i]] > mergedEnds[currentIndex])
+        {
+            //We push it.
+            mergedStarts.push_back(combinedStarts[perm[i]]);
+            mergedEnds.push_back(combinedEnds[perm[i]]);
+            currentIndex++;
+        }
+        //If the next interval starts before the end of the current one.
+        else
+        {
+            //If it extends the interval we replace the old end.
+            if(combinedEnds[perm[i]] > mergedEnds[currentIndex])
+            {
+                mergedEnds[currentIndex] = combinedEnds[perm[i]];
+            }
+        }
+    }
+    // cout << "Old Exons: ";
+    // for (int i = 0; i < oldStarts.size(); i++)
+    // {
+    //     cout << oldStarts[i] << "-" << oldEnds[i] << ",";
+    // }
+    // cout << endl;
+    // cout << "New Exons: ";
+    // for (int i = 0; i < newStarts.size(); i++)
+    // {
+    //     cout << newStarts[i] << "-" << newEnds[i] << ",";
+    // }
+    // cout << endl;
+    // cout << "Combined Exons: ";
+    // for (int i = 0; i < mergedStarts.size(); i++)
+    // {
+    //     cout << mergedStarts[i] << "-" << mergedEnds[i] << ",";
+    // }
+    // cout << endl;
+
+    return pair<vector<int>, vector<int>>(mergedStarts, mergedEnds);
+}
 
 
 

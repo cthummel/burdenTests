@@ -13,10 +13,13 @@
 #include <stdlib.h>
 #include <iostream>
 #include <fstream>
+#include <sstream>
 #include <vector>
 #include <regex>
 #include <map>
 #include <gsl/gsl_matrix.h>
+#include <gsl/gsl_sort.h>
+#include <gsl/gsl_sort_vector.h>
 #include "geneInfo.cpp"
 
 using namespace std;
@@ -50,6 +53,7 @@ private:
     void matchGenesOnExons();
     void readSampleNames(string filename);
     void readAllGenes(string filename);
+    pair<vector<int>, vector<int>> mergeExons(vector<int> oldStarts, vector<int>oldEnds, vector<int> newStarts, vector<int>newEnds);
 
     int variantCount = 0;
     int subjectCount = 0;
@@ -73,6 +77,7 @@ private:
     map<string, vector<int> > posMap;
     map<string, string> regions;
     map<string, pair<int,int>> genePosMap;
+    map<string, pair<vector<int>, vector<int>>> geneExonPosMap;
 
     gsl_matrix* covariates = nullptr;
     gsl_vector* pheno = nullptr;

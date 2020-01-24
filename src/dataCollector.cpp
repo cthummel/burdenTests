@@ -645,6 +645,8 @@ void dataCollector::readCADD(string filename, string back, string region, string
 
 }
 
+//Sets the average impact of case unique variants.
+//Relies on impact information to be the 4th entry in each CSQ annotation.
 void dataCollector::setAverageImpact(vector<int> userUnique, int uniqueCount, string region, string outfile)
 {
     double result = 0;
@@ -658,7 +660,7 @@ void dataCollector::setAverageImpact(vector<int> userUnique, int uniqueCount, st
         getline(in, line);
         if(userUnique[i] == 1)
         {
-            size_t lastPos = 0;
+            size_t lastPos = line.find("CSQ", 0);
             size_t currentPos = 0;
             int variantMaxImpact = 0;
             while (currentPos != string::npos)
@@ -710,5 +712,11 @@ void dataCollector::setAverageImpact(vector<int> userUnique, int uniqueCount, st
         }
     }
     averageImpact = result / uniqueCount;
+
+    //Now find the matching chromosome:position data for 3 highest impact variants.
+
+    command = externals_loc + "bcftools query -r " + region + " -f '%CHROM:%POS\\n' " + userFile + " > " + outfile;
+    system(command.c_str());
+
 }
 
