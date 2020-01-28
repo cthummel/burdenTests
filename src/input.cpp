@@ -672,16 +672,20 @@ void readInput::matchGenesOnExons()
                     //This gene was a duplicate of another already entered in. Merge exon regions to avoid variant double counts.
                     if (duplicate.second == false)
                     {
-                        cout << "Duplicate record for " << info[i].geneName << ". Updating entry with combined range." << endl;
+                        //cout << "Duplicate record for " << info[i].geneName << ". Updating entry with combined range." << endl;
                         vector<int> oldStarts = geneExonPosMap[info[i].geneName].first;
                         vector<int> oldEnds = geneExonPosMap[info[i].geneName].second;
                         geneExonPosMap[info[i].geneName] = mergeExons(oldStarts, oldEnds, info[i].exonStarts, info[i].exonEnds);
                         stringstream newRegion;
                         // cout << "Matched Genes in " + info[i].geneName + " combined region ";
-                        // for(int m = 0; m < geneExonPosMap[info[i].geneName].first.size(); m++)
-                        // {
-                        //     newRegion << geneExonPosMap[info[i].geneName].first[m] << "-" << geneExonPosMap[info[i].geneName].second[m] << ",";
-                        // }
+                        for(int m = 0; m < geneExonPosMap[info[i].geneName].first.size(); m++)
+                        {
+                            newRegion << info[i].geneChrom << ":" << geneExonPosMap[info[i].geneName].first[m] << "-" << geneExonPosMap[info[i].geneName].second[m];
+                            if(m + 1 < geneExonPosMap[info[i].geneName].first.size())
+                            {
+                                newRegion << ",";
+                            }
+                        }
                         // cout << newRegion.str() << endl;
                         regions[info[i].geneName] = newRegion.str();
                     }

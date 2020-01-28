@@ -432,7 +432,7 @@ int main(int argc, const char *argv[])
             size_t perm[regions.size()];
             vector<string> genes(regions.size());
             vector<string> locations(regions.size());
-            vector<int> effectSizes(regions.size());
+            vector<int> effectSizes(regions.size(), 0);
             vector<int> UserUniqueVariantCounts(regions.size());
             vector<int> BackUniqueVariantCounts(regions.size());
             vector<int> variantCounts(regions.size());
@@ -460,8 +460,37 @@ int main(int argc, const char *argv[])
                 map<string, string>::iterator iter = regions.begin();
                 advance(iter, i);
 
-                effectSizes[i] = stoi(iter->second.substr(iter->second.find("-")+1)) - stoi(iter->second.substr(iter->second.find(":")+1, iter->second.find("-")));
+                if(variantRegion == "exon")
+                {
+                    //We need to add up the effect regions of each of the merged exons.
+                    string currentRegion = iter->second;
+                    cout << iter->first << " is in region " << iter->second << endl;
+                    effectSizes[i] = 0;
+                    size_t last = 0;
+                    size_t current = currentRegion.find(',', last);
+                    while(last != string::npos)
+                    {
+                        string token = currentRegion.substr(last, current - last);
+                        size_t dashPos = token.find("-");
+                        effectSizes[i] += stoi(token.substr(dashPos + 1)) - stoi(token.substr(token.find(":") + 1, dashPos));
+                        cout << "Adding size " << stoi(token.substr(dashPos + 1)) - stoi(token.substr(token.find(":") + 1, dashPos)) << endl;
 
+                        if(current == string::npos)
+                        {
+                            last = string::npos;
+                        }
+                        else
+                        {
+                            last = current + 1;
+                            current = currentRegion.find(',', last);
+                        }
+                    }
+                }
+                else
+                {
+                    effectSizes[i] = stoi(iter->second.substr(iter->second.find("-")+1)) - stoi(iter->second.substr(iter->second.find(":")+1, iter->second.find("-")));
+                }   
+                
                 //Reads in genotype data from region.
                 dataCollector geneInput = dataCollector(userBackgroundIncluded, useCADDWeights, vcffilename, backfilename, iter->second, testType, result.getCaseCount(), omp_get_thread_num());
                 // variantCounts[i] = geneInput.getShortGslGenotype()->size1;
