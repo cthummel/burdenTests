@@ -23,6 +23,8 @@ class dataCollector
       gsl_vector* getMaf(){return maf;}
       gsl_vector* getCADDWeights(){return CADDWeights;}
       int getCaseUniqueVariantCount(){return caseUniqueVariantCount;}
+      vector<int> getTopCaseUniqueVariants(){return topVariants;}
+      vector<int> getTopCaseUniqueImpacts(){return topImpacts;}
       int getBackgroundUniqueVariantCount(){return backgroundUniqueVariantCount;}
       double getAverageImpact(){return averageImpact;}
       bool containsUserVariants(){if (variantCount == 0){return false;}else{return true;}}
@@ -36,6 +38,7 @@ class dataCollector
       void annotationParser(string filename, string back, string region, string outfile);
       void weightImport(string region, string outfile);
       void setAverageImpact(vector<int> userUniqueVariants, int uniqueCount, string region, string outfile);
+      void generatePositionList(string filename, string back, string region, string outfile);
 
     int variantCount = 0;
     int subjectCount = 0;
@@ -52,15 +55,14 @@ class dataCollector
     regex subjectCountMatch;
     regex variantCountMatch;
     vector<int> userUniques;
+    vector<int> userPositions;
+    vector<int> topVariants;
+    vector<int> topImpacts;
 
     gsl_matrix_short* shortGenotypeGslMatrix = nullptr;
     gsl_matrix* genotypeGslMatrix = nullptr;
     gsl_vector* CADDWeights = nullptr;
     gsl_vector* maf = nullptr;
 };
-
-
-
-
 
 #endif

@@ -336,6 +336,7 @@ void readInput::buildGeneInfo(string filename)
                 else
                 {
                     currentGene.geneChrom = token;
+                    //cout << token << "," << endl;
                 }
             }
             if (j == 4)
@@ -697,7 +698,7 @@ void readInput::matchGenesOnExons()
                     break;
                 }
                 
-                if (posMap[info[i].geneChrom][j] > info[i].txEndPos)
+                if (posMap[info[i].geneChrom][j] > info[i].exonEnds[k])
                 {
                     break;
                 }
@@ -926,24 +927,6 @@ pair<vector<int>, vector<int>> readInput::mergeExons(vector<int> oldStarts, vect
             }
         }
     }
-    // cout << "Old Exons: ";
-    // for (int i = 0; i < oldStarts.size(); i++)
-    // {
-    //     cout << oldStarts[i] << "-" << oldEnds[i] << ",";
-    // }
-    // cout << endl;
-    // cout << "New Exons: ";
-    // for (int i = 0; i < newStarts.size(); i++)
-    // {
-    //     cout << newStarts[i] << "-" << newEnds[i] << ",";
-    // }
-    // cout << endl;
-    // cout << "Combined Exons: ";
-    // for (int i = 0; i < mergedStarts.size(); i++)
-    // {
-    //     cout << mergedStarts[i] << "-" << mergedEnds[i] << ",";
-    // }
-    // cout << endl;
 
     return pair<vector<int>, vector<int>>(mergedStarts, mergedEnds);
 }

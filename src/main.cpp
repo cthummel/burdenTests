@@ -442,7 +442,8 @@ int main(int argc, const char *argv[])
             vector<double> averageImpacts(regions.size());
             vector<bool> geneNoData(regions.size(), false);
 
-            //int index = 0;
+            //Currently top three variants.
+            int topCount = 3;
             int skipped = 0;
 
             ofstream out(outputFileName + ".tsv");
@@ -451,7 +452,12 @@ int main(int argc, const char *argv[])
             {
                 out << result.getSampleNames()->at(i) << "_Score\t";
             }
-            out << "TestStat\tPvalue\tRegionSize\tCaseUniqueVariants\tBackgroundUniqueVariants\tTotalVariants\tAverageImpact" << endl;
+            out << "TestStat\tPvalue\tRegionSize\tCaseUniqueVariants\tBackgroundUniqueVariants\tTotalVariants\tAverageImpact";
+            for(int i = 0; i < topCount; i++)
+            {
+                out << "\tVariant" << i + 1;
+            }
+            out << endl;
 
             #pragma omp parallel for schedule(dynamic)
             for (int i = 0; i < regions.size(); i++)
@@ -464,7 +470,7 @@ int main(int argc, const char *argv[])
                 {
                     //We need to add up the effect regions of each of the merged exons.
                     string currentRegion = iter->second;
-                    cout << iter->first << " is in region " << iter->second << endl;
+                    //cout << iter->first << " is in region " << iter->second << endl;
                     effectSizes[i] = 0;
                     size_t last = 0;
                     size_t current = currentRegion.find(',', last);
@@ -473,7 +479,7 @@ int main(int argc, const char *argv[])
                         string token = currentRegion.substr(last, current - last);
                         size_t dashPos = token.find("-");
                         effectSizes[i] += stoi(token.substr(dashPos + 1)) - stoi(token.substr(token.find(":") + 1, dashPos));
-                        cout << "Adding size " << stoi(token.substr(dashPos + 1)) - stoi(token.substr(token.find(":") + 1, dashPos)) << endl;
+                        //cout << "Adding size " << stoi(token.substr(dashPos + 1)) - stoi(token.substr(token.find(":") + 1, dashPos)) << endl;
 
                         if(current == string::npos)
                         {
@@ -500,40 +506,8 @@ int main(int argc, const char *argv[])
                 if(!geneInput.containsUserVariants())
                 {
                     //cout << "User data for " << iter->first << " contains no genotype data. Skipping test.\n" << endl;
-                    // genes[i] = iter->first;
-                    // locations[i] = iter->second;
                     pvalues[i] = -1;
-                    // averageImpacts[i] = -1;
                     geneNoData[i] = true;
-                    // for(int j = 0; j < result.getCaseCount(); j++)
-                    // {
-                    //     scores[i][j] = -9999;
-                    // }
-                    // testStats[i] = -9999;
-                    // if(outputFileName == "")
-                    // {
-                    //     omp_set_lock(&outputLock);
-                    //     cout << genes[i] << "\t" << locations[i] << "\t";
-                    //     for (int j = 0; j < result.getCaseCount(); j++)
-                    //     {
-                    //         cout << scores[i][j] << "\t";
-                    //     }
-                    //     cout << testStats[i] << "\t" << pvalues[i] << "\t" << effectSizes[i] << "\t" << UserUniqueVariantCounts[i] << "\t"
-                    //          << BackUniqueVariantCounts[i] << "\t" << variantCounts[i] << "\t" << geneInput.getAverageImpact() << endl;
-                    //     omp_unset_lock(&outputLock);
-                    // }
-                    // else
-                    // {
-                    //     omp_set_lock(&outputLock);
-                    //     out << genes[i] << "\t" << locations[i] << "\t";
-                    //     for (int j = 0; j < result.getCaseCount(); j++)
-                    //     {
-                    //         out << scores[i][j] << "\t";
-                    //     }
-                    //     out << testStats[i] << "\t" << pvalues[i] << "\t" << effectSizes[i] << "\t" << UserUniqueVariantCounts[i] << "\t"
-                    //         << BackUniqueVariantCounts[i] << "\t" << variantCounts[i] << "\t" << geneInput.getAverageImpact() << endl;
-                    //     omp_unset_lock(&outputLock);
-                    // }
                 }
                 else
                 {
@@ -563,6 +537,7 @@ int main(int argc, const char *argv[])
                         averageImpacts[i] = geneInput.getAverageImpact();
                         geneNoData[i] = false;
 
+                        //If no specified outfile we print all results to standard out.
                         if (outputFileName == "")
                         {
                             omp_set_lock(&outputLock);
@@ -572,7 +547,19 @@ int main(int argc, const char *argv[])
                                 cout << scores[i][j] << "\t";
                             } 
                             cout << testStats[i] << "\t" << pvalues[i] << "\t" << effectSizes[i] << "\t" << UserUniqueVariantCounts[i] << "\t" 
-                            << BackUniqueVariantCounts[i] << "\t" << variantCounts[i] << "\t" << geneInput.getAverageImpact() << endl;
+                            << BackUniqueVariantCounts[i] << "\t" << variantCounts[i] << "\t" << geneInput.getAverageImpact();
+                            for(int j = 0; j < geneInput.getTopCaseUniqueVariants().size(); j++)
+                            {
+                                if(geneInput.getTopCaseUniqueVariants()[j] != -1)
+                                {
+                                    cout << "\t" << geneInput.getTopCaseUniqueVariants()[j];
+                                }
+                                else
+                                {
+                                    cout << "\tNA"; 
+                                }
+                            }
+                            cout << endl;
                             omp_unset_lock(&outputLock);
                         }
                         else
@@ -584,7 +571,20 @@ int main(int argc, const char *argv[])
                                 out << scores[i][j] << "\t";
                             } 
                             out << testStats[i] << "\t" << pvalues[i] << "\t" << effectSizes[i] << "\t" << UserUniqueVariantCounts[i] << "\t" 
-                            << BackUniqueVariantCounts[i] << "\t" << variantCounts[i] << "\t" << geneInput.getAverageImpact() << endl;
+                            << BackUniqueVariantCounts[i] << "\t" << variantCounts[i] << "\t" << geneInput.getAverageImpact();
+                            
+                            for(int j = 0; j < geneInput.getTopCaseUniqueVariants().size(); j++)
+                            {
+                                if(geneInput.getTopCaseUniqueVariants()[j] != -1)
+                                {
+                                    out << "\t" << geneInput.getTopCaseUniqueVariants()[j];
+                                }
+                                else
+                                {
+                                    out << "\tNA"; 
+                                }
+                            }
+                            out << endl;
                             omp_unset_lock(&outputLock);
                         }
                     }

@@ -47,6 +47,7 @@ dataCollector::dataCollector(bool userBackgroundIncluded, bool includeCADDWeight
                 }
                 if(caseUniqueVariantCount > 0)
                 {
+                    generatePositionList(user, backFile, region, "tmp/userPos" + to_string(thread_ID) + ".txt");
                     setAverageImpact(userUniques, caseUniqueVariantCount, region, "tmp/impact" + to_string(thread_ID) + ".txt");
                 }
             }
@@ -474,7 +475,6 @@ void dataCollector::doubleBcfInput(string filename, string back, string region, 
         if(uniqueCaseVariant)
         {
             caseUniqueVariantCount++;
-            cout << "found unique variant" << endl;
             userUniques[i] = 1;
         }
         if(uniqueBackVariant)
@@ -645,11 +645,30 @@ void dataCollector::readCADD(string filename, string back, string region, string
 
 }
 
+void updateTopVariantImpact()
+{
+    
+}
+
+
 //Sets the average impact of case unique variants.
 //Relies on impact information to be the 4th entry in each CSQ annotation.
 void dataCollector::setAverageImpact(vector<int> userUnique, int uniqueCount, string region, string outfile)
 {
     double result = 0;
+    //For now its just the top three variants.
+    int minImpact = 0;
+    int minImpactIndex = 0;
+    topVariants = vector<int>(3, -1);
+    topImpacts = vector<int>(3, -1);
+
+    //If we know there are no unique variants we dont need to set average impact.
+    if(caseUniqueVariantCount == 0)
+    {
+        averageImpact = result;
+        return;
+    }
+
     string command = externals_loc + "bcftools query -r " + region + " -f '%INFO/CSQ\\n' " + userFile + " > " + outfile;
     system(command.c_str());
 
@@ -665,7 +684,7 @@ void dataCollector::setAverageImpact(vector<int> userUnique, int uniqueCount, st
             int variantMaxImpact = 0;
             while (currentPos != string::npos)
             {
-                for (int j = 0; j < 3; j++)
+                for (int j = 0; j < 4; j++)
                 {
                     lastPos = currentPos;
                     currentPos = line.find("|", lastPos) + 1;
@@ -708,15 +727,64 @@ void dataCollector::setAverageImpact(vector<int> userUnique, int uniqueCount, st
                 }
                 lastPos = currentPos;
             }
+
+
+            cout << "Top Variants: ";
+            for(int j = 0; j < topVariants.size(); j++)
+            {
+                cout << topVariants[j] << ", ";
+            }
+            cout << endl;
+            for(int j = 0; j < topImpacts.size(); j++)
+            {
+                //If this is a new top three variant we insert it in place and push down old variants.
+                if (variantMaxImpact > topImpacts[j])
+                {
+                    cout << "MaxImpact: " << variantMaxImpact << ", " << "TopImpacts: ";
+                    for (int k = 0; k < topImpacts.size(); k++)
+                    {
+                        cout << topImpacts[k] << ", ";
+                    }
+                    cout << endl;
+                    // for(int k = topImpacts.size() - 1; k > j; k--)
+                    // {
+                    //     topImpacts[k] = topImpacts[k - 1];
+                    //     topVariants[k] = topVariants[k - 1];
+                    // }
+                    topImpacts[j] = variantMaxImpact;
+                    topVariants[j] = userPositions[i];
+                    cout << "Adding " << userPositions[i] << endl;
+                    break;
+                }
+            }
             result += variantMaxImpact;
         }
     }
     averageImpact = result / uniqueCount;
+}
 
-    //Now find the matching chromosome:position data for 3 highest impact variants.
-
-    command = externals_loc + "bcftools query -r " + region + " -f '%CHROM:%POS\\n' " + userFile + " > " + outfile;
-    system(command.c_str());
-
+//Generates a list of the positions for all variants identified to be unique to the user data set.
+void dataCollector::generatePositionList(string filename, string back, string region, string outfile)
+{
+    ifstream in;
+    string line;
+    if(preMerged)
+    {
+        string command = externals_loc + "bcftools query -r " + region + " -f '%POS\\n' " + filename + " > " + outfile;
+        system(command.c_str());
+    }
+    else
+    {
+        string mergeCommand = externals_loc + "bcftools merge -r " + region + " " + filename + " " + back + " | " 
+                            + externals_loc + "bcftools query -f '%POS\\n' - > " + outfile;
+        system(mergeCommand.c_str());
+    }
+    userPositions = vector<int>(shortGenotypeGslMatrix->size1, 0);
+    in.open(outfile);
+    for(int i = 0; i < shortGenotypeGslMatrix->size1; i++)
+    {
+        getline(in, line);
+        userPositions[i] = stoi(line);
+    }
 }
 
